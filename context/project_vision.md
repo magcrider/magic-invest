@@ -1,21 +1,27 @@
 # Project Vision & Conceptual Alignment - Magic Invest
 
 ## 1. El Problema a Resolver
-Las herramientas financieras actuales están diseñadas bajo sesgos hipercapitalistas y consumistas: buscan secuestrar la atención del usuario mediante notificaciones, colores de alerta y flujos de datos en tiempo real (FOMO). Su objetivo es generar interacción compulsiva.
-**Nuestra postura:** El valor de esta aplicación no se mide por la acumulación de capital, sino por la protección del bienestar cognitivo del usuario. El mercado financiero genera ruido; "Magic Invest" es el filtro insonorizador.
+Las herramientas financieras actuales están diseñadas bajo sesgos hipercapitalistas y consumistas: buscan secuestrar la atención del usuario mediante notificaciones, colores de alerta y flujos de datos en tiempo real (FOMO). Su objetivo es generar interacción compulsiva y, con ello, ingresos por trading frecuente, suscripciones o publicidad.
+
+**Nuestra postura:** El valor de esta aplicación no se mide por la acumulación de capital, sino por la **calidad de las decisiones financieras** del usuario y por la **profundidad de su comprensión** del funcionamiento estructural de los mercados. Magic Invest no es anti-finanzas — es anti-reactividad. El mercado genera ruido; nosotros somos el filtro insonorizador y, además, el aula.
 
 ## 2. Definición de Éxito
-El éxito de esta aplicación no es lograr el mayor rendimiento porcentual (ROI) adivinando el mercado. El éxito se alcanza cuando:
-1.  El usuario toma decisiones basadas en estadística fría (fórmulas matemáticas comprobadas).
-2.  El usuario gasta el mínimo tiempo posible mirando la pantalla.
-3.  El sistema reduce la carga cognitiva, permitiendo que el usuario dedique su intelecto al aprendizaje continuo y a su vida personal, dejando que el tiempo y el interés compuesto hagan el trabajo.
+El éxito no es lograr el mayor rendimiento porcentual (ROI) adivinando el mercado. El éxito se alcanza cuando:
+1. El usuario toma decisiones basadas en **estadística fría** (fórmulas matemáticas comprobadas, no intuición ni titulares de prensa).
+2. El usuario **gasta el mínimo tiempo posible** mirando la pantalla, pero ese tiempo es de alta densidad informativa.
+3. El sistema **reduce la carga cognitiva**, permitiendo que el usuario dedique su intelecto al aprendizaje activo y a su vida personal, dejando que el tiempo y el interés compuesto hagan el trabajo.
+4. El usuario adquiere progresivamente el **vocabulario y la intuición estadística** necesarios para razonar sobre sus propias inversiones, sin depender de "expertos" ni de noticias.
+
+El éxito se mide en comprensión adquirida y horas no gastadas en ansiedad, no en puntos porcentuales.
 
 ## 3. Dinámica de Comunicación (Para Claude Code)
 Cuando interactúes con Harvey (el arquitecto) para generar código, asume este contexto:
-*   **No sugieras "features" comerciales:** No queremos integración con redes sociales, ni gamificación, ni alertas de "oportunidades calientes". Todo desarrollo debe priorizar el minimalismo y el enfoque.
-*   **Winston es el marco teórico:** Las decisiones de arquitectura y restricciones (`architecture_state.md` y `investment_thesis.md`) fueron debatidas filosóficamente con Winston (IA Consultora). Son negociables luego puedes proponerle a Harvey tu punto de vista.
-*   **Tu rol (Claude Code):** Ejecución técnica impecable en React Native. Eres el encargado de traducir esta filosofía en código eficiente, modular y sin dependencias infladas. Cuando Harvey pida una implementación, evalúala primero contra este archivo de visión.
+* **No sugieras "features" comerciales.** No queremos integración con redes sociales, ni gamificación, ni alertas de "oportunidades calientes". Todo desarrollo debe priorizar el minimalismo y el enfoque.
+* **Winston es el marco teórico.** Las decisiones de arquitectura y restricciones (`architecture_state.md` y `investment_thesis.md`) fueron debatidas filosóficamente con Winston (IA Consultora). Son negociables: puedes proponerle a Harvey tu punto de vista si tienes argumentos sólidos.
+* **Tu rol (Claude Code):** Ejecución técnica impecable en React Native. Eres el encargado de traducir esta filosofía en código eficiente, modular y sin dependencias infladas. Cuando Harvey pida una implementación, evalúala primero contra este archivo de visión.
+* **El color tiene significado dual.** La neutralidad cromática aplica a datos del *presente* (saldos, rentabilidades EOD, tablas de posiciones). Las *proyecciones a futuro* y los *eventos estructurales* sí usan color expresivo, pero con tokens definidos en `design_system.md` que evitan deliberadamente el rojo/verde reactivo del mercado tradicional.
+* **La educación es parte del producto.** Todo término técnico debe ser explicable vía tooltip y enlazable a una pantalla de detalle. En Fase 2, el Asistente IA toma este rol con mayor profundidad.
 
 ## 4. Evolución del Proyecto
-*   **Fase 1 (Actual):** Aislar el ruido. Herramienta personal para Harvey. Gestión local, UI/UX sobria y neutral, análisis de CDTs y ETFs indexados.
-*   **Fase 2 (Futuro):** Expansión mediante agentes de IA y servidores MCP para entender perfiles de terceros, manteniendo siempre el sesgo humanista y anti-consumista.
+* **Fase 1 (Actual):** Aislar el ruido y sentar la base educativa. Herramienta personal para Harvey. Módulos: **Portafolio**, **Herramientas**, **Buzón**. Persistencia local-first con sync a backend propio. Análisis matemático sobre CDTs (renta fija local) y ETFs indexados (crecimiento estructural).
+* **Fase 2 (Futuro):** Incorporación del módulo **Asistente IA** como sección principal, con acceso contextual al portafolio del usuario. Expansión vía servidores MCP y agentes autónomos para análisis estadístico avanzado y perfilamiento de terceros. La filosofía humanista, anti-consumista y educativa se mantiene como invariante absoluto.

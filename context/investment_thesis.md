@@ -8,7 +8,8 @@ Antes de evaluar cualquier ETF, el sistema calcula la **tasa de rechazo base**. 
 
 La línea base está definida por la rentabilidad de los CDTs, pero ajustada a la realidad macroeconómica:
 * **Tasa Libre de Riesgo Local ($R_f$):** Promedio de rentabilidad anual de CDTs en los bancos configurados.
-* **Tasa de Rechazo (Hurdle Rate):** Un ETF (denominado en USD) debe ofrecer una expectativa de retorno que supere $R_f$ descontando la **devaluación promedio** del peso colombiano frente al dólar y la **inflación** local.
+* **Tasa de Rechazo (Hurdle Rate):** Un ETF (denominado en USD) debe ofrecer una expectativa de retorno neto que supere $R_f$. Para comparar "peras con peras", la rentabilidad del ETF se ajusta matemáticamente usando la **Ecuación de Fisher** para reflejar la devaluación esperada/histórica del COP frente al USD y el diferencial de inflación.
+* **Costos (TER):** Todo cálculo de rendimiento de un ETF debe descontar obligatoriamente su *Total Expense Ratio* (TER) anualizado.
 
 ## 3. Métricas Estadísticas de Aceptación (ETFs)
 Queda prohibido evaluar los ETFs basándose únicamente en su rendimiento nominal. El sistema aplicará obligatoriamente los siguientes filtros matemáticos usando datos de cierre diario (EOD):

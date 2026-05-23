@@ -24,7 +24,7 @@ Para proteger la atención de Harvey y evitar el hiperconsumismo financiero, la 
 La app se estructura en módulos independientes y navegables como secciones principales:
 
 * **Portafolio (Realidad):** posiciones reales del usuario.
-  * *ETFs:* alimentados desde APIs de datos de cierre diario (End-of-Day / EOD). **Auto-fetch al abrir la app, con dedupe diaria** — si ya se descargaron los datos del día, no se vuelve a llamar a la API. **Prohibido:** WebSockets, live tickers, actualizaciones intradía.
+  * *ETFs:* alimentados desde APIs de datos de cierre diario (End-of-Day / EOD) y metadatos estructurales (como el TER). **Auto-fetch asíncrono al abrir la app, con dedupe diaria** — si ya se descargaron los datos del día, no se vuelve a llamar a la API. Cero bloqueos de UI por red. **Prohibido:** WebSockets, live tickers, actualizaciones intradía.
   * *CDTs:* registro parametrizado con reglas de bancos colombianos (Bancolombia, Banco de Bogotá, Davivienda, etc.) incluyendo capitalización, retención en la fuente (retefuente) y tasas vigentes.
 * **Herramientas (Simulación):** calculadoras estáticas que corren de manera local. Proyección de interés compuesto, simulación de aportes, comparadores. No tocan el portafolio real.
 * **Buzón (Asíncrono):** receptor de eventos generados por el propio sistema:

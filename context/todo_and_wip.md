@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base y flujo de autenticación completos. Próximo: onboarding.
-* **Última sesión:** Captura de nombre en signup, saludo personalizado en Portfolio, toggle de contraseña, componente `DrawerMenu` (panel lateral animado con perfil, configuración, legal, versión, logout), componente `PageHeader` compartido en los tres tabs, fix de bug en animación del drawer.
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. Módulo Herramientas iniciado: calculadora #1 funcional con gráfica.
+* **Última sesión:** Módulo Herramientas — lista de 9 herramientas (tarjetas con nombre, descripción, ícono), navegación stack dentro del tab, componentes compartidos de calculadora (`CurrencySelector`, `InputField`, `ResultCard`, `GrowthChart`), calculadora #1 "Interés compuesto / Valor futuro" completa con selector COP/USD, botón Calcular, gráfica de barras apiladas y tabla de resultados con convención de color.
 
 ---
 
@@ -20,6 +20,7 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * Cliente Supabase en `src/lib/supabase.ts` con AsyncStorage y PKCE
 * Schema PostgreSQL en Supabase con RLS (tablas de mercado + tablas de usuario)
 * `@expo/vector-icons` instalado (Ionicons)
+* `src/utils/format.ts`: formateo de moneda (COP/USD), porcentajes, abreviación de valores (K/M/B), parseNumber
 
 ### Autenticación
 * Login email/password: `useAuth` hook, flujo signin/signup con validación
@@ -31,8 +32,24 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 ### Navegación y shell
 * Tres tabs: Portafolio, Buzón, Herramientas (NativeTabs)
 * `PageHeader`: componente compartido con título, subtítulo opcional y botón hamburguesa; disponible en los tres tabs
-* `DrawerMenu`: panel lateral animado (slide desde la derecha, backdrop oscuro) con secciones de perfil del usuario, configuración (switch biométrico placeholder), legal (placeholders), versión de app y botón de cierre de sesión. Usa `Modal` para flotar sobre cualquier tab. Fix aplicado: ref `isMounted` para evitar que la animación de cierre inicial cancele una apertura rápida al cargar la app.
+* `DrawerMenu`: panel lateral animado (slide desde la derecha, backdrop oscuro) con secciones de perfil del usuario, configuración (switch biométrico placeholder), legal (placeholders), versión de app y botón de cierre de sesión. Usa `Modal` para flotar sobre cualquier tab. Fix: ref `isMounted` para evitar que la animación de cierre inicial cancele una apertura rápida.
 * Saludo personalizado en Portafolio: `"Hola, {nombre} · Tus posiciones reales"` (con fallback si no hay nombre)
+
+### Módulo Herramientas — Shell y primera calculadora
+* Lista de 9 herramientas en tarjetas (nombre + descripción + ícono único). Ordenadas por frecuencia de uso estimada.
+* Navegación stack dentro del tab Herramientas: `tools/_layout.tsx` (Stack sin header) + `tools/index.tsx` (lista) + `tools/[id].tsx` (placeholder genérico) + archivos individuales por calculadora.
+* **Componentes compartidos** en `src/components/calculator/`:
+  * `CurrencySelector`: toggle COP / USD estilo segmented control
+  * `InputField`: campo numérico con etiqueta, sufijo y hint opcional
+  * `ResultCard`: tarjeta de resultados con filas, fila destacada en teal y dots de color para convención visual
+  * `GrowthChart`: gráfica de barras apiladas (capital aportado vs ganancias) con etiquetas de valor abreviadas y leyenda. Sin año 0. Scroll horizontal automático.
+* **Calculadora #1: Interés compuesto / Valor futuro** (`tools/compound-interest.tsx`):
+  * Selector COP/USD, cuatro campos (capital inicial, aporte mensual, tasa anual, horizonte)
+  * Botón Calcular habilitado solo con campos válidos
+  * Auto-scroll a resultados al calcular
+  * Resultados: gráfica primero (visual) → tabla (números) → disclaimer
+  * Fórmula: `FV = PV(1+r)^n + PMT × [(1+r)^n − 1) / r]` con manejo de tasa 0
+  * Convención de color coherente entre gráfica y tabla: teal sólido = ganancias, teal claro = capital aportado
 
 ---
 
@@ -42,17 +59,14 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * **Qué investigar:** Endpoints para (a) tasa de política monetaria y (b) tasas de captación CDT promedio por plazo. Verificar formato, frecuencia de actualización, estabilidad y cobertura de TRM histórica.
 * **Por qué importa:** Fuente de datos para el Hurdle Rate, trigger macroeconómico del Buzón y tasas CDT base.
 * **Decisión pendiente:** ¿Es suficiente Banrep o necesitamos complementar con DANE (inflación) o fuentes de TRM adicionales?
-* **Para Winston:** ¿Ves riesgo en depender de una sola fuente oficial para un parámetro tan central como la tasa libre de riesgo local?
 
 ### 2. Fuente de datos EOD para ETFs
 * **Candidatos:** Alpha Vantage, EOD Historical Data, Yahoo Finance, Polygon.io.
 * **Criterios:** Rate limits, cobertura de ETFs internacionales, datos históricos 5-10 años, costo tier gratuito/básico, facilidad de integración en Edge Function.
-* **Para Winston:** ¿Perspectiva sobre confiabilidad de estas fuentes para datos históricos de largo plazo (10 años)?
 
 ### 3. Watchlist inicial de ETFs
 * **Estado:** Vacía. Harvey no tiene lista predefinida.
 * **Acción:** Claude sugerirá tickers representativos (VOO, VTI, VXUS u otros) como semilla funcional al iniciar el módulo Portafolio.
-* **Para Winston:** ¿Criterios de selección inicial más allá de ser indexados y de bajo TER?
 
 ---
 
@@ -60,22 +74,34 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ### 4. Perfil de usuario completo (post-signup)
 * **Qué hacer:** Formulario de perfil accesible desde el `DrawerMenu` con campos opcionales: tipo de documento (CC, CE, Pasaporte, NIT — constante TypeScript, no tabla DB), número de documento, ciudad.
-* **Por qué:** El documento puede ser útil para cálculos fiscales futuros. No es bloqueante para Phase 1.
-* **Decisión de diseño:** Tipos de documento como constante TypeScript (dato estático, raramente cambia en Colombia). No requiere tabla de referencia en DB.
+* **Decisión de diseño:** Tipos de documento como constante TypeScript. No requiere tabla de referencia en DB.
 
 ### 5. Autenticación biométrica
-* **Qué hacer:** `expo-local-authentication` como capa local que desbloquea la sesión guardada en AsyncStorage. El usuario hace login una vez; las siguientes aperturas usan huella/Face ID.
-* **Switch ya visible** en el `DrawerMenu` (deshabilitado). Se activa cuando se implemente.
+* `expo-local-authentication` como capa local que desbloquea la sesión guardada en AsyncStorage.
+* Switch ya visible en el `DrawerMenu` (deshabilitado). Se activa cuando se implemente.
 * **Deuda deliberada:** Implementar después de que los módulos principales estén funcionales.
 
-### 6. Flujo de Onboarding
-* Pantalla que presenta la filosofía básica en lenguaje accesible (sin tecnicismos)
-* Configuración de bandas de asignación CDT/ETF con slider (default: CDTs 50–70% / ETFs 30–50%)
-* Solo se muestra la primera vez (verificar con `isOnboardingComplete()` en SQLite)
+### 6. Módulo Herramientas — Calculadoras 2–9 (En progreso)
+
+Lista priorizada por frecuencia de uso estimada. Calculadora #1 completa — continuar en orden:
+
+| # | Nombre | Estado |
+|---|--------|--------|
+| 1 | Interés compuesto / Valor futuro | ✅ Completa |
+| 2 | Tiempo para alcanzar tu meta | 🔲 Pendiente |
+| 3 | Calculadora para salir de deudas | 🔲 Pendiente |
+| 4 | Conversor de tasas | 🔲 Pendiente |
+| 5 | Simulador CDT vs ETF | 🔲 Pendiente |
+| 6 | ¿Invierto mes a mes o todo de una vez? | 🔲 Pendiente |
+| 7 | ¿Tu plata crece o solo aguanta? | 🔲 Pendiente |
+| 8 | Rendimiento anual promedio | 🔲 Pendiente |
+| 9 | ¿Cuánto te cuestan las comisiones en 20 años? | 🔲 Pendiente |
+
+Patrón establecido para todas: selector COP/USD → campos con InputField → botón Calcular → GrowthChart (si aplica) → ResultCard → disclaimer. Auto-scroll a resultados al calcular.
 
 ### 7. Módulo Portafolio
 * Vista de lista: activos con nombre, valor actual, indicador de salud estructural
-* Detalle de activo: métricas (CAGR, MaxDD, Sortino), proyección probabilística, sección "Eventos relacionados" (vinculación al Buzón), sección colapsada "¿Qué vale el tiempo que llevas?"
+* Detalle de activo: métricas (CAGR, MaxDD, Sortino), proyección probabilística, sección "Eventos relacionados" (vinculación al Buzón)
 * Sin badges en la lista; profundidad accesible desde el detalle
 
 ### 8. Módulo Buzón
@@ -84,19 +110,21 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * Vinculación bidireccional con Portafolio
 * Cero push notifications, cero badges en ícono de app
 
-### 9. Módulo Herramientas
-* Calculadoras estáticas locales: proyección de interés compuesto, simulación de aportes, comparador CDT vs ETF
-* Corren completamente offline, no tocan el portafolio real
-
-### 10. Backend Supabase — Edge Functions
+### 9. Backend Supabase — Edge Functions
 * Edge Function con cron para consulta periódica a API Banrep (tasa política + CDT promedio)
 * Edge Function para sincronización de datos EOD de ETFs
 * Capa de sincronización Supabase → SQLite local
 
-### 11. Sistema de Rebalanceo
+### 10. Sistema de Rebalanceo
 * Evaluación trimestral automática contra bandas configuradas
 * Rebalanceo de oportunidad al detectar CDT próximo a madurar
 * Recálculo del Hurdle Rate cuando cambia la tasa Banrep
+
+### 11. Flujo de Onboarding (al final, pre-publicación)
+* Pantalla que presenta la filosofía básica en lenguaje accesible (sin tecnicismos)
+* Configuración de bandas de asignación CDT/ETF con slider (default: CDTs 50–70% / ETFs 30–50%)
+* Solo se muestra la primera vez (verificar con `isOnboardingComplete()` en SQLite)
+* **Nota:** Se implementa cuando todas las funcionalidades estén terminadas y probadas, para poder describir y mostrar con precisión qué hace la app.
 
 ---
 

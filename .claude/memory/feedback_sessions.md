@@ -34,3 +34,15 @@ metadata:
 **Para screenshots del emulador Android usar PowerShell, no Bash.**
 **Why:** El redirect `>` en Bash corrompe archivos binarios en Windows.
 **How to apply:** `adb shell screencap -p /sdcard/screenshot.png; adb pull /sdcard/screenshot.png screenshot.png` via PowerShell.
+
+**FlatList y ScrollView necesitan `flex: 1` explícito dentro de contenedores flex.**
+**Why:** Sin `flex: 1`, React Native no sabe cuánto espacio darle al componente scroll y recorta el contenido en lugar de hacerlo desplazable. El `paddingBottom` del tab bar debe ir en `contentContainerStyle`, no en el contenedor padre.
+**How to apply:** Siempre que un FlatList o ScrollView sea hijo de un SafeAreaView/View con flex, agregarle `style={{ flex: 1 }}`. El padding inferior del inset va en `contentContainerStyle.paddingBottom`.
+
+**En calculadoras: gráfica primero, números después.**
+**Why:** Harvey validó explícitamente este orden — la comprensión visual precede a los datos exactos. "Me gusta... que chévere."
+**How to apply:** En todas las pantallas de calculadora: GrowthChart → ResultCard → disclaimer. Nunca al revés.
+
+**Nombres de herramientas en lenguaje cotidiano, no técnico.**
+**Why:** Harvey no identificó el valor de "CAGR" ni "Hurdle Rate" hasta que se los explicaron. Los nombres técnicos crean fricción innecesaria.
+**How to apply:** Usar lenguaje de pregunta o consecuencia: "¿Tu plata crece o solo aguanta?", "¿Cuánto te cuestan las comisiones en 20 años?". Reservar el nombre técnico para tooltips o subtítulos.

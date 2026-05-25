@@ -35,4 +35,4 @@ Solo CDTs colombianos y ETFs indexados. Prohibidos: acciones individuales, cript
 
 ## Estado actual
 
-Infraestructura base e identidad de usuario completas. Implementados: autenticación email/password con deep linking PKCE, captura de nombre en signup, shell de navegación con `PageHeader` + `DrawerMenu` funcional en los tres tabs. Próximo paso: flujo de onboarding. Ver `context/todo_and_wip.md` para el orden de tareas y el estado detallado.
+Infraestructura base, autenticación y shell completos. Módulo Herramientas en progreso: lista de 9 calculadoras con navegación stack, componentes compartidos (`CurrencySelector`, `InputField`, `ResultCard`, `GrowthChart`) en `src/components/calculator/`, utilidades de formato en `src/utils/format.ts`. Calculadora #1 "Interés compuesto / Valor futuro" completa con gráfica de barras apiladas. Próximo paso: calculadoras #2–9 del módulo Herramientas. Ver `context/todo_and_wip.md` §6 para la lista priorizada y el patrón establecido.

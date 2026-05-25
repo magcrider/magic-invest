@@ -6,7 +6,9 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -18,28 +20,35 @@ type Mode = 'signin' | 'signup';
 
 export default function LoginScreen() {
   const [mode, setMode] = useState<Mode>('signin');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   async function handleSubmit() {
     if (!email.trim() || password.length < 6) return;
+    if (mode === 'signup' && !name.trim()) return;
     setLoading(true);
     setError(null);
     setSuccessMsg(null);
 
     if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
+        options: { data: { full_name: name.trim() } },
       });
       setLoading(false);
       if (error) {
         setError(translateError(error.message));
+      } else if (data.session) {
+        // Confirmación de email desactivada — sesión inmediata, useAuth redirige solo
       } else {
-        setSuccessMsg('Cuenta creada. Revisa tu email para confirmar y luego inicia sesión.');
+        // Confirmación de email activa — el usuario debe revisar su correo
+        setSuccessMsg('Revisa tu email para confirmar la cuenta y luego inicia sesión.');
         setMode('signin');
       }
     } else {
@@ -93,7 +102,7 @@ export default function LoginScreen() {
             <ThemedView type="backgroundElement" style={styles.modeSelector}>
               <TouchableOpacity
                 style={[styles.modeButton, mode === 'signin' && styles.modeButtonActive]}
-                onPress={() => { setMode('signin'); setError(null); setSuccessMsg(null); }}>
+                onPress={() => { setMode('signin'); setName(''); setError(null); setSuccessMsg(null); }}>
                 <ThemedText
                   type="small"
                   themeColor={mode === 'signin' ? 'text' : 'textSecondary'}>
@@ -103,6 +112,7 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={[styles.modeButton, mode === 'signup' && styles.modeButtonActive]}
                 onPress={() => { setMode('signup'); setError(null); setSuccessMsg(null); }}>
+
                 <ThemedText
                   type="small"
                   themeColor={mode === 'signup' ? 'text' : 'textSecondary'}>
@@ -110,6 +120,19 @@ export default function LoginScreen() {
                 </ThemedText>
               </TouchableOpacity>
             </ThemedView>
+
+            {mode === 'signup' && (
+              <TextInput
+                style={styles.input}
+                placeholder="¿Cómo te llamamos?"
+                placeholderTextColor={Tokens.neutral.muted}
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+                autoComplete="name"
+                returnKeyType="next"
+              />
+            )}
 
             <TextInput
               style={styles.input}
@@ -122,21 +145,33 @@ export default function LoginScreen() {
               autoComplete="email"
             />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña (mínimo 6 caracteres)"
-              placeholderTextColor={Tokens.neutral.muted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              onSubmitEditing={handleSubmit}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Contraseña (mínimo 6 caracteres)"
+                placeholderTextColor={Tokens.neutral.muted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                onSubmitEditing={handleSubmit}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(v => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={Tokens.neutral.muted}
+                />
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleSubmit}
-              disabled={loading || !email.trim() || password.length < 6}>
+              disabled={loading || !email.trim() || password.length < 6 || (mode === 'signup' && !name.trim())}>
               {loading
                 ? <ActivityIndicator color={Tokens.neutral.background} />
                 : <ThemedText type="smallBold" style={styles.buttonText}>
@@ -225,6 +260,19 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.4 },
   buttonText: { color: Tokens.neutral.background },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: Spacing.three,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
   linkButton: { alignItems: 'center', paddingVertical: Spacing.one },
   error: { color: Tokens.structural.risk, textAlign: 'center' },
   success: { color: Tokens.structural.positive, textAlign: 'center' },

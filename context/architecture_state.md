@@ -50,10 +50,28 @@ La app se estructura en módulos independientes y navegables como secciones prin
 * **Backend (día uno, no opcional):** **Supabase managed** (Postgres + Auth). No es una capa de sync tardía — es infraestructura activa desde el inicio porque los jobs programados de Banrep y las Edge Functions viven aquí.
   * *Justificación de Postgres:* tipo `NUMERIC` con precisión arbitraria para montos financieros, window functions nativas para CAGR, Sortino, MaxDD directamente en SQL, JSONB para configuraciones flexibles, Row Level Security para Fase 2.
 * **Jobs de datos macroeconómicos:** Supabase Edge Functions con cron consultan periódicamente la API pública del Banco de la República. Los resultados se almacenan en Postgres; la app lee desde SQLite local sincronizado. La app nunca llama directamente a Banrep (CORS, disponibilidad, caché).
-* **Autenticación:** Supabase Auth con magic link por email (suficiente para Fase 1 personal).
+* **Autenticación:** Supabase Auth con **email/password**. PKCE flow habilitado. Deep linking `magicinvest://auth/callback` para confirmación de cuenta desde email. Capa biométrica (`expo-local-authentication`) planificada como gate local sobre la sesión almacenada — no reemplaza el login, lo complementa.
+* **Perfil de usuario:** nombre capturado en signup como `user_metadata.full_name` (Supabase Auth). Campos adicionales (documento, ciudad) en formulario de perfil post-signup — pendiente implementar.
+* **Iconografía:** `@expo/vector-icons` (Ionicons) instalado. Íconos monocromáticos conforme al sistema de diseño.
 * **Estado en cliente:** React Context + hooks. No introducir Redux/Zustand hasta que el scope lo justifique.
 
-## 5. Decisiones de Integración
+## 5. Componentes de Shell Implementados
+
+Estos componentes forman la capa de navegación y presentación base sobre la que se construirán los módulos:
+
+* **`PageHeader`** (`src/components/page-header.tsx`): cabecera compartida usada en los tres tabs. Recibe `title` y `subtitle` opcional. Contiene el botón hamburguesa que abre el `DrawerMenu`. Estado local de apertura del drawer.
+
+* **`DrawerMenu`** (`src/components/drawer-menu.tsx`): panel lateral animado (slide desde la derecha, 82% del ancho de pantalla, backdrop semitransparente). Autocontenido — obtiene los datos del usuario via `useAuth()` internamente. Secciones:
+  * Perfil: avatar con inicial, nombre visible (`user_metadata.full_name`) y email.
+  * Configuración: switch de autenticación biométrica (visible, deshabilitado hasta implementar).
+  * Legal: Términos y condiciones + Política de privacidad (placeholders).
+  * Footer: versión de la app (`Constants.expoConfig.version`) + botón de cerrar sesión.
+  * Cierre: botón X, toque en backdrop, botón atrás de Android (`onRequestClose`).
+  * **Bug conocido y resuelto:** la animación de cierre se lanzaba en el montaje inicial, cancelando una apertura rápida del drawer. Fix: ref `isMounted` para saltarse el efecto en el primer render.
+
+* **`DrawerMenu` + `PageHeader` en los tres tabs:** el `Modal` de React Native garantiza que el drawer flota sobre cualquier tab sin importar desde dónde se abra.
+
+## 6. Decisiones de Integración
 
 ### A. Fuente de datos EOD para ETFs
 * **Estado:** No definida. Candidatos: Alpha Vantage, EOD Historical Data, Yahoo Finance, Polygon.io.

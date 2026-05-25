@@ -3,26 +3,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { PageHeader } from '@/components/page-header';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function PortfolioScreen() {
+  const { displayName } = useAuth();
+  const subtitle = displayName
+    ? `Hola, ${displayName} · Tus posiciones reales`
+    : 'Tus posiciones reales';
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
-        <ThemedText type="title" style={styles.title}>
-          Portafolio
-        </ThemedText>
-        <ThemedText type="default" themeColor="textSecondary" style={styles.subtitle}>
-          Tus posiciones reales
-        </ThemedText>
+        <PageHeader title="Portafolio" subtitle={subtitle} />
 
         <ThemedView type="backgroundElement" style={styles.placeholder}>
-          <ThemedText type="default" themeColor="textSecondary" style={styles.placeholderText}>
-            Módulo en construcción
-          </ThemedText>
-          <ThemedText type="small" style={styles.placeholderNote}>
-            CDTs y ETFs indexados · datos EOD
-          </ThemedText>
+          <ThemedText type="default" themeColor="textSecondary">Módulo en construcción</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">CDTs y ETFs indexados · datos EOD</ThemedText>
         </ThemedView>
       </SafeAreaView>
     </ThemedView>
@@ -30,22 +28,13 @@ export default function PortfolioScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   safe: {
     flex: 1,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
     paddingBottom: BottomTabInset + Spacing.three,
-    gap: Spacing.two,
-  },
-  title: {
-    color: Tokens.neutral.text,
-  },
-  subtitle: {
-    color: Tokens.neutral.muted,
-    marginBottom: Spacing.three,
+    gap: Spacing.three,
   },
   placeholder: {
     flex: 1,
@@ -53,11 +42,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
-  },
-  placeholderText: {
-    color: Tokens.neutral.muted,
-  },
-  placeholderNote: {
-    color: Tokens.neutral.muted,
   },
 });

@@ -35,4 +35,4 @@ Solo CDTs colombianos y ETFs indexados. Prohibidos: acciones individuales, cript
 
 ## Estado actual
 
-Fase conceptual completa. Iniciando implementación. Ver `context/todo_and_wip.md` para el orden de tareas y decisiones técnicas pendientes.
+Infraestructura base e identidad de usuario completas. Implementados: autenticación email/password con deep linking PKCE, captura de nombre en signup, shell de navegación con `PageHeader` + `DrawerMenu` funcional en los tres tabs. Próximo paso: flujo de onboarding. Ver `context/todo_and_wip.md` para el orden de tareas y el estado detallado.

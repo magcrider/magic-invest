@@ -12,12 +12,12 @@ export default function ToolsScreen() {
         <ThemedText type="title" style={styles.title}>
           Herramientas
         </ThemedText>
-        <ThemedText type="secondary" style={styles.subtitle}>
+        <ThemedText type="default" themeColor="textSecondary" style={styles.subtitle}>
           Simulaciones locales · no tocan el portafolio real
         </ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.placeholder}>
-          <ThemedText type="secondary" style={styles.placeholderText}>
+          <ThemedText type="default" themeColor="textSecondary" style={styles.placeholderText}>
             Módulo en construcción
           </ThemedText>
           <ThemedText type="small" style={styles.placeholderNote}>

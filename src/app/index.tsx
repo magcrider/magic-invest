@@ -12,12 +12,12 @@ export default function PortfolioScreen() {
         <ThemedText type="title" style={styles.title}>
           Portafolio
         </ThemedText>
-        <ThemedText type="secondary" style={styles.subtitle}>
+        <ThemedText type="default" themeColor="textSecondary" style={styles.subtitle}>
           Tus posiciones reales
         </ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.placeholder}>
-          <ThemedText type="secondary" style={styles.placeholderText}>
+          <ThemedText type="default" themeColor="textSecondary" style={styles.placeholderText}>
             Módulo en construcción
           </ThemedText>
           <ThemedText type="small" style={styles.placeholderNote}>

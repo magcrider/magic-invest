@@ -1,6 +1,9 @@
 # Claude Code — configuración local de máquina (no compartir)
 .claude/settings.local.json
 
+# Capturas de pantalla de desarrollo
+screenshot.png
+
 # Dependencias
 node_modules/
 

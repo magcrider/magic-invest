@@ -120,24 +120,31 @@ ALTER TABLE public.etf_positions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inbox_events   ENABLE ROW LEVEL SECURITY;
 
 -- Datos de mercado: cualquier usuario autenticado puede leer, nadie puede escribir desde cliente
+DROP POLICY IF EXISTS "market_data_read" ON public.macro_rates;
 CREATE POLICY "market_data_read" ON public.macro_rates
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "market_data_read" ON public.cdt_rates;
 CREATE POLICY "market_data_read" ON public.cdt_rates
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "market_data_read" ON public.eod_prices;
 CREATE POLICY "market_data_read" ON public.eod_prices
   FOR SELECT TO authenticated USING (true);
 
 -- Datos de usuario: solo el propio usuario
+DROP POLICY IF EXISTS "own_data" ON public.user_config;
 CREATE POLICY "own_data" ON public.user_config
   FOR ALL TO authenticated USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "own_data" ON public.cdt_positions;
 CREATE POLICY "own_data" ON public.cdt_positions
   FOR ALL TO authenticated USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "own_data" ON public.etf_positions;
 CREATE POLICY "own_data" ON public.etf_positions
   FOR ALL TO authenticated USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "own_data" ON public.inbox_events;
 CREATE POLICY "own_data" ON public.inbox_events
   FOR ALL TO authenticated USING (auth.uid() = user_id);

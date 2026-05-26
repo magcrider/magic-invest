@@ -32,20 +32,21 @@ App de análisis financiero personal para Harvey Botero (colombiano, CDTs + ETFs
   - `InputField`: campo numérico con label, sufijo, hint
   - `ResultCard`: filas con highlight, dots de color para convención visual (campo `color` en ResultRow)
   - `GrowthChart`: barras apiladas (capital teal claro + ganancias teal sólido), sin año 0, etiquetas abreviadas, leyenda, scroll horizontal
-- **Calculadora #1 completa**: `src/app/tools/compound-interest.tsx`
-  - Selector COP/USD, 4 campos, botón Calcular, auto-scroll a resultados
-  - Orden de resultados: gráfica primero → tabla → disclaimer
-  - Convención de color coherente entre GrowthChart y ResultCard
+- **Calculadora #1 completa**: `src/app/tools/compound-interest.tsx` — gráfica primero → tabla → disclaimer
+- **Calculadora #2 completa**: `src/app/tools/time-to-goal.tsx` — tabla primero → gráfica → disclaimer. Búsqueda binaria, 3 estados (normal / alreadyReached / unreachable).
+- **Calculadora #3 completa**: `src/app/tools/debt-freedom.tsx` — barras comparativas + escenario mínimo + acelerado + ahorro. Alerta si pago < interés mensual.
+- **Calculadora #4 completa**: `src/app/tools/rate-converter.tsx` — tabs internos (EA → NM/EM → NA), conversiones bidireccionales, 4 decimales.
 
 ## Pendiente manual (una vez, en Supabase Dashboard)
 - Authentication → URL Configuration → agregar `magicinvest://auth/callback` en Redirect URLs
 
 ## Próximo paso
-**Calculadoras #2–9** del Módulo Herramientas, en orden de prioridad:
-2. Tiempo para alcanzar tu meta
-3. Calculadora para salir de deudas
-4. Conversor de tasas
-5. Simulador CDT vs ETF
+**Calculadoras #5–9** del Módulo Herramientas:
+5. Simulador CDT vs ETF (`tools/cdt-vs-etf.tsx`)
+6. ¿Invierto mes a mes o todo de una vez? (`tools/dca-vs-lump.tsx`)
+7. ¿Tu plata crece o solo aguanta? (`tools/real-return.tsx`)
+8. Rendimiento anual promedio (`tools/cagr.tsx`)
+9. ¿Cuánto te cuestan las comisiones en 20 años? (`tools/fee-drag.tsx`)
 6. ¿Invierto mes a mes o todo de una vez?
 7. ¿Tu plata crece o solo aguanta?
 8. Rendimiento anual promedio

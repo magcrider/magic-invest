@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. Módulo Herramientas iniciado: calculadora #1 funcional con gráfica.
-* **Última sesión:** Módulo Herramientas — lista de 9 herramientas (tarjetas con nombre, descripción, ícono), navegación stack dentro del tab, componentes compartidos de calculadora (`CurrencySelector`, `InputField`, `ResultCard`, `GrowthChart`), calculadora #1 "Interés compuesto / Valor futuro" completa con selector COP/USD, botón Calcular, gráfica de barras apiladas y tabla de resultados con convención de color.
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. Módulo Herramientas: calculadoras #1–4 funcionales y validadas en emulador.
+* **Última sesión:** Calculadoras #2 "Tiempo para alcanzar tu meta", #3 "Calculadora para salir de deudas" y #4 "Conversor de tasas" completadas. Patrón de scroll, auto-scroll a resultados y convención de color consolidados. Orden de resultados establecido por tipo: calculadoras de acumulación (gráfica primero → tabla), calculadoras de meta (tabla primero → gráfica). Conversor de tasas con tabs internos (EA → NM/EM → NA), conversiones bidireccionales entre NM/EM, NA y EA.
 
 ---
 
@@ -35,7 +35,7 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * `DrawerMenu`: panel lateral animado (slide desde la derecha, backdrop oscuro) con secciones de perfil del usuario, configuración (switch biométrico placeholder), legal (placeholders), versión de app y botón de cierre de sesión. Usa `Modal` para flotar sobre cualquier tab. Fix: ref `isMounted` para evitar que la animación de cierre inicial cancele una apertura rápida.
 * Saludo personalizado en Portafolio: `"Hola, {nombre} · Tus posiciones reales"` (con fallback si no hay nombre)
 
-### Módulo Herramientas — Shell y primera calculadora
+### Módulo Herramientas — Shell y calculadoras #1–4
 * Lista de 9 herramientas en tarjetas (nombre + descripción + ícono único). Ordenadas por frecuencia de uso estimada.
 * Navegación stack dentro del tab Herramientas: `tools/_layout.tsx` (Stack sin header) + `tools/index.tsx` (lista) + `tools/[id].tsx` (placeholder genérico) + archivos individuales por calculadora.
 * **Componentes compartidos** en `src/components/calculator/`:
@@ -45,11 +45,20 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
   * `GrowthChart`: gráfica de barras apiladas (capital aportado vs ganancias) con etiquetas de valor abreviadas y leyenda. Sin año 0. Scroll horizontal automático.
 * **Calculadora #1: Interés compuesto / Valor futuro** (`tools/compound-interest.tsx`):
   * Selector COP/USD, cuatro campos (capital inicial, aporte mensual, tasa anual, horizonte)
-  * Botón Calcular habilitado solo con campos válidos
-  * Auto-scroll a resultados al calcular
-  * Resultados: gráfica primero (visual) → tabla (números) → disclaimer
-  * Fórmula: `FV = PV(1+r)^n + PMT × [(1+r)^n − 1) / r]` con manejo de tasa 0
-  * Convención de color coherente entre gráfica y tabla: teal sólido = ganancias, teal claro = capital aportado
+  * Resultados: gráfica primero → tabla → disclaimer
+  * Fórmula: `FV = PV(1+r)^n + PMT × [(1+r)^n − 1) / r]`
+* **Calculadora #2: Tiempo para alcanzar tu meta** (`tools/time-to-goal.tsx`):
+  * Búsqueda binaria sobre meses (lo=0, hi=600) para encontrar cuándo FV ≥ target
+  * 3 estados: normal, alreadyReached (checkmark), unreachable (alert)
+  * Resultados: tabla primero → gráfica (si ≥ 1 año) → disclaimer
+* **Calculadora #3: Salir de deudas** (`tools/debt-freedom.tsx`):
+  * Fórmula: `n = -ln(1 - balance·r/payment) / ln(1+r)`. Alerta si pago < interés mensual.
+  * Pago extra opcional. Resultados: barras comparativas → escenario mínimo → escenario acelerado → ahorro.
+  * `ComparisonBars`: dos barras proporcionales usando flex ratios.
+* **Calculadora #4: Conversor de tasas** (`tools/rate-converter.tsx`):
+  * Tabs internos en orden EA → NM/EM → NA. Conversiones bidireccionales.
+  * FROM EA: `nm = (1+r)^(1/12) − 1`. FROM NM: `ea = (1+r)^12 − 1`. FROM NA: `nm = r/12`.
+  * Resultado siempre muestra las otras dos tasas + la EM cuando el tab activo es EA o NA.
 
 ---
 
@@ -88,9 +97,9 @@ Lista priorizada por frecuencia de uso estimada. Calculadora #1 completa — con
 | # | Nombre | Estado |
 |---|--------|--------|
 | 1 | Interés compuesto / Valor futuro | ✅ Completa |
-| 2 | Tiempo para alcanzar tu meta | 🔲 Pendiente |
-| 3 | Calculadora para salir de deudas | 🔲 Pendiente |
-| 4 | Conversor de tasas | 🔲 Pendiente |
+| 2 | Tiempo para alcanzar tu meta | ✅ Completa |
+| 3 | Calculadora para salir de deudas | ✅ Completa |
+| 4 | Conversor de tasas | ✅ Completa |
 | 5 | Simulador CDT vs ETF | 🔲 Pendiente |
 | 6 | ¿Invierto mes a mes o todo de una vez? | 🔲 Pendiente |
 | 7 | ¿Tu plata crece o solo aguanta? | 🔲 Pendiente |

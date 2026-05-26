@@ -39,20 +39,19 @@ App de análisis financiero personal para Harvey Botero (colombiano, CDTs + ETFs
 - **Calculadora #5 completa**: `src/app/tools/cdt-vs-etf.tsx` — CDT neto (retefuente 4%) vs ETF proyectado, barras comparativas ámbar/teal, sección diferencia.
 - **Calculadora #6 completa**: `src/app/tools/dca-vs-lump.tsx` — Lump Sum vs DCA, costo de oportunidad de promediar, alerta si meses DCA > horizonte.
 - **Calculadora #7 completa**: `src/app/tools/real-return.tsx` — Fisher, veredicto CRECE/AGUANTA/PIERDE, equivalente en pesos de hoy.
+- **Calculadora #8 completa**: `src/app/tools/cagr.tsx` — CAGR = (FV/PV)^(1/años)−1, caja destacada teal/púrpura, GrowthChart proyectado (si CAGR>0 y años≥2).
+- **Calculadora #9 completa**: `src/app/tools/fee-drag.tsx` — TER drag, barras sin/con comisión (teal/ámbar), costo total en pesos y % ganancia perdida.
+
+### **Módulo Herramientas: COMPLETO (9/9 calculadoras)**
 
 ## Pendiente manual (una vez, en Supabase Dashboard)
 - Authentication → URL Configuration → agregar `magicinvest://auth/callback` en Redirect URLs
 
 ## Próximo paso
-**Calculadoras #8 y #9** del Módulo Herramientas:
-8. Rendimiento anual promedio / CAGR (`tools/cagr.tsx`)
-9. ¿Cuánto te cuestan las comisiones en 20 años? (`tools/fee-drag.tsx`)
-6. ¿Invierto mes a mes o todo de una vez?
-7. ¿Tu plata crece o solo aguanta?
-8. Rendimiento anual promedio
-9. ¿Cuánto te cuestan las comisiones en 20 años?
+**Módulo Portafolio** — ver `context/todo_and_wip.md` §7 para el detalle.
+- Vista de lista: activos con nombre, valor actual, indicador de salud estructural
+- Detalle de activo: métricas (CAGR, MaxDD, Sortino), proyección probabilística, sección "Eventos relacionados"
+- Sin badges; profundidad accesible desde el detalle
 
-Patrón establecido: archivo individual por calculadora en `src/app/tools/`, reutiliza componentes de `src/components/calculator/`. ScrollView con flex:1 + contentContainerStyle.paddingBottom.
-
-**Why:** Onboarding fue movido al final (pre-publicación) por decisión de Harvey el 2026-05-25 — se implementa cuando todas las funcionalidades estén completas.
-**How to apply:** Al iniciar nueva sesión, leer `context/todo_and_wip.md` §6 para el estado de las calculadoras y continuar con la siguiente pendiente.
+**Why:** Onboarding fue movido al final (pre-publicación) por decisión de Harvey el 2026-05-25.
+**How to apply:** Al iniciar nueva sesión, leer `context/todo_and_wip.md` §7 para el estado del Módulo Portafolio.

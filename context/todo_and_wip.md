@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. Módulo Herramientas: calculadoras #1–7 completadas, #8 y #9 pendientes.
-* **Última sesión:** Calculadoras #5 "Simulador CDT vs ETF" (retefuente 4%, barras comparativas ámbar vs teal), #6 "¿Invierto mes a mes o todo de una vez?" (DCA vs Lump Sum, costo de oportunidad de promediar) y #7 "¿Tu plata crece o solo aguanta?" (Fisher, veredicto visual en tres estados: crece/aguanta/pierde) completadas.
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO — las 9 calculadoras están implementadas y probadas.**
+* **Última sesión:** Calculadoras #8 "Rendimiento anual promedio / CAGR" (caja grande con CAGR, GrowthChart proyectado, retorno acumulado) y #9 "¿Cuánto te cuestan las comisiones?" (TER drag, barras comparativas sin/con TER, costo total en pesos) completadas. Módulo Herramientas cerrado.
 
 ---
 
@@ -69,6 +69,15 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
   * Ecuación de Fisher: `real = (1+nominal)/(1+inflación) − 1`.
   * Veredicto visual en tres estados: CRECE (teal) / AGUANTA (ámbar) / PIERDE (púrpura).
   * Muestra equivalente en pesos de hoy (poder adquisitivo real al final del horizonte).
+* **Calculadora #8: Rendimiento anual promedio / CAGR** (`tools/cagr.tsx`):
+  * Fórmula: `CAGR = (valorFinal/valorInicial)^(1/años) − 1`.
+  * Caja destacada con el CAGR en teal (positivo) o púrpura (negativo).
+  * GrowthChart proyectado con la tasa calculada (solo si CAGR > 0 y años ≥ 2, usando `monthly=0`).
+  * ResultCard: valor inicial, valor final, ganancia/pérdida total, retorno acumulado %, CAGR % (highlighted).
+* **Calculadora #9: Costo de comisiones / Fee Drag** (`tools/fee-drag.tsx`):
+  * Modelo: `FV_neto = capital × (1 + r − TER)^años` vs `FV_bruto = capital × (1 + r)^años`.
+  * Caja con costo total en púrpura. Barras comparativas: sin TER (teal) vs con TER (ámbar).
+  * ResultCard: FV sin comisión, FV con TER (highlighted), capital perdido, % de ganancia perdida.
 
 ---
 
@@ -113,8 +122,8 @@ Lista priorizada por frecuencia de uso estimada. Calculadora #1 completa — con
 | 5 | Simulador CDT vs ETF | ✅ Completa |
 | 6 | ¿Invierto mes a mes o todo de una vez? | ✅ Completa |
 | 7 | ¿Tu plata crece o solo aguanta? | ✅ Completa |
-| 8 | Rendimiento anual promedio | 🔲 Pendiente |
-| 9 | ¿Cuánto te cuestan las comisiones en 20 años? | 🔲 Pendiente |
+| 8 | Rendimiento anual promedio | ✅ Completa |
+| 9 | ¿Cuánto te cuestan las comisiones en 20 años? | ✅ Completa |
 
 Patrón establecido para todas: selector COP/USD → campos con InputField → botón Calcular → GrowthChart (si aplica) → ResultCard → disclaimer. Auto-scroll a resultados al calcular.
 

@@ -35,4 +35,4 @@ Solo CDTs colombianos y ETFs indexados. Prohibidos: acciones individuales, cript
 
 ## Estado actual
 
-Infraestructura base, autenticación y shell completos. Módulo Herramientas en progreso: calculadoras #1–7 completas (#1 Interés compuesto, #2 Tiempo para meta, #3 Salir de deudas, #4 Conversor de tasas, #5 CDT vs ETF, #6 DCA vs Lump Sum, #7 Retorno real). Componentes compartidos (`CurrencySelector`, `InputField`, `ResultCard`, `GrowthChart`) en `src/components/calculator/`. Próximo paso: calculadoras #8 y #9. Ver `context/todo_and_wip.md` §6 para la lista priorizada y el patrón establecido.
+Infraestructura base, autenticación y shell completos. **Módulo Herramientas completo: las 9 calculadoras están implementadas** (#1 Interés compuesto, #2 Tiempo para meta, #3 Salir de deudas, #4 Conversor de tasas, #5 CDT vs ETF, #6 DCA vs Lump Sum, #7 Retorno real, #8 CAGR, #9 Fee Drag). Componentes compartidos (`CurrencySelector`, `InputField`, `ResultCard`, `GrowthChart`) en `src/components/calculator/`. Próximo paso: Módulo Portafolio. Ver `context/todo_and_wip.md` §7 para el detalle.

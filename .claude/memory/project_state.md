@@ -36,16 +36,16 @@ App de análisis financiero personal para Harvey Botero (colombiano, CDTs + ETFs
 - **Calculadora #2 completa**: `src/app/tools/time-to-goal.tsx` — tabla primero → gráfica → disclaimer. Búsqueda binaria, 3 estados (normal / alreadyReached / unreachable).
 - **Calculadora #3 completa**: `src/app/tools/debt-freedom.tsx` — barras comparativas + escenario mínimo + acelerado + ahorro. Alerta si pago < interés mensual.
 - **Calculadora #4 completa**: `src/app/tools/rate-converter.tsx` — tabs internos (EA → NM/EM → NA), conversiones bidireccionales, 4 decimales.
+- **Calculadora #5 completa**: `src/app/tools/cdt-vs-etf.tsx` — CDT neto (retefuente 4%) vs ETF proyectado, barras comparativas ámbar/teal, sección diferencia.
+- **Calculadora #6 completa**: `src/app/tools/dca-vs-lump.tsx` — Lump Sum vs DCA, costo de oportunidad de promediar, alerta si meses DCA > horizonte.
+- **Calculadora #7 completa**: `src/app/tools/real-return.tsx` — Fisher, veredicto CRECE/AGUANTA/PIERDE, equivalente en pesos de hoy.
 
 ## Pendiente manual (una vez, en Supabase Dashboard)
 - Authentication → URL Configuration → agregar `magicinvest://auth/callback` en Redirect URLs
 
 ## Próximo paso
-**Calculadoras #5–9** del Módulo Herramientas:
-5. Simulador CDT vs ETF (`tools/cdt-vs-etf.tsx`)
-6. ¿Invierto mes a mes o todo de una vez? (`tools/dca-vs-lump.tsx`)
-7. ¿Tu plata crece o solo aguanta? (`tools/real-return.tsx`)
-8. Rendimiento anual promedio (`tools/cagr.tsx`)
+**Calculadoras #8 y #9** del Módulo Herramientas:
+8. Rendimiento anual promedio / CAGR (`tools/cagr.tsx`)
 9. ¿Cuánto te cuestan las comisiones en 20 años? (`tools/fee-drag.tsx`)
 6. ¿Invierto mes a mes o todo de una vez?
 7. ¿Tu plata crece o solo aguanta?

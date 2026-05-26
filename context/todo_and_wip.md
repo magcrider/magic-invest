@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. Módulo Herramientas: calculadoras #1–4 funcionales y validadas en emulador.
-* **Última sesión:** Calculadoras #2 "Tiempo para alcanzar tu meta", #3 "Calculadora para salir de deudas" y #4 "Conversor de tasas" completadas. Patrón de scroll, auto-scroll a resultados y convención de color consolidados. Orden de resultados establecido por tipo: calculadoras de acumulación (gráfica primero → tabla), calculadoras de meta (tabla primero → gráfica). Conversor de tasas con tabs internos (EA → NM/EM → NA), conversiones bidireccionales entre NM/EM, NA y EA.
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. Módulo Herramientas: calculadoras #1–7 completadas, #8 y #9 pendientes.
+* **Última sesión:** Calculadoras #5 "Simulador CDT vs ETF" (retefuente 4%, barras comparativas ámbar vs teal), #6 "¿Invierto mes a mes o todo de una vez?" (DCA vs Lump Sum, costo de oportunidad de promediar) y #7 "¿Tu plata crece o solo aguanta?" (Fisher, veredicto visual en tres estados: crece/aguanta/pierde) completadas.
 
 ---
 
@@ -59,6 +59,16 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
   * Tabs internos en orden EA → NM/EM → NA. Conversiones bidireccionales.
   * FROM EA: `nm = (1+r)^(1/12) − 1`. FROM NM: `ea = (1+r)^12 − 1`. FROM NA: `nm = r/12`.
   * Resultado siempre muestra las otras dos tasas + la EM cuando el tab activo es EA o NA.
+* **Calculadora #5: Simulador CDT vs ETF** (`tools/cdt-vs-etf.tsx`):
+  * CDT con retefuente 4% sobre rendimientos (persona natural Colombia). ETF sin retefuente local.
+  * Barras comparativas: CDT neto (ámbar) vs ETF proyectado (teal). Sección diferencia.
+* **Calculadora #6: DCA vs Lump Sum** (`tools/dca-vs-lump.tsx`):
+  * Lump Sum: invierte todo en mes 0. DCA: capital/N cuotas mensuales, cada una crece desde su mes.
+  * Sección "Costo de esperar": diferencia de valor final. Alerta si meses DCA > horizonte total.
+* **Calculadora #7: Retorno real** (`tools/real-return.tsx`):
+  * Ecuación de Fisher: `real = (1+nominal)/(1+inflación) − 1`.
+  * Veredicto visual en tres estados: CRECE (teal) / AGUANTA (ámbar) / PIERDE (púrpura).
+  * Muestra equivalente en pesos de hoy (poder adquisitivo real al final del horizonte).
 
 ---
 
@@ -100,9 +110,9 @@ Lista priorizada por frecuencia de uso estimada. Calculadora #1 completa — con
 | 2 | Tiempo para alcanzar tu meta | ✅ Completa |
 | 3 | Calculadora para salir de deudas | ✅ Completa |
 | 4 | Conversor de tasas | ✅ Completa |
-| 5 | Simulador CDT vs ETF | 🔲 Pendiente |
-| 6 | ¿Invierto mes a mes o todo de una vez? | 🔲 Pendiente |
-| 7 | ¿Tu plata crece o solo aguanta? | 🔲 Pendiente |
+| 5 | Simulador CDT vs ETF | ✅ Completa |
+| 6 | ¿Invierto mes a mes o todo de una vez? | ✅ Completa |
+| 7 | ¿Tu plata crece o solo aguanta? | ✅ Completa |
 | 8 | Rendimiento anual promedio | 🔲 Pendiente |
 | 9 | ¿Cuánto te cuestan las comisiones en 20 años? | 🔲 Pendiente |
 

@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useColorScheme } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import AppTabs from '@/components/app-tabs';
 import { Tokens } from '@/constants/theme';
@@ -30,13 +31,16 @@ function AppContent() {
 
 export default function RootLayout() {
   return (
-    <SQLiteProvider databaseName="magic-invest.db" onInit={migrateDbIfNeeded}>
-      <AppContent />
-    </SQLiteProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SQLiteProvider databaseName="magic-invest.db" onInit={migrateDbIfNeeded}>
+        <AppContent />
+      </SQLiteProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   loading: {
     flex: 1,
     backgroundColor: Tokens.neutral.background,

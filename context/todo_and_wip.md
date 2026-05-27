@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO — las 9 calculadoras están implementadas y probadas.**
-* **Última sesión:** Calculadoras #8 "Rendimiento anual promedio / CAGR" (caja grande con CAGR, GrowthChart proyectado, retorno acumulado) y #9 "¿Cuánto te cuestan las comisiones?" (TER drag, barras comparativas sin/con TER, costo total en pesos) completadas. Módulo Herramientas cerrado.
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).**
+* **Última sesión:** Módulo Buzón implementado y pulido: lista con swipe-to-delete y swipe-to-markUnread, pantalla de detalle completa, estado reactivo via suscripción, contraste visual leído/no leído (charcoal bold vs stone-gray regular). `GestureHandlerRootView` agregado al root layout. `ThemedText` extendido con tipo `'defaultBold'`.
 
 ---
 
@@ -79,6 +79,16 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
   * Caja con costo total en púrpura. Barras comparativas: sin TER (teal) vs con TER (ámbar).
   * ResultCard: FV sin comisión, FV con TER (highlighted), capital perdido, % de ganancia perdida.
 
+### Módulo Buzón (mock data)
+* Routing: solo `inbox/` folder — NO existe `inbox.tsx` en raíz (causa duplicate screen en NativeTabs).
+* 5 eventos mock en `src/constants/inbox-mock.ts`: tipos `drawdown`, `cdt_maturity`, `market_trigger`, `rebalance`, `educational`. Cada evento tiene `body[]`, `consequences[]` y `disclaimer`.
+* Lista (`inbox/index.tsx`): swipe izquierdo → eliminar (rojo), swipe derecho → marcar como no leído (teal, solo en mensajes leídos). Contraste visual: título charcoal bold (no leído) vs stone-gray regular (leído).
+* Detalle (`inbox/[id].tsx`): marca como leído via `useEffect` al montar. Secciones: tipo + fecha + asset relacionado, título, cuerpo, escenarios posibles, disclaimer con borde de color.
+* Estado reactivo (`src/utils/inbox-state.ts`): store mínimo con `readIds`, `unreadIds`, `deletedIds` y patrón subscribe/notify. La lista se suscribe y re-renderiza automáticamente cuando el detalle marca como leído. Reemplazado por SQLite en producción.
+* `GestureHandlerRootView` agregado al root layout (`src/app/_layout.tsx`) — requerido por `Swipeable`.
+* `ThemedText` extendido con tipo `'defaultBold'` (fontWeight 700, fontSize 16) — mismo patrón que `small`/`smallBold`.
+* **Pendiente futuro:** vincular con Portafolio (campo `relatedAsset`), alimentar con datos reales del backend.
+
 ---
 
 ## 🔲 Investigación Técnica Pendiente
@@ -132,23 +142,17 @@ Patrón establecido para todas: selector COP/USD → campos con InputField → b
 * Detalle de activo: métricas (CAGR, MaxDD, Sortino), proyección probabilística, sección "Eventos relacionados" (vinculación al Buzón)
 * Sin badges en la lista; profundidad accesible desde el detalle
 
-### 8. Módulo Buzón
-* Cuatro tipos de evento: (1) disparadores de mercado, (2) comportamiento durante caídas, (3) maduración de CDT / rebalanceo de oportunidad, (4) acompañamiento educativo progresivo
-* Disclaimer permanente en cada evento
-* Vinculación bidireccional con Portafolio
-* Cero push notifications, cero badges en ícono de app
-
-### 9. Backend Supabase — Edge Functions
+### 8. Backend Supabase — Edge Functions
 * Edge Function con cron para consulta periódica a API Banrep (tasa política + CDT promedio)
 * Edge Function para sincronización de datos EOD de ETFs
 * Capa de sincronización Supabase → SQLite local
 
-### 10. Sistema de Rebalanceo
+### 9. Sistema de Rebalanceo
 * Evaluación trimestral automática contra bandas configuradas
 * Rebalanceo de oportunidad al detectar CDT próximo a madurar
 * Recálculo del Hurdle Rate cuando cambia la tasa Banrep
 
-### 11. Flujo de Onboarding (al final, pre-publicación)
+### 10. Flujo de Onboarding (al final, pre-publicación)
 * Pantalla que presenta la filosofía básica en lenguaje accesible (sin tecnicismos)
 * Configuración de bandas de asignación CDT/ETF con slider (default: CDTs 50–70% / ETFs 30–50%)
 * Solo se muestra la primera vez (verificar con `isOnboardingComplete()` en SQLite)

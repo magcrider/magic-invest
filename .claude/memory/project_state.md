@@ -47,6 +47,13 @@ App de análisis financiero personal para Harvey Botero (colombiano, CDTs + ETFs
 ## Pendiente manual (una vez, en Supabase Dashboard)
 - Authentication → URL Configuration → agregar `magicinvest://auth/callback` en Redirect URLs
 
+## Arquitectura y Estrategia de Datos (Decisiones)
+- **Base de Datos Mixta / Local-First:** Supabase actúa como la "fuente de la verdad" (master record) para el portafolio y datos generales, mientras que SQLite funciona como un caché rápido para la UI y para almacenar análisis subjetivos locales.
+- **Sincronización (Sync):** 
+  - *Write-Through (Optimista):* Las acciones del usuario actualizan SQLite instantáneamente (para mantener la UI rápida, sin spinners) y lanzan una petición asíncrona a Supabase.
+  - *App Lifecycle:* Implementación de un hook (`useSyncOnBackground`) que detecta cuando la app pasa a segundo plano (`AppState` cambia a 'background' o 'inactive') para forzar la sincronización de cualquier dato pendiente hacia Supabase.
+- **Ingesta de Datos de Mercado:** La obtención de TRM, inflación y precios diarios de ETFs no la hará la app móvil directamente. Se delegará a un backend futuro (ej. Supabase Edge Functions / Cron jobs) para alimentar la base de datos centralizada, optimizando el rendimiento y batería del cliente.
+
 ## Próximo paso
 **Módulo Portafolio** — ver `context/todo_and_wip.md` §7 para el detalle.
 - Vista de lista: activos con nombre, valor actual, indicador de salud estructural

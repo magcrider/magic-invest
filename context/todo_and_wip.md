@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).**
-* **Última sesión:** Módulo Buzón implementado y pulido: lista con swipe-to-delete y swipe-to-markUnread, pantalla de detalle completa, estado reactivo via suscripción, contraste visual leído/no leído (charcoal bold vs stone-gray regular). `GestureHandlerRootView` agregado al root layout. `ThemedText` extendido con tipo `'defaultBold'`.
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: 🟡 En progreso — perfil de riesgo completo, estado vacío completo. Formularios CDT/ETF pendientes.**
+* **Última sesión:** Módulo Portafolio iniciado. Flujo de perfil de riesgo (wizard de 5 preguntas, scoring, resultado con bandas) implementado y conectado a SQLite. Estado vacío del Portafolio con chip de perfil y CTAs placeholder. Botón "Reevaluar perfil de riesgo" en DrawerMenu con confirmación y notificación reactiva via `profileEvents` — la pantalla se actualiza inmediatamente sin salir del tab.
 
 ---
 
@@ -81,13 +81,30 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ### Módulo Buzón (mock data)
 * Routing: solo `inbox/` folder — NO existe `inbox.tsx` en raíz (causa duplicate screen en NativeTabs).
-* 5 eventos mock en `src/constants/inbox-mock.ts`: tipos `drawdown`, `cdt_maturity`, `market_trigger`, `rebalance`, `educational`. Cada evento tiene `body[]`, `consequences[]` y `disclaimer`.
+* 5 eventos mock en `src/constants/inbox-mock.ts`: tipos `drawdown_context`, `cdt_maturity`, `market_trigger`, `rebalance`, `educational`. Cada evento tiene `body[]`, `consequences[]` y `disclaimer`.
 * Lista (`inbox/index.tsx`): swipe izquierdo → eliminar (rojo), swipe derecho → marcar como no leído (teal, solo en mensajes leídos). Contraste visual: título charcoal bold (no leído) vs stone-gray regular (leído).
 * Detalle (`inbox/[id].tsx`): marca como leído via `useEffect` al montar. Secciones: tipo + fecha + asset relacionado, título, cuerpo, escenarios posibles, disclaimer con borde de color.
 * Estado reactivo (`src/utils/inbox-state.ts`): store mínimo con `readIds`, `unreadIds`, `deletedIds` y patrón subscribe/notify. La lista se suscribe y re-renderiza automáticamente cuando el detalle marca como leído. Reemplazado por SQLite en producción.
 * `GestureHandlerRootView` agregado al root layout (`src/app/_layout.tsx`) — requerido por `Swipeable`.
 * `ThemedText` extendido con tipo `'defaultBold'` (fontWeight 700, fontSize 16) — mismo patrón que `small`/`smallBold`.
 * **Pendiente futuro:** vincular con Portafolio (campo `relatedAsset`), alimentar con datos reales del backend.
+
+### Módulo Portafolio — Perfil de riesgo y estado vacío
+* **`src/constants/risk-profile.ts`** (nuevo): tipos `RiskProfileLabel`, `RiskProfile`, `RiskQuestion`. Las 5 preguntas (`RISK_QUESTIONS`), función `scoreProfile(horizonId, reactionId, goalId) → label`, `PROFILE_BANDS` y `PROFILE_CONFIG` (título, descripción, color por perfil).
+* **Preguntas implementadas:**
+  1. ¿En cuánto tiempo planeas usar este dinero? — `< 2 años` / `2–5 años` / `+5 años` *(scored: 1/2/3)*
+  2. Si tu portafolio cae 20%, ¿qué harías? — `Retiro todo` / `Mantengo` / `Invierto más` *(scored: 1/2/3)*
+  3. ¿Cuál es tu objetivo principal? — `Proteger mi capital` / `Crecimiento moderado` / `Maximizar crecimiento a largo plazo` *(scored: 1/2/3)*
+  4. ¿Tienes experiencia previa? — 3 opciones *(solo almacenada, no scored)*
+  5. Emoción ante caída del 30% — 3 opciones *(solo almacenada, no scored)*
+* **Scoring:** Q1+Q2+Q3 (rango 3–9). ≤4 → `conservador`, ≤7 → `moderado`, ≥8 → `arriesgado`.
+* **Bandas por perfil:** conservador CDTs 65–80%/ETFs 20–35%, moderado 50–65%/35–50%, arriesgado 30–50%/50–70%.
+* **`src/db/queries/config.ts`**: añadidos `getRiskProfile`, `setRiskProfile` (también persiste bandas derivadas), `resetRiskProfile` (borra `risk_profile` y `allocation_bands` de SQLite).
+* **`src/components/risk-profile-flow.tsx`** (nuevo): wizard de 5 pasos con barra de progreso, auto-avance a 180ms tras selección, pantalla de resultado con badge de perfil + bandas + botón "Comenzar".
+* **`src/app/index.tsx`** (reescrito): estados `loading → risk_profile → empty`. Usa `useFocusEffect` para re-chequear al volver al tab. Se suscribe a `profileEvents` para responder inmediatamente si el reset ocurre estando en el tab.
+* **Estado vacío:** chip de perfil con label y rangos de bandas, card vacía con ícono + mensaje, botones CTA "Agregar CDT" / "Agregar ETF" (placeholder — formularios pendientes).
+* **`src/utils/profile-events.ts`** (nuevo): pub/sub mínimo `emitReset` / `subscribe` — mismo patrón que `inbox-state.ts`. Permite que el DrawerMenu notifique al PortfolioScreen en tiempo real.
+* **DrawerMenu** actualizado: botón "Reevaluar perfil de riesgo" en sección Configuración con `Alert` de confirmación. Al confirmar: borra SQLite + emite `profileEvents.emitReset()` + cierra drawer.
 
 ---
 
@@ -139,30 +156,14 @@ Patrón establecido para todas: selector COP/USD → campos con InputField → b
 
 ### 7. Módulo Portafolio
 
-#### 7.1 Flujo de perfil de riesgo (primera vez en el tab — prerequisito)
-Se ejecuta una sola vez, la primera vez que el usuario entra al tab Portafolio. 5 preguntas, máximo 2 minutos. El resultado alimenta las bandas iniciales CDT/ETF, el tono del Buzón y la proyección del estado vacío.
+#### 7.1 Flujo de perfil de riesgo ✅ COMPLETO
+Ver "Módulo Portafolio — Perfil de riesgo y estado vacío" en la sección Completado arriba.
+Reevaluación disponible desde DrawerMenu → "Reevaluar perfil de riesgo".
 
-Preguntas:
-1. ¿En cuánto tiempo planeas usar este dinero? *(< 3 años / 3–10 años / +10 años)*
-2. Si tu portafolio cae 20% en un mes, ¿qué harías? *(Salgo todo / Mantengo / Invierto más)*
-3. ¿Cuál es tu objetivo principal? *(Preservar capital / Crecer moderadamente / Maximizar crecimiento)*
-4. ¿Cuánto podrías aportar mensualmente? *(rangos en COP)*
-5. ¿Cómo describirías tu conocimiento financiero? *(Básico / Intermedio / Avanzado)*
-
-Output del perfil:
-- Label: `conservador` / `moderado` / `agresivo`
-- Bandas CDT/ETF calculadas según perfil (en lugar del default genérico 50–70%)
-- Parámetro de tono para los eventos del Buzón (lenguaje más explicativo para básico, más técnico para avanzado)
-- Horizonte de inversión declarado (alimenta proyecciones)
-
-Persistencia: `user_config` en SQLite con clave `risk_profile`. Si ya existe, no se muestra el flujo.
-
-#### 7.2 Estado vacío (sin posiciones registradas)
-No una pantalla en blanco. Muestra:
-- Distribución configurada (bandas del perfil, visualización visual CDT/ETF)
-- Proyección probabilística hipotética: "Con $10.000.000 y tu perfil, en 10 años proyectarías entre $X y $Y"
-- Contexto macro: Banrep actual, CDT mercado, TRM, inflación
-- CTA: [+ Registrar mi primer CDT] / [+ Registrar mi primer ETF]
+#### 7.2 Estado vacío (sin posiciones registradas) ✅ COMPLETO (versión inicial)
+Chip de perfil + card vacía + CTAs placeholder. **Pendiente mejorar** cuando haya datos reales:
+- Proyección probabilística hipotética ("Con $10.000.000 y tu perfil...")
+- Contexto macro: Banrep actual, CDT mercado, TRM, inflación (requiere backend §8)
 
 #### 7.3 Estado con activos (diseño de la pantalla principal)
 ```

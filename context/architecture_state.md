@@ -61,15 +61,19 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
 
 * **`PageHeader`** (`src/components/page-header.tsx`): cabecera compartida usada en los tres tabs. Recibe `title` y `subtitle` opcional. Contiene el botón hamburguesa que abre el `DrawerMenu`. Estado local de apertura del drawer.
 
-* **`DrawerMenu`** (`src/components/drawer-menu.tsx`): panel lateral animado (slide desde la derecha, 82% del ancho de pantalla, backdrop semitransparente). Autocontenido — obtiene los datos del usuario via `useAuth()` internamente. Secciones:
+* **`DrawerMenu`** (`src/components/drawer-menu.tsx`): panel lateral animado (slide desde la derecha, 82% del ancho de pantalla, backdrop semitransparente). Autocontenido — obtiene los datos del usuario via `useAuth()` y `useSQLiteContext()` internamente. Secciones:
   * Perfil: avatar con inicial, nombre visible (`user_metadata.full_name`) y email.
-  * Configuración: switch de autenticación biométrica (visible, deshabilitado hasta implementar).
+  * Configuración: switch de autenticación biométrica (visible, deshabilitado hasta implementar) + botón "Reevaluar perfil de riesgo" (Alert de confirmación → `resetRiskProfile` + `profileEvents.emitReset()`).
   * Legal: Términos y condiciones + Política de privacidad (placeholders).
   * Footer: versión de la app (`Constants.expoConfig.version`) + botón de cerrar sesión.
   * Cierre: botón X, toque en backdrop, botón atrás de Android (`onRequestClose`).
   * **Bug conocido y resuelto:** la animación de cierre se lanzaba en el montaje inicial, cancelando una apertura rápida del drawer. Fix: ref `isMounted` para saltarse el efecto en el primer render.
 
 * **`DrawerMenu` + `PageHeader` en los tres tabs:** el `Modal` de React Native garantiza que el drawer flota sobre cualquier tab sin importar desde dónde se abra.
+
+* **`RiskProfileFlow`** (`src/components/risk-profile-flow.tsx`): wizard de 5 pasos para perfilar al usuario. Barra de progreso (flex ratio), auto-avance 180ms tras selección. Pantalla de resultado: badge de perfil con color semántico, descripción, bandas CDT/ETF, botón "Comenzar". Props: `onComplete: (profile: RiskProfile) => Promise<void>`. No tiene SafeAreaView propio — el padre (`src/app/index.tsx`) gestiona el layout.
+
+* **`profileEvents`** (`src/utils/profile-events.ts`): pub/sub mínimo (mismo patrón que `inbox-state.ts`) para notificar en tiempo real el reset del perfil. `emitReset()` lo llama el DrawerMenu; `subscribe(fn)` lo usa `PortfolioScreen`. Evita que el usuario tenga que salir y volver al tab después de reevaluar.
 
 ## 6. Decisiones de Integración
 

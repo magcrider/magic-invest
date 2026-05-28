@@ -1,6 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { AllocationBands, UserConfig } from '@/db/schema';
 import { DEFAULT_ALLOCATION_BANDS } from '@/db/schema';
+import type { RiskProfile } from '@/constants/risk-profile';
+import { PROFILE_BANDS } from '@/constants/risk-profile';
 
 export async function getConfig(
   db: SQLiteDatabase,
@@ -50,4 +52,25 @@ export async function setAllocationBands(
   bands: AllocationBands
 ): Promise<void> {
   await setConfig(db, 'allocation_bands', bands);
+}
+
+export async function getRiskProfile(
+  db: SQLiteDatabase
+): Promise<RiskProfile | null> {
+  const value = await getConfig(db, 'risk_profile');
+  if (!value) return null;
+  return JSON.parse(value) as RiskProfile;
+}
+
+export async function setRiskProfile(
+  db: SQLiteDatabase,
+  profile: RiskProfile,
+): Promise<void> {
+  await setConfig(db, 'risk_profile', profile);
+  await setConfig(db, 'allocation_bands', PROFILE_BANDS[profile.label]);
+}
+
+export async function resetRiskProfile(db: SQLiteDatabase): Promise<void> {
+  await db.runAsync('DELETE FROM user_config WHERE key = ?', 'risk_profile');
+  await db.runAsync('DELETE FROM user_config WHERE key = ?', 'allocation_bands');
 }

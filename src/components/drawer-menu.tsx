@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Dimensions,
   Modal,
@@ -12,12 +13,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
+import { useSQLiteContext } from 'expo-sqlite';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 import { Spacing, Tokens } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { supabase } from '@/lib/supabase';
+import { resetRiskProfile } from '@/db/queries/config';
+import { profileEvents } from '@/utils/profile-events';
 
 const DRAWER_WIDTH = Dimensions.get('window').width * 0.82;
 const DURATION = 240;
@@ -29,7 +33,8 @@ interface Props {
 
 export function DrawerMenu({ visible, onClose }: Props) {
   const { displayName, session } = useAuth();
-  const email = session?.user?.email ?? '';
+  const db      = useSQLiteContext();
+  const email   = session?.user?.email ?? '';
   const initial = (displayName || email)[0]?.toUpperCase() ?? '?';
   const version = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -60,6 +65,25 @@ export function DrawerMenu({ visible, onClose }: Props) {
   async function handleSignOut() {
     onClose();
     await supabase.auth.signOut();
+  }
+
+  function handleResetProfile() {
+    Alert.alert(
+      'Reevaluar perfil de riesgo',
+      'Se borrarán tus respuestas actuales y volverás a ver el cuestionario la próxima vez que abras la sección Portafolio.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Reevaluar',
+          style: 'destructive',
+          onPress: async () => {
+            await resetRiskProfile(db);
+            profileEvents.emitReset();
+            onClose();
+          },
+        },
+      ]
+    );
   }
 
   return (
@@ -109,6 +133,10 @@ export function DrawerMenu({ visible, onClose }: Props) {
                 trackColor={{ true: Tokens.structural.positive, false: '#E0E0DC' }}
               />
             </ThemedView>
+            <TouchableOpacity style={styles.row} onPress={handleResetProfile}>
+              <ThemedText type="default">Reevaluar perfil de riesgo</ThemedText>
+              <Ionicons name="chevron-forward" size={16} color={Tokens.neutral.muted} />
+            </TouchableOpacity>
 
             <ThemedView style={styles.divider} />
 

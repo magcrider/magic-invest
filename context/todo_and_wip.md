@@ -7,7 +7,7 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
 * **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1 local) — perfil, estado vacío, formularios CDT/ETF, detalle CDT/ETF, FAB de navegación, eliminación con confirmación.**
-* **Última sesión:** Módulo Portafolio completado. Formularios CDT y ETF (formulario ETF rediseñado: COP/USD primero, TRM, acciones siempre opcionales con sección informativa). Pantallas de detalle CDT y ETF. Pantalla de selección de activo (FAB → `add.tsx` con 5 tipos, 3 deshabilitados "próximamente"). Eliminación en ambos detalles con `Alert.alert` y `router.navigate('/portfolio')`. Migración 2 en SQLite (3 columnas nuevas en `etf_positions`). `PageHeader` extendido con prop `rightAction` para alojar el FAB sin romper el layout.
+* **Última sesión (mayo 2026):** Infraestructura de distribución. Se estableció el flujo definitivo de build: **Expo Go + Android Studio** para desarrollo diario, **EAS Build (cloud)** para pruebas en dispositivo físico. Se configuró EAS (`eas.json`, proyecto `@ey.magic/magic-invest`, secretos de Supabase en EAS). El APK preview se instala vía `adb install` directo al dispositivo. El NDK 27 de la toolchain local tiene un bug de linkeo con los módulos nativos — irrelevante porque no compilamos localmente. Próximo paso: Módulo Portafolio §7.6 (pantalla principal con activos).
 
 ---
 
@@ -105,6 +105,13 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * **Estado vacío:** chip de perfil con label y rangos de bandas, card vacía con ícono + mensaje, botones CTA "Agregar CDT" / "Agregar ETF" (placeholder — formularios pendientes).
 * **`src/utils/profile-events.ts`** (nuevo): pub/sub mínimo `emitReset` / `subscribe` — mismo patrón que `inbox-state.ts`. Permite que el DrawerMenu notifique al PortfolioScreen en tiempo real.
 * **DrawerMenu** actualizado: botón "Reevaluar perfil de riesgo" en sección Configuración con `Alert` de confirmación. Al confirmar: borra SQLite + emite `profileEvents.emitReset()` + cierra drawer.
+
+### Infraestructura de distribución (EAS Build)
+* **Expo Go + Android Studio:** flujo de desarrollo diario. Sin compilación nativa, hot reload, sin NDK.
+* **EAS Build → perfil `preview`:** produce APK con JS bundleado (~107 MB, 4 ABIs, debug). Se instala con `adb -s RFGL22B24FF install -r <apk>`. Play Protect bloquea la instalación manual — siempre usar ADB.
+* **Credenciales:** `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` almacenadas como EAS Secrets (no en git), disponibles en entornos `preview` y `production`.
+* **Por qué no build local:** NDK 27 cambió el ABI de libc++ y los módulos nativos (reanimated, worklets, gesture-handler, screens, expo-modules-core) no declaran `c++_shared` en sus CMakeLists.txt. EAS usa su propio entorno Linux sin este problema.
+* **Tamaño futuro:** una build de producción con R8 + AAB splits por ABI producirá ~25–35 MB por ABI. Pendiente para cuando haya un release real.
 
 ### Módulo Portafolio — Formularios, detalle y navegación FAB
 * **Migración 2** (`src/db/migrations.ts`): 3 columnas nuevas en `etf_positions` — `total_invested_cop REAL`, `trm_at_purchase REAL`, `total_invested_usd REAL`. Permite registrar el monto original en COP + TRM sin perder precisión.

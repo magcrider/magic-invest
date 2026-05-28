@@ -41,6 +41,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fac84751-8709-444d-8cbe-a4553c84f200"
+      }
+    },
+    "owner": "ey.magic"
   }
 }

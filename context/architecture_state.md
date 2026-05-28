@@ -43,7 +43,31 @@ La app se estructura en módulos independientes y navegables como secciones prin
 
 * **Asistente IA (Fase 2 — NO IMPLEMENTAR AÚN):** chat con acceso contextual al portafolio del usuario, capaz de resolver dudas conceptuales y razonar sobre el estado real del portafolio. El Buzón educativo de Fase 1 es su precursor directo.
 
-## 4. Stack Tecnológico Base
+## 4. Flujo de Desarrollo y Distribución
+
+### Workflow establecido (Sesión mayo 2026)
+
+Dos flujos paralelos que nunca se mezclan:
+
+| Propósito | Herramienta | Cuándo usar |
+|-----------|-------------|-------------|
+| Desarrollo diario | Android Studio Emulator + Expo Go | Siempre — hot reload, sin compilación nativa |
+| Prueba en dispositivo físico | EAS Build (cloud) → APK via ADB | Cuando se necesita validar en hardware real |
+
+**Por qué no `npx expo run:android` local:** el NDK 27 incluido con Expo SDK 56 cambió el ABI de libc++, y varios módulos nativos (reanimated, worklets, gesture-handler, screens, expo-modules-core) no declaraban `c++_shared` explícitamente en sus CMakeLists.txt. Esto produce errores de símbolo indefinido en el linker. EAS usa su propio entorno Linux con la configuración correcta y no tiene este problema.
+
+### EAS Build — configuración
+* **Proyecto:** `@ey.magic/magic-invest` — `projectId: fac84751-8709-444d-8cbe-a4553c84f200`
+* **Perfil `preview`:** produce APK directamente instalable, JS bundleado (sin Metro server), distribución interna
+* **Credenciales Supabase:** almacenadas como EAS Secrets (no en git) — `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` en entornos `preview` y `production`
+* **Instalar en dispositivo físico:** `adb -s <serial> install -r <apk>` — bypasea Play Protect
+* **Comando de build:** `npx eas-cli build --platform android --profile preview --non-interactive`
+* **Tiempo estimado:** ~15 minutos en servidores de Expo
+
+### Tamaño del APK
+El preview actual pesa ~107 MB. Es normal para React Native con 4 ABIs (arm64-v8a, armeabi-v7a, x86, x86_64) y hermes en modo debug. Una build de producción con R8 + AAB con splits por ABI produce ~25–35 MB por ABI. No actuar sobre esto hasta preparar un release real.
+
+## 5. Stack Tecnológico Base
 * **Framework:** React Native con **Expo (managed workflow)**. Core limpio. Cada dependencia externa debe justificarse para evitar inflar la aplicación.
 * **Lenguaje:** TypeScript estricto. Sin `any` salvo en boundaries justificados.
 * **Persistencia local-first:** SQLite en el dispositivo vía `expo-sqlite`. Es la fuente de verdad para uso offline. **Toda lectura de UI golpea SQLite, nunca la red.**
@@ -55,7 +79,7 @@ La app se estructura en módulos independientes y navegables como secciones prin
 * **Iconografía:** `@expo/vector-icons` (Ionicons) instalado. Íconos monocromáticos conforme al sistema de diseño.
 * **Estado en cliente:** React Context + hooks. No introducir Redux/Zustand hasta que el scope lo justifique.
 
-## 5. Componentes de Shell Implementados
+## 6. Componentes de Shell Implementados
 
 Estos componentes forman la capa de navegación y presentación base sobre la que se construirán los módulos:
 
@@ -75,7 +99,7 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
 
 * **`profileEvents`** (`src/utils/profile-events.ts`): pub/sub mínimo (mismo patrón que `inbox-state.ts`) para notificar en tiempo real el reset del perfil. `emitReset()` lo llama el DrawerMenu; `subscribe(fn)` lo usa `PortfolioScreen`. Evita que el usuario tenga que salir y volver al tab después de reevaluar.
 
-## 6. Decisiones de Integración
+## 7. Decisiones de Integración
 
 ### A. Fuente de datos EOD para ETFs
 * **Estado:** No definida. Candidatos: Alpha Vantage, EOD Historical Data, Yahoo Finance, Polygon.io.
@@ -98,7 +122,7 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
 * **Fase 1:** Claude sugerirá tickers representativos (ej: VOO, VTI, VXUS) como semilla funcional.
 * **Futuro:** Algoritmo de matching entre perfil de Harvey y universo de ETFs disponibles.
 
-## 6. Loop de Inteligencia del Buzón
+## 8. Loop de Inteligencia del Buzón
 
 El Buzón no es un sistema de notificaciones push — es un motor de análisis contextual. El flujo completo:
 
@@ -127,7 +151,7 @@ El usuario **registra posiciones que ya tiene en otro lugar** (banco, broker ext
 
 En Fase 2, **Open Finance (Decreto 0368/2026)** permitirá importar CDTs directamente del banco del usuario con consentimiento OAuth, eliminando la entrada manual.
 
-## 7. Marco Legal — Datos del Usuario (Colombia)
+## 9. Marco Legal — Datos del Usuario (Colombia)
 
 La ley aplicable es la **Ley 1581 de 2012** (protección de datos personales), supervisada por la **SIC**. Los datos financieros califican como **datos sensibles** — estándar más alto de protección.
 
@@ -150,7 +174,7 @@ Los datos del usuario (posiciones, perfil de riesgo, historial de interacción) 
 
 No se comparten con terceros para fines comerciales ni publicitarios.
 
-## 8. Reglas Inquebrantables de UI/UX (Bienestar Cognitivo)
+## 10. Reglas Inquebrantables de UI/UX (Bienestar Cognitivo)
 * **Notificaciones:** Cero alertas push. Toda información asíncrona vive en el Buzón. El usuario decide cuándo consumir.
 * **Badges:** Cero badges en el ícono de la app. Indicadores silenciosos dentro de la app (como "eventos relacionados" en el detalle de un activo) son aceptables porque son contextuales, no interruptivos.
 * **Jerarquía cromática anti-ansiedad:**

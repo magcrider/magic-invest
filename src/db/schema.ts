@@ -9,6 +9,7 @@ export type InboxEventType =
   | 'market_trigger'
   | 'drawdown_context'
   | 'cdt_maturity'
+  | 'rebalance'
   | 'educational';
 
 export type InboxEventSubtype =

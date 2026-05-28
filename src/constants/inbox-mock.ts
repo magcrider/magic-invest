@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 type IoniconsName = ComponentProps<typeof Ionicons>['name'];
 
-export type EventType = 'educational' | 'drawdown' | 'cdt_maturity' | 'market_trigger' | 'rebalance';
+export type EventType = 'educational' | 'drawdown_context' | 'cdt_maturity' | 'market_trigger' | 'rebalance';
 
 export interface ConsequenceRow {
   label: string;
@@ -32,7 +32,7 @@ export interface EventTypeConfig {
 
 export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
   educational:    { icon: 'book-outline',          color: '#9CA3AF', bg: '#9CA3AF18', label: 'Educativo'         },
-  drawdown:       { icon: 'trending-down-outline',  color: '#C08552', bg: '#C0855218', label: 'Caída estructural' },
+  drawdown_context: { icon: 'trending-down-outline',  color: '#C08552', bg: '#C0855218', label: 'Caída estructural' },
   cdt_maturity:   { icon: 'time-outline',           color: '#5B8E8E', bg: '#5B8E8E18', label: 'CDT próximo'       },
   market_trigger: { icon: 'analytics-outline',      color: '#C08552', bg: '#C0855218', label: 'Disparador'        },
   rebalance:      { icon: 'layers-outline',         color: '#5B8E8E', bg: '#5B8E8E18', label: 'Rebalanceo'        },
@@ -41,7 +41,7 @@ export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
 export const INBOX_EVENTS: InboxEvent[] = [
   {
     id: 'evt-001',
-    type: 'drawdown',
+    type: 'drawdown_context',
     title: 'VOO ha caído 27% desde su máximo histórico',
     summary: 'El S&P 500 entró en caída estructural. El sistema registró 15 episodios similares en los últimos 35 años de historia del índice.',
     date: '26 may 2026',

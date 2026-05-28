@@ -24,7 +24,24 @@ Cuando interactúes con Harvey (el arquitecto) para generar código, asume este 
 * **La educación es parte del producto.** Todo término técnico debe ser explicable vía tooltip y enlazable a una pantalla de detalle. La revelación de complejidad es progresiva: el sistema no abruma al usuario nuevo, sino que le abre puertas cuando está listo. En Fase 2, el Asistente IA toma este rol con mayor profundidad.
 * **El lenguaje del sistema es educativo con inclinación, nunca prescriptivo.** El sistema muestra consecuencias históricas de distintos caminos, nunca ordena ni recomienda. Ver `design_system.md` §9.
 
-## 4. Evolución del Proyecto
+## 4. Modelo de Negocio y Posicionamiento Competitivo
+
+### Por qué Magic Invest no puede competir en catálogo ni en precio
+Actores como Webull (que adquirió Flink en 2023) tienen economías de escala que hacen imposible competir en "más activos a menor costo". El único diferenciador sostenible es filosófico: **más comprensión, menos ansiedad**. Esto no es una limitación — es la única posición de mercado que un actor con la filosofía de Magic Invest puede defender a largo plazo.
+
+### Marco regulatorio colombiano
+En Colombia solo las **Sociedades Comisionistas de Bolsa (SCB)**, supervisadas por la Superintendencia Financiera, pueden ejecutar y custodiar valores. Magic Invest en Fase 1 es una **herramienta de análisis e información**, no un broker. El usuario registra posiciones que ya tiene en otro lugar (banco, broker extranjero, Trii, Hapi). La app analiza, proyecta y genera contexto educativo — no intermedia.
+
+### Modelos de monetización viables para una eventual expansión
+1. **Distribución de fondos/CDTs:** la app negocia con una fiduciaria o banco colombiano para ser canal de distribución. La entidad licenciada paga a Magic Invest una comisión de distribución; el usuario no ve la comisión. Modelo: Tyba → Credicorp Capital.
+2. **Frontend de SCB:** la app actúa como interfaz tecnológica de una SCB licenciada. La SCB ejecuta y custodia; Magic Invest distribuye. Modelo: Trii → Acciones y Valores S.A. SCB.
+3. **Suscripción por software (freemium):** se cobra por features premium (análisis profundo, proyecciones personalizadas, acceso al Asistente IA en Fase 2). Regulatoriamente simple — es un servicio de software, no intermediación. Modelo: Robinhood Gold.
+4. **PFOF (Payment for Order Flow):** **no aplica en Colombia** y es filosóficamente contrario a la misión de Magic Invest.
+
+### Open Finance Colombia — Oportunidad de Fase 2
+El **Decreto 0368 de abril 2026** hace obligatorias las finanzas abiertas en Colombia. Bancos y fiduciarias deberán exponer APIs para que apps terceras lean posiciones del usuario (CDTs, cuentas, fondos) con su consentimiento. En Fase 2, Magic Invest podría convertirse en el **agregador patrimonial total** del usuario colombiano sin necesitar licencia de intermediación: CDTs de cualquier banco, fondos en cualquier fiduciaria, cuentas bancarias — todo consolidado con análisis propio.
+
+## 5. Evolución del Proyecto
 * **Fase 1 (Actual):** Aislar el ruido y sentar la base educativa. Herramienta personal para Harvey. Módulos: **Portafolio**, **Herramientas**, **Buzón**. Persistencia local-first con sync a backend propio. Análisis matemático sobre CDTs (renta fija local) y ETFs indexados (crecimiento estructural).
 
   El Buzón de Fase 1 actúa como **proto-partner**: observa el portafolio, detecta momentos estadísticamente relevantes y entrega contexto educativo en el momento preciso. Este comportamiento es unidireccional y estructurado en Fase 1, pero sienta las bases del Asistente IA de Fase 2. Cuando llegue el AI, el usuario ya tendrá vocabulario formado, historial de interacción y preguntas reales — no llegará a un chat en frío.

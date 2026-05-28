@@ -94,7 +94,59 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
 * **Fase 1:** Claude sugerirá tickers representativos (ej: VOO, VTI, VXUS) como semilla funcional.
 * **Futuro:** Algoritmo de matching entre perfil de Harvey y universo de ETFs disponibles.
 
-## 6. Reglas Inquebrantables de UI/UX (Bienestar Cognitivo)
+## 6. Loop de Inteligencia del Buzón
+
+El Buzón no es un sistema de notificaciones push — es un motor de análisis contextual. El flujo completo:
+
+```
+Usuario registra posición (CDT o ETF)
+        ↓
+SQLite local (inmediato) → Supabase (async write-through)
+        ↓
+Edge Functions periódicas: Banrep (tasas, inflación) + SFC (TRM) + EOD (precios ETFs)
+→ almacenan en Supabase Postgres
+        ↓
+Motor de análisis: cruza posiciones del usuario + datos de mercado
+(condiciones: CDT próximo a vencer, ETF en drawdown >25%, Banrep mueve tasas,
+ distribución fuera de bandas, Hurdle Rate cambia, CAGR supera/cae umbral)
+        ↓
+Condición cumplida → genera InboxEvent → Buzón
+```
+
+Ningún paso de este loop requiere licencia financiera. La app provee **análisis e información contextual**, no intermediación. El usuario toma todas las decisiones.
+
+### Modelo de registro de activos (Fase 1)
+El usuario **registra posiciones que ya tiene en otro lugar** (banco, broker extranjero, Trii, Hapi). La app no ejecuta compras ni custodia activos. Es el mismo modelo de Empower / Monarch Money en EE.UU.
+
+- **CDT:** banco, monto COP, tasa EA, fecha inicio, plazo en días, capitalización. La app calcula vencimiento y rendimiento neto (con retefuente automática).
+- **ETF:** ticker, acciones, precio promedio compra USD, TER. La app obtiene precio EOD del backend.
+
+En Fase 2, **Open Finance (Decreto 0368/2026)** permitirá importar CDTs directamente del banco del usuario con consentimiento OAuth, eliminando la entrada manual.
+
+## 7. Marco Legal — Datos del Usuario (Colombia)
+
+La ley aplicable es la **Ley 1581 de 2012** (protección de datos personales), supervisada por la **SIC**. Los datos financieros califican como **datos sensibles** — estándar más alto de protección.
+
+### Requerimientos antes de lanzar a terceros (no aplica para uso personal de Harvey)
+
+| Elemento | Descripción | Estado |
+|----------|-------------|--------|
+| Política de tratamiento de datos | Qué se recopila, para qué, por cuánto tiempo, con quién se comparte | Placeholder en DrawerMenu — pendiente redactar |
+| Aviso de privacidad | Versión corta en pantalla de registro | Pendiente |
+| Autorización expresa | Checkbox explícito en signup — no puede ser implícito | Pendiente |
+| Disclaimer de no asesoría | "Este análisis es educativo, no constituye asesoría financiera" | Ya implementado en cada evento del Buzón |
+| Inscripción RNBD | Registro de base de datos ante SIC | Aplica cuando haya usuarios distintos a Harvey |
+| Seguridad técnica | Cifrado en tránsito y en reposo | Cubierto por Supabase (SOC 2) |
+
+### Declaración de finalidad del tratamiento
+Los datos del usuario (posiciones, perfil de riesgo, historial de interacción) se usan exclusivamente para:
+1. Calcular análisis estadístico del portafolio del propio usuario
+2. Generar eventos educativos personalizados en el Buzón
+3. Proyectar trayectorias a futuro basadas en parámetros declarados por el usuario
+
+No se comparten con terceros para fines comerciales ni publicitarios.
+
+## 8. Reglas Inquebrantables de UI/UX (Bienestar Cognitivo)
 * **Notificaciones:** Cero alertas push. Toda información asíncrona vive en el Buzón. El usuario decide cuándo consumir.
 * **Badges:** Cero badges en el ícono de la app. Indicadores silenciosos dentro de la app (como "eventos relacionados" en el detalle de un activo) son aceptables porque son contextuales, no interruptivos.
 * **Jerarquía cromática anti-ansiedad:**

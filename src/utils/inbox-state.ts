@@ -1,3 +1,15 @@
+// MOCK — reemplazar por queries SQLite cuando el Buzón se conecte a datos reales.
+//
+// Migración pendiente:
+//   markRead(id)    → UPDATE inbox_events SET read_at = datetime('now') WHERE id = ?
+//                     luego sync write-through a Supabase (columna read_at)
+//   markUnread(id)  → UPDATE inbox_events SET read_at = NULL WHERE id = ?
+//   markDeleted(id) → UPDATE inbox_events SET dismissed_at = datetime('now') WHERE id = ?
+//                     (no borrar el registro — dismissed_at = soft delete)
+//
+// El campo isRead se deriva de: read_at IS NOT NULL
+// El campo isDeleted se deriva de: dismissed_at IS NOT NULL
+
 type Listener = () => void;
 
 const readIds    = new Set<string>();

@@ -138,9 +138,72 @@ Lista priorizada por frecuencia de uso estimada. Calculadora #1 completa — con
 Patrón establecido para todas: selector COP/USD → campos con InputField → botón Calcular → GrowthChart (si aplica) → ResultCard → disclaimer. Auto-scroll a resultados al calcular.
 
 ### 7. Módulo Portafolio
-* Vista de lista: activos con nombre, valor actual, indicador de salud estructural
-* Detalle de activo: métricas (CAGR, MaxDD, Sortino), proyección probabilística, sección "Eventos relacionados" (vinculación al Buzón)
-* Sin badges en la lista; profundidad accesible desde el detalle
+
+#### 7.1 Flujo de perfil de riesgo (primera vez en el tab — prerequisito)
+Se ejecuta una sola vez, la primera vez que el usuario entra al tab Portafolio. 5 preguntas, máximo 2 minutos. El resultado alimenta las bandas iniciales CDT/ETF, el tono del Buzón y la proyección del estado vacío.
+
+Preguntas:
+1. ¿En cuánto tiempo planeas usar este dinero? *(< 3 años / 3–10 años / +10 años)*
+2. Si tu portafolio cae 20% en un mes, ¿qué harías? *(Salgo todo / Mantengo / Invierto más)*
+3. ¿Cuál es tu objetivo principal? *(Preservar capital / Crecer moderadamente / Maximizar crecimiento)*
+4. ¿Cuánto podrías aportar mensualmente? *(rangos en COP)*
+5. ¿Cómo describirías tu conocimiento financiero? *(Básico / Intermedio / Avanzado)*
+
+Output del perfil:
+- Label: `conservador` / `moderado` / `agresivo`
+- Bandas CDT/ETF calculadas según perfil (en lugar del default genérico 50–70%)
+- Parámetro de tono para los eventos del Buzón (lenguaje más explicativo para básico, más técnico para avanzado)
+- Horizonte de inversión declarado (alimenta proyecciones)
+
+Persistencia: `user_config` en SQLite con clave `risk_profile`. Si ya existe, no se muestra el flujo.
+
+#### 7.2 Estado vacío (sin posiciones registradas)
+No una pantalla en blanco. Muestra:
+- Distribución configurada (bandas del perfil, visualización visual CDT/ETF)
+- Proyección probabilística hipotética: "Con $10.000.000 y tu perfil, en 10 años proyectarías entre $X y $Y"
+- Contexto macro: Banrep actual, CDT mercado, TRM, inflación
+- CTA: [+ Registrar mi primer CDT] / [+ Registrar mi primer ETF]
+
+#### 7.3 Estado con activos (diseño de la pantalla principal)
+```
+Portafolio · $XX.XXX.000 COP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Proyección a 10 años: $XXM – $XXM  ← elemento visual protagonista
+
+DISTRIBUCIÓN          [estado: dentro/cerca/fuera de bandas]
+CDTs  68% ████████░░  [50–70%] ✓
+ETFs  32% ████░░░░░░  [30–50%] ✓
+
+— lista de CDTs —
+CDT Bancolombia · $15.000.000 · 12.8% EA
+Vence en 45 días · proyectado $15.213k neto
+
+— lista de ETFs —
+VOO · 12 acciones
+Costo: USD 480 · Hoy: USD 521
+$14.992.800 COP (TRM $3.960) · CAGR desde compra: +8.5%
+
+CONTEXTO ACTUAL
+Banrep 9.25% · CDT mercado 11.2% · Inflación 5.3% · TRM $3.960
+```
+
+Color de "salud estructural": teal (dentro de bandas), ámbar (cerca del límite), púrpura (fuera). Nunca rojo/verde de mercado.
+
+#### 7.4 Formulario de registro de CDT
+Campos: banco (selector), monto COP, tasa EA (%), fecha inicio, plazo en días, tipo de capitalización (vencimiento / mensual / trimestral).
+La app calcula automáticamente: fecha vencimiento, rendimiento bruto, retefuente (4% sobre rendimientos), rendimiento neto.
+
+#### 7.5 Formulario de registro de ETF
+Campos: ticker (con búsqueda/autocompletado de la watchlist), número de acciones, precio promedio de compra (USD), TER (%).
+La app obtiene precio EOD del backend. Muestra valor actual en USD y COP al TRM vigente.
+
+#### 7.6 Detalle de activo
+- CDT: proyección de valor al vencimiento, contexto vs. tasas de mercado vigentes, eventos del Buzón relacionados
+- ETF: CAGR desde compra, MaxDD histórico, Sortino estimado, proyección probabilística a horizonte declarado, comparación vs. Hurdle Rate, eventos del Buzón relacionados
+
+#### 7.7 Vinculación con el Buzón
+- En el detalle de un activo: sección "Eventos relacionados" al final
+- En el detalle de un evento del Buzón: chip navegable con el nombre del activo que lleva al detalle en Portafolio (ya implementado con `relatedAsset` en el mock)
 
 ### 8. Backend Supabase — Edge Functions
 * Edge Function con cron para consulta periódica a API Banrep (tasa política + CDT promedio)
@@ -154,9 +217,16 @@ Patrón establecido para todas: selector COP/USD → campos con InputField → b
 
 ### 10. Flujo de Onboarding (al final, pre-publicación)
 * Pantalla que presenta la filosofía básica en lenguaje accesible (sin tecnicismos)
-* Configuración de bandas de asignación CDT/ETF con slider (default: CDTs 50–70% / ETFs 30–50%)
+* Configuración de bandas de asignación CDT/ETF con slider (default: calculadas desde el perfil de riesgo)
 * Solo se muestra la primera vez (verificar con `isOnboardingComplete()` en SQLite)
 * **Nota:** Se implementa cuando todas las funcionalidades estén terminadas y probadas, para poder describir y mostrar con precisión qué hace la app.
+
+### 11. Cumplimiento legal (prerrequisito para lanzar a terceros — no aplica para uso personal de Harvey)
+* **Política de tratamiento de datos** (Ley 1581/2012): redactar documento completo con finalidad, plazo de conservación, derechos del titular. Reemplaza el placeholder del DrawerMenu.
+* **Aviso de privacidad**: versión corta mostrada en pantalla de registro con checkbox de autorización expresa.
+* **Inscripción RNBD**: registro de la base de datos ante la SIC cuando haya usuarios distintos a Harvey.
+* **Revisión legal**: validar con abogado colombiano especializado en fintech que el modelo de análisis/información no califica como asesoría financiera ni intermediación bajo la regulación SFC.
+* **Términos y condiciones**: reemplazar placeholder del DrawerMenu con documento real que incluya: (a) la app no es un broker ni asesor financiero; (b) el usuario registra posiciones que tiene en otras entidades; (c) el análisis es educativo e histórico, no predictivo.
 
 ---
 

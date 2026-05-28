@@ -59,7 +59,7 @@ La app se estructura en módulos independientes y navegables como secciones prin
 
 Estos componentes forman la capa de navegación y presentación base sobre la que se construirán los módulos:
 
-* **`PageHeader`** (`src/components/page-header.tsx`): cabecera compartida usada en los tres tabs. Recibe `title` y `subtitle` opcional. Contiene el botón hamburguesa que abre el `DrawerMenu`. Estado local de apertura del drawer.
+* **`PageHeader`** (`src/components/page-header.tsx`): cabecera compartida usada en los tres tabs. Props: `title`, `subtitle?` y `rightAction?: React.ReactNode`. Contiene el botón hamburguesa (≡) en la esquina superior derecha; `rightAction` se coloca debajo de ≡ en la misma columna. El tab Portafolio usa `rightAction` para el FAB "Agregar" que navega a `/portfolio/add`. Estado local de apertura del drawer.
 
 * **`DrawerMenu`** (`src/components/drawer-menu.tsx`): panel lateral animado (slide desde la derecha, 82% del ancho de pantalla, backdrop semitransparente). Autocontenido — obtiene los datos del usuario via `useAuth()` y `useSQLiteContext()` internamente. Secciones:
   * Perfil: avatar con inicial, nombre visible (`user_metadata.full_name`) y email.
@@ -123,7 +123,7 @@ Ningún paso de este loop requiere licencia financiera. La app provee **análisi
 El usuario **registra posiciones que ya tiene en otro lugar** (banco, broker extranjero, Trii, Hapi). La app no ejecuta compras ni custodia activos. Es el mismo modelo de Empower / Monarch Money en EE.UU.
 
 - **CDT:** banco, monto COP, tasa EA, fecha inicio, plazo en días, capitalización. La app calcula vencimiento y rendimiento neto (con retefuente automática).
-- **ETF:** ticker, acciones, precio promedio compra USD, TER. La app obtiene precio EOD del backend.
+- **ETF:** ticker (texto libre), nombre del fondo, moneda de entrada (COP o USD), monto invertido (COP con TRM al registrar, o USD total/precio por acción), acciones (opcional — siempre editable), TER. Columnas en SQLite: `total_invested_cop`, `trm_at_purchase`, `total_invested_usd` (migración 2). La app mostrará precio EOD del backend cuando el backend esté disponible.
 
 En Fase 2, **Open Finance (Decreto 0368/2026)** permitirá importar CDTs directamente del banco del usuario con consentimiento OAuth, eliminando la entrada manual.
 

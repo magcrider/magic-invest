@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: 🟡 En progreso — perfil de riesgo completo, estado vacío completo. Formularios CDT/ETF pendientes.**
-* **Última sesión:** Módulo Portafolio iniciado. Flujo de perfil de riesgo (wizard de 5 preguntas, scoring, resultado con bandas) implementado y conectado a SQLite. Estado vacío del Portafolio con chip de perfil y CTAs placeholder. Botón "Reevaluar perfil de riesgo" en DrawerMenu con confirmación y notificación reactiva via `profileEvents` — la pantalla se actualiza inmediatamente sin salir del tab.
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1 local) — perfil, estado vacío, formularios CDT/ETF, detalle CDT/ETF, FAB de navegación, eliminación con confirmación.**
+* **Última sesión:** Módulo Portafolio completado. Formularios CDT y ETF (formulario ETF rediseñado: COP/USD primero, TRM, acciones siempre opcionales con sección informativa). Pantallas de detalle CDT y ETF. Pantalla de selección de activo (FAB → `add.tsx` con 5 tipos, 3 deshabilitados "próximamente"). Eliminación en ambos detalles con `Alert.alert` y `router.navigate('/portfolio')`. Migración 2 en SQLite (3 columnas nuevas en `etf_positions`). `PageHeader` extendido con prop `rightAction` para alojar el FAB sin romper el layout.
 
 ---
 
@@ -106,6 +106,19 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * **`src/utils/profile-events.ts`** (nuevo): pub/sub mínimo `emitReset` / `subscribe` — mismo patrón que `inbox-state.ts`. Permite que el DrawerMenu notifique al PortfolioScreen en tiempo real.
 * **DrawerMenu** actualizado: botón "Reevaluar perfil de riesgo" en sección Configuración con `Alert` de confirmación. Al confirmar: borra SQLite + emite `profileEvents.emitReset()` + cierra drawer.
 
+### Módulo Portafolio — Formularios, detalle y navegación FAB
+* **Migración 2** (`src/db/migrations.ts`): 3 columnas nuevas en `etf_positions` — `total_invested_cop REAL`, `trm_at_purchase REAL`, `total_invested_usd REAL`. Permite registrar el monto original en COP + TRM sin perder precisión.
+* **`src/db/schema.ts`**: `EtfPosition` extendida con los 3 campos nuevos (`number | null`).
+* **`src/db/queries/etf.ts`**: `getEtfById`, `deleteEtf` añadidos; `createEtf` actualizado para los 9 campos incluyendo los 3 nuevos.
+* **`src/app/portfolio/add-etf.tsx`** (rediseño completo): selector COP/USD primero → monto → TRM (si COP) → acciones (siempre opcional, botón ⓘ despliega card explicativa) → TER. Guarda con `router.navigate('/portfolio')`.
+* **`src/app/portfolio/add-cdt.tsx`**: ajustado a `router.navigate('/portfolio')` post-guardado.
+* **`src/app/portfolio/add.tsx`** (nuevo): pantalla de selección de activo. Lista con 5 tipos: ETF indexado ✅, CDT colombiano ✅, Acción individual ❌, Fondo de inversión ❌, Criptomoneda ❌. Usa `router.push` hacia formularios para preservar `add.tsx` en el stack (back desde formulario regresa a selección).
+* **`src/app/portfolio/etf/[id].tsx`** (nuevo): detalle de ETF — ticker grande, nombre del fondo, badge COP/USD, card de principal, sección Posición (acciones + precio promedio), sección TER (solo si > 0), fecha de registro, nota "próximamente precios en tiempo real", botón Eliminar con `Alert.alert` → `deleteEtf` → `router.navigate('/portfolio')`.
+* **`src/app/portfolio/cdt/[id].tsx`**: añadido botón Eliminar con `Alert.alert` → `deleteCdt` → `router.navigate('/portfolio')`.
+* **`src/app/portfolio/index.tsx`**: ETFs primero, CDTs segundo. FAB "Agregar" como prop `rightAction` de `PageHeader` — aparece debajo del ícono ≡ en la esquina superior derecha.
+* **`src/components/page-header.tsx`**: prop `rightAction?: React.ReactNode`. `rightGroup` con `flexDirection: 'column'` — ≡ arriba, `rightAction` debajo.
+* **Patrón de navegación del stack de portafolio:** `/portfolio` (root) → `/portfolio/add` → `/portfolio/add-etf` o `/portfolio/add-cdt`. Usar `router.navigate('/portfolio')` desde formularios post-guardado para hacer pop-to-existing. Usar `router.push` (no `replace`) desde `add.tsx` para preservar pantalla de selección en el stack.
+
 ---
 
 ## 🔲 Investigación Técnica Pendiente
@@ -165,7 +178,18 @@ Chip de perfil + card vacía + CTAs placeholder. **Pendiente mejorar** cuando ha
 - Proyección probabilística hipotética ("Con $10.000.000 y tu perfil...")
 - Contexto macro: Banrep actual, CDT mercado, TRM, inflación (requiere backend §8)
 
-#### 7.3 Estado con activos (diseño de la pantalla principal)
+#### 7.3 Formulario de registro CDT ✅ COMPLETO
+Ver "Módulo Portafolio — Formularios, detalle y navegación FAB" arriba.
+
+#### 7.4 Formulario de registro ETF ✅ COMPLETO (entrada local sin precios EOD)
+Rediseñado: COP/USD primero, TRM, acciones opcionales. Ver sección Completado arriba.
+**Pendiente mejorar:** autocompletado de ticker contra watchlist, precio EOD en tiempo real.
+
+#### 7.5 Detalle de activo ✅ COMPLETO (datos locales)
+CDT: proyección al vencimiento, retefuente, fechas. ETF: fracciones, precio promedio, TER.
+**Pendiente:** CAGR desde compra, MaxDD, Sortino, comparación vs Hurdle Rate (requiere backend §8).
+
+#### 7.6 Estado con activos (diseño de la pantalla principal)
 ```
 Portafolio · $XX.XXX.000 COP
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -189,18 +213,6 @@ Banrep 9.25% · CDT mercado 11.2% · Inflación 5.3% · TRM $3.960
 ```
 
 Color de "salud estructural": teal (dentro de bandas), ámbar (cerca del límite), púrpura (fuera). Nunca rojo/verde de mercado.
-
-#### 7.4 Formulario de registro de CDT
-Campos: banco (selector), monto COP, tasa EA (%), fecha inicio, plazo en días, tipo de capitalización (vencimiento / mensual / trimestral).
-La app calcula automáticamente: fecha vencimiento, rendimiento bruto, retefuente (4% sobre rendimientos), rendimiento neto.
-
-#### 7.5 Formulario de registro de ETF
-Campos: ticker (con búsqueda/autocompletado de la watchlist), número de acciones, precio promedio de compra (USD), TER (%).
-La app obtiene precio EOD del backend. Muestra valor actual en USD y COP al TRM vigente.
-
-#### 7.6 Detalle de activo
-- CDT: proyección de valor al vencimiento, contexto vs. tasas de mercado vigentes, eventos del Buzón relacionados
-- ETF: CAGR desde compra, MaxDD histórico, Sortino estimado, proyección probabilística a horizonte declarado, comparación vs. Hurdle Rate, eventos del Buzón relacionados
 
 #### 7.7 Vinculación con el Buzón
 - En el detalle de un activo: sección "Eventos relacionados" al final

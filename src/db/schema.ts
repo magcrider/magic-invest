@@ -51,9 +51,12 @@ export interface EtfPosition {
   ticker: string;
   name: string;
   shares: number;
-  average_cost_usd: number;  // average purchase price in USD
-  ter: number;               // total expense ratio as decimal (0.0003 = 0.03%)
-  currency: string;          // default 'USD'
+  average_cost_usd: number;       // price per share in USD; 0 when unknown
+  ter: number;                     // total expense ratio as decimal (0.0003 = 0.03%)
+  currency: string;                // 'COP' or 'USD' — the currency used at purchase
+  total_invested_cop: number | null;  // original COP amount (only when currency='COP')
+  trm_at_purchase: number | null;     // TRM used to convert (only when currency='COP')
+  total_invested_usd: number | null;  // total in USD (derived or entered directly)
   created_at: string;
   updated_at: string;
 }

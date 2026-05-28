@@ -4,6 +4,11 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 // NEVER modify an existing migration — add a new one instead.
 
 const migrations: Record<number, string> = {
+  2: `
+    ALTER TABLE etf_positions ADD COLUMN total_invested_cop REAL;
+    ALTER TABLE etf_positions ADD COLUMN trm_at_purchase REAL;
+    ALTER TABLE etf_positions ADD COLUMN total_invested_usd REAL;
+  `,
   1: `
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version   INTEGER PRIMARY KEY,

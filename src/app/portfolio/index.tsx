@@ -24,6 +24,8 @@ import { getAllEtfs } from '@/db/queries/etf';
 import { formatCurrency, abbreviateValue } from '@/utils/format';
 import { useAuth } from '@/hooks/use-auth';
 import type { CdtPosition, EtfPosition, AllocationBands } from '@/db/schema';
+import { INBOX_EVENTS, type InboxEvent } from '@/constants/inbox-mock';
+import { inboxState } from '@/utils/inbox-state';
 
 // ── Macro context hardcodeado — vendrá del backend §8 ────────────────────
 const TRM_COP       = 4_200;  // COP por USD
@@ -74,6 +76,39 @@ function bandColor(h: BandHealth): string {
   if (h === 'dentro') return Tokens.structural.positive;
   if (h === 'cerca')  return Tokens.structural.attention;
   return Tokens.structural.risk;
+}
+
+function isEffectivelyUnread(evt: InboxEvent): boolean {
+  if (inboxState.isDeleted(evt.id)) return false;
+  if (inboxState.isUnread(evt.id)) return true;
+  if (inboxState.isRead(evt.id)) return false;
+  return !evt.isRead;
+}
+
+function relatedUnreadCount(cdts: CdtPosition[], etfs: EtfPosition[]): number {
+  return INBOX_EVENTS.filter((evt) => {
+    if (!isEffectivelyUnread(evt) || !evt.relatedAsset) return false;
+    const asset = evt.relatedAsset;
+    if (asset.startsWith('CDT ')) {
+      const bank = asset.slice(4);
+      return cdts.some((c) => c.bank.toLowerCase() === bank.toLowerCase());
+    }
+    return etfs.some((e) => e.ticker === asset);
+  }).length;
+}
+
+function hasCdtUnread(cdt: CdtPosition): boolean {
+  return INBOX_EVENTS.some(
+    (evt) =>
+      isEffectivelyUnread(evt) &&
+      evt.relatedAsset?.toLowerCase().includes(cdt.bank.toLowerCase()),
+  );
+}
+
+function hasEtfUnread(etf: EtfPosition): boolean {
+  return INBOX_EVENTS.some(
+    (evt) => isEffectivelyUnread(evt) && evt.relatedAsset === etf.ticker,
+  );
 }
 
 // ── Main screen ───────────────────────────────────────────────────────────
@@ -167,6 +202,12 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
     if (isEmpty) setTab('resumen');
   }, [isEmpty]);
 
+  // Re-render cuando cambia el estado del Buzón (leído, eliminado, etc.)
+  const [, setInboxTick] = useState(0);
+  useEffect(() => {
+    return inboxState.subscribe(() => setInboxTick((n) => n + 1));
+  }, []);
+
   // Totales del portafolio
   const cdtTotal       = cdts.reduce((s, c) => s + c.amount, 0);
   const etfTotalCOP    = etfs.reduce((s, e) => s + etfValueCOP(e), 0);
@@ -182,6 +223,7 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
   const blendedHigh = cdtPct * avgCdtRateNet + etfPct * ETF_CAGR_HIGH;
   const projLow     = portfolioTotal * Math.pow(1 + blendedLow,  10);
   const projHigh    = portfolioTotal * Math.pow(1 + blendedHigh, 10);
+  const unreadCount = relatedUnreadCount(cdts, etfs);
 
   return (
     <View style={styles.contentRoot}>
@@ -268,29 +310,51 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
           ) : (
             /* Con activos */
             <>
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>Valor del portafolio</Text>
-                <Text style={styles.summaryTotal}>{formatCurrency(portfolioTotal, 'COP')}</Text>
-                <View style={styles.summaryBreakdown}>
-                  <View style={styles.summaryBreakdownItem}>
-                    <View style={[styles.summaryDot, { backgroundColor: Tokens.structural.positive }]} />
-                    <Text style={styles.summaryPart}>CDTs  {formatCurrency(cdtTotal, 'COP')}</Text>
+              {unreadCount > 0 && (
+                <TouchableOpacity
+                  style={styles.inboxBanner}
+                  onPress={() => setTab('detalle')}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.inboxBannerIcon}>
+                    <Ionicons name="mail-outline" size={16} color={Tokens.structural.attention} />
                   </View>
-                  <View style={styles.summaryBreakdownItem}>
-                    <View style={[styles.summaryDot, { backgroundColor: Tokens.structural.attention }]} />
-                    <Text style={styles.summaryPart}>ETFs  {formatCurrency(etfTotalCOP, 'COP')}</Text>
+                  <View style={styles.inboxBannerText}>
+                    <Text style={styles.inboxBannerTitle}>
+                      {unreadCount === 1 ? '1 mensaje' : `${unreadCount} mensajes`} en el Buzón
+                    </Text>
+                    <Text style={styles.inboxBannerSub}>relacionados con tu portafolio</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={14} color={Tokens.neutral.muted} />
+                </TouchableOpacity>
+              )}
+
+              <View style={styles.metricsRow}>
+                <View style={styles.metricLeft}>
+                  <Text style={styles.metricLabel}>Portafolio</Text>
+                  <Text style={styles.metricTotal} numberOfLines={1} adjustsFontSizeToFit>
+                    ${abbreviateValue(portfolioTotal, 'COP')}
+                  </Text>
+                  <View style={styles.metricBreakdown}>
+                    <View style={styles.summaryBreakdownItem}>
+                      <View style={[styles.summaryDot, { backgroundColor: Tokens.structural.positive }]} />
+                      <Text style={styles.metricPart}>CDT  ${abbreviateValue(cdtTotal, 'COP')}</Text>
+                    </View>
+                    <View style={styles.summaryBreakdownItem}>
+                      <View style={[styles.summaryDot, { backgroundColor: Tokens.structural.attention }]} />
+                      <Text style={styles.metricPart}>ETF  ${abbreviateValue(etfTotalCOP, 'COP')}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-
-              <View style={styles.projBanner}>
-                <Text style={styles.projLabel}>Proyección a 10 años</Text>
-                <Text style={styles.projRange}>
-                  ${abbreviateValue(projLow, 'COP')} – ${abbreviateValue(projHigh, 'COP')}
-                </Text>
-                <Text style={styles.projNote}>
-                  Pesimista (ETF +5% USD) · Optimista (ETF +11% USD) · CDT al neto actual
-                </Text>
+                <View style={styles.metricDivider} />
+                <View style={styles.metricRight}>
+                  <Text style={[styles.metricLabel, { color: Tokens.structural.positive }]}>
+                    Proyección 10A
+                  </Text>
+                  <Text style={styles.metricRange} numberOfLines={2} adjustsFontSizeToFit>
+                    ${abbreviateValue(projLow, 'COP')} –{'\n'}${abbreviateValue(projHigh, 'COP')}
+                  </Text>
+                </View>
               </View>
 
               <DistributionSection cdtPct={cdtPct} etfPct={etfPct} bands={bands} />
@@ -314,6 +378,7 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
                 <CdtCard
                   key={cdt.id}
                   cdt={cdt}
+                  hasUnread={hasCdtUnread(cdt)}
                   onPress={() => router.push({ pathname: '/portfolio/cdt/[id]', params: { id: cdt.id } })}
                 />
               ))}
@@ -326,6 +391,7 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
                 <EtfCard
                   key={etf.id}
                   etf={etf}
+                  hasUnread={hasEtfUnread(etf)}
                   onPress={() => router.push({ pathname: '/portfolio/etf/[id]', params: { id: etf.id } })}
                 />
               ))}
@@ -433,13 +499,14 @@ function ContextItem({ label, value }: { label: string; value: string }) {
 
 // ── Tarjetas de activos ───────────────────────────────────────────────────
 
-function CdtCard({ cdt, onPress }: { cdt: CdtPosition; onPress: () => void }) {
+function CdtCard({ cdt, onPress, hasUnread }: { cdt: CdtPosition; onPress: () => void; hasUnread: boolean }) {
   const days    = daysUntil(cdt.end_date);
   const net     = cdtNetYield(cdt);
   const expired = days < 0;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+      {hasUnread && <View style={styles.cardInboxDot} />}
       <View style={styles.cardRow}>
         <Text style={styles.cardTitle}>{cdt.bank}</Text>
         <Text style={[styles.cardRate, { color: Tokens.structural.positive }]}>
@@ -461,7 +528,7 @@ function CdtCard({ cdt, onPress }: { cdt: CdtPosition; onPress: () => void }) {
   );
 }
 
-function EtfCard({ etf, onPress }: { etf: EtfPosition; onPress: () => void }) {
+function EtfCard({ etf, onPress, hasUnread }: { etf: EtfPosition; onPress: () => void; hasUnread: boolean }) {
   const isCop     = etf.currency === 'COP';
   const hasShares = etf.shares > 0;
 
@@ -484,6 +551,7 @@ function EtfCard({ etf, onPress }: { etf: EtfPosition; onPress: () => void }) {
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+      {hasUnread && <View style={styles.cardInboxDot} />}
       <View style={styles.cardRow}>
         <Text style={styles.cardTitle}>{etf.ticker}</Text>
         {etf.ter > 0 && (
@@ -648,70 +716,93 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Resumen
-  summaryCard: {
+  // Banner Buzón
+  inboxBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: Tokens.structural.attention + '12',
+    borderWidth: 1,
+    borderColor: Tokens.structural.attention + '35',
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+  },
+  inboxBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Tokens.structural.attention + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  inboxBannerText: { flex: 1, gap: 2 },
+  inboxBannerTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Tokens.neutral.text,
+  },
+  inboxBannerSub: {
+    fontSize: 12,
+    color: Tokens.neutral.muted,
+  },
+
+  // Métricas en dos columnas
+  metricsRow: {
+    flexDirection: 'row',
     backgroundColor: '#F0F0EC',
     borderRadius: Spacing.three,
-    padding: Spacing.four,
-    gap: Spacing.two,
+    padding: Spacing.three,
   },
-  summaryLabel: {
-    fontSize: 12,
+  metricLeft: {
+    flex: 1,
+    gap: Spacing.one,
+  },
+  metricRight: {
+    flex: 1,
+    paddingLeft: Spacing.three,
+    gap: Spacing.one,
+  },
+  metricDivider: {
+    width: 1,
+    backgroundColor: '#E0E0DC',
+    marginVertical: 2,
+  },
+  metricLabel: {
+    fontSize: 10,
     fontWeight: '600',
     color: Tokens.neutral.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  summaryTotal: {
-    fontSize: 26,
+  metricTotal: {
+    fontSize: 22,
     fontWeight: '700',
     color: Tokens.neutral.text,
     letterSpacing: -0.5,
   },
-  summaryBreakdown: {
-    flexDirection: 'row',
-    gap: Spacing.four,
+  metricRange: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Tokens.neutral.text,
+    letterSpacing: -0.3,
+    lineHeight: 26,
+  },
+  metricBreakdown: {
+    gap: 3,
     marginTop: Spacing.one,
   },
+  metricPart: {
+    fontSize: 11,
+    color: Tokens.neutral.muted,
+  },
+  // Conservados por DistributionSection
   summaryBreakdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one + Spacing.half,
   },
   summaryDot: { width: 6, height: 6, borderRadius: 3 },
-  summaryPart: {
-    fontSize: 12,
-    color: Tokens.neutral.muted,
-  },
-
-  // Proyección
-  projBanner: {
-    backgroundColor: Tokens.structural.positive + '14',
-    borderRadius: Spacing.three,
-    padding: Spacing.four,
-    borderWidth: 1,
-    borderColor: Tokens.structural.positive + '30',
-    gap: Spacing.one,
-  },
-  projLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Tokens.structural.positive,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  projRange: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Tokens.neutral.text,
-    letterSpacing: -0.5,
-  },
-  projNote: {
-    fontSize: 11,
-    color: Tokens.neutral.muted,
-    lineHeight: 16,
-    marginTop: Spacing.one,
-  },
 
   // Distribución
   distributionSection: {
@@ -824,6 +915,15 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     padding: Spacing.three,
     gap: Spacing.one,
+  },
+  cardInboxDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Tokens.structural.attention,
   },
   cardRow: {
     flexDirection: 'row',

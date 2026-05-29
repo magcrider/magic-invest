@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
@@ -9,6 +10,8 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
 import { INBOX_EVENTS, EVENT_TYPE_CONFIG, type ConsequenceRow } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
+import { getAllCdts } from '@/db/queries/cdt';
+import { getEtfByTicker } from '@/db/queries/etf';
 
 function ConsequenceCard({ row }: { row: ConsequenceRow }) {
   return (
@@ -29,13 +32,33 @@ const detailStyles = StyleSheet.create({
 export default function InboxDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const db     = useSQLiteContext();
 
-  const event = INBOX_EVENTS.find((e) => e.id === id);
+  const event  = INBOX_EVENTS.find((e) => e.id === id);
   const config = event ? EVENT_TYPE_CONFIG[event.type] : null;
+
+  const [assetRoute, setAssetRoute] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) inboxState.markRead(id);
   }, [id]);
+
+  useEffect(() => {
+    if (!event?.relatedAsset) return;
+    const label = event.relatedAsset;
+    async function resolve() {
+      if (label.startsWith('CDT ')) {
+        const bankName = label.slice(4);
+        const cdts = await getAllCdts(db);
+        const found = cdts.find((c) => c.bank.toLowerCase() === bankName.toLowerCase());
+        if (found) setAssetRoute(`/portfolio/cdt/${found.id}`);
+      } else {
+        const etf = await getEtfByTicker(db, label);
+        if (etf) setAssetRoute(`/portfolio/etf/${etf.id}`);
+      }
+    }
+    resolve();
+  }, [db, event?.relatedAsset]);
 
   if (!event || !config) {
     return (
@@ -75,9 +98,20 @@ export default function InboxDetailScreen() {
             {event.relatedAsset && (
               <>
                 <ThemedText type="small" themeColor="textSecondary">·</ThemedText>
-                <View style={styles.assetChip}>
-                  <ThemedText style={styles.assetLabel}>{event.relatedAsset}</ThemedText>
-                </View>
+                {assetRoute ? (
+                  <TouchableOpacity
+                    style={styles.assetChip}
+                    onPress={() => router.push(assetRoute as never)}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText style={styles.assetLabel}>{event.relatedAsset}</ThemedText>
+                    <Ionicons name="arrow-forward-outline" size={10} color={Tokens.structural.positive} />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.assetChip}>
+                    <ThemedText style={styles.assetLabel}>{event.relatedAsset}</ThemedText>
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -132,6 +166,9 @@ const styles = StyleSheet.create({
   typeLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   assetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: '#5B8E8E18',
     borderRadius: 4,
     paddingHorizontal: Spacing.two,

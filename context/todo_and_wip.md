@@ -7,7 +7,7 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
 * **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1 local) — perfil, estado vacío, formularios CDT/ETF, detalle CDT/ETF, pantalla principal con tabs Resumen/Detalle.**
-* **Última sesión (mayo 2026):** §7.6 — pantalla principal del portafolio con activos. Dos tabs (Resumen / Detalle). Resumen: valor total, proyección a 10 años, distribución vs bandas con salud estructural, contexto macro hardcodeado. Detalle: listas CDT/ETF navegables. Estado vacío: Detalle desactivado, Resumen con CTAs directos para agregar activos. Bug crítico corregido: logout ahora limpia SQLite antes de cerrar sesión (los datos del usuario anterior ya no persisten para el siguiente). Próximo paso: §7.7 vinculación con Buzón.
+* **Última sesión (mayo 2026):** §7.7 — vinculación Portafolio ↔ Buzón. En detalle CDT/ETF: sección "Eventos relacionados" al final (filtra INBOX_EVENTS por banco/ticker, excluye eliminados, navegable a detalle del evento). En detalle de evento del Buzón: chip `relatedAsset` se vuelve tappable cuando el activo existe en SQLite (resuelve ETF por ticker vía `getEtfByTicker`, CDT por banco vía `getAllCdts`), muestra flecha → navega a detalle del activo. Próximo paso: §8 Backend Supabase (Edge Functions Banrep + EOD).
 
 ---
 
@@ -220,9 +220,19 @@ CDT: proyección al vencimiento, retefuente, fechas. ETF: fracciones, precio pro
 
 **Constantes hardcodeadas hasta backend §8:** `TRM_COP = 4.200`, `BANREP_RATE = 9.25%`, `CDT_MKT_RATE = 11.2%`, `INFLATION_COL = 5.3%`, `ETF_CAGR_LOW = 5%`, `ETF_CAGR_HIGH = 11%`.
 
-#### 7.7 Vinculación con el Buzón
-- En el detalle de un activo: sección "Eventos relacionados" al final
-- En el detalle de un evento del Buzón: chip navegable con el nombre del activo que lleva al detalle en Portafolio (ya implementado con `relatedAsset` en el mock)
+#### 7.7 Vinculación con el Buzón ✅ COMPLETO
+
+**Buzón → Portafolio:** chip `relatedAsset` en `inbox/[id].tsx` resuelve el activo en SQLite al montar:
+- Si `relatedAsset` empieza con `'CDT '`: busca en `getAllCdts` por banco, navega a `/portfolio/cdt/{id}`
+- Si no: `getEtfByTicker`, navega a `/portfolio/etf/{id}`
+- Chip muestra `→` cuando el activo existe; permanece estático si no está registrado
+
+**Portafolio → Buzón:** sección "Eventos relacionados" en `portfolio/cdt/[id].tsx` y `portfolio/etf/[id].tsx`:
+- CDT: filtra `INBOX_EVENTS` donde `relatedAsset` contiene el nombre del banco (case-insensitive)
+- ETF: filtra donde `relatedAsset === ticker`
+- Excluye eventos borrados via `inboxState.isDeleted()`
+- Cada fila: icono de tipo + label + título (2 líneas) + fecha + chevron → navega a `/inbox/{id}`
+- Sección oculta si no hay eventos coincidentes
 
 ### 8. Backend Supabase — Edge Functions
 * Edge Function con cron para consulta periódica a API Banrep (tasa política + CDT promedio)

@@ -17,6 +17,8 @@ import { ThemedView } from '@/components/themed-view';
 import { Tokens, Spacing, BottomTabInset } from '@/constants/theme';
 import { getEtfById, deleteEtf } from '@/db/queries/etf';
 import type { EtfPosition } from '@/db/schema';
+import { INBOX_EVENTS, EVENT_TYPE_CONFIG } from '@/constants/inbox-mock';
+import { inboxState } from '@/utils/inbox-state';
 
 const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -221,6 +223,9 @@ export default function EtfDetailScreen() {
             </Text>
           </View>
 
+          {/* Eventos relacionados */}
+          <RelatedEvents ticker={etf.ticker} onPress={(evtId) => router.push(`/inbox/${evtId}` as never)} />
+
           {/* Eliminar */}
           <TouchableOpacity
             style={[styles.deleteButton, deleting && styles.deleteButtonDisabled]}
@@ -236,6 +241,44 @@ export default function EtfDetailScreen() {
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+function RelatedEvents({ ticker, onPress }: { ticker: string; onPress: (id: string) => void }) {
+  const events = INBOX_EVENTS.filter(
+    (e) => !inboxState.isDeleted(e.id) && e.relatedAsset === ticker,
+  );
+  if (events.length === 0) return null;
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Eventos relacionados</Text>
+      <View style={styles.detailCard}>
+        {events.map((evt, i) => {
+          const cfg = EVENT_TYPE_CONFIG[evt.type];
+          return (
+            <View key={evt.id}>
+              {i > 0 && <Divider />}
+              <TouchableOpacity
+                style={styles.eventRow}
+                onPress={() => onPress(evt.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.eventIconBg, { backgroundColor: cfg.bg }]}>
+                  <Ionicons name={cfg.icon} size={14} color={cfg.color} />
+                </View>
+                <View style={styles.eventContent}>
+                  <Text style={styles.eventType}>{cfg.label}</Text>
+                  <Text style={styles.eventTitle} numberOfLines={2}>{evt.title}</Text>
+                </View>
+                <Text style={styles.eventDate}>{evt.date}</Text>
+                <Ionicons name="chevron-forward" size={14} color={Tokens.neutral.muted} />
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
@@ -410,5 +453,38 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: Tokens.structural.risk,
+  },
+  eventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
+  },
+  eventIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  eventContent: { flex: 1 },
+  eventType: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Tokens.neutral.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 2,
+  },
+  eventTitle: {
+    fontSize: 13,
+    color: Tokens.neutral.text,
+    lineHeight: 17,
+  },
+  eventDate: {
+    fontSize: 11,
+    color: Tokens.neutral.muted,
+    flexShrink: 0,
   },
 });

@@ -8,17 +8,44 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PageHeader } from '@/components/page-header';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
-import { INBOX_EVENTS, EVENT_TYPE_CONFIG, type InboxEvent } from '@/constants/inbox-mock';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { EVENT_TYPE_CONFIG, INBOX_EVENTS, type EventType, type InboxEvent } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
+
+type ThemeColors = ReturnType<typeof useTheme>;
+
+function getAssetColors(event: InboxEvent, theme: ThemeColors) {
+  if (!event.relatedAsset)                      return { color: theme.textSecondary, bg: theme.backgroundElement };
+  if (event.relatedAsset.startsWith('CDT '))    return { color: theme.assetCdt,      bg: theme.assetCdt + '12'  };
+  return                                               { color: theme.assetEtf,      bg: theme.assetEtf + '12'  };
+}
+
+function getSemanticColors(type: EventType, theme: ThemeColors) {
+  switch (type) {
+    case 'rebalance':
+      return { color: theme.positive,     bg: theme.positiveSubtle   };
+    case 'cdt_maturity':
+    case 'drawdown_context':
+    case 'market_trigger':
+      return { color: theme.attention,    bg: theme.attentionSubtle  };
+    default:
+      return { color: theme.textSecondary, bg: theme.backgroundElement };
+  }
+}
 
 // ─── Acción izquierda: marcar como no leído (swipe derecho) ──────────────────
 
 function MarkUnreadAction({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
   return (
-    <TouchableOpacity style={markUnreadStyles.container} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[markUnreadStyles.container, { backgroundColor: theme.positive }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <Ionicons name="mail-unread-outline" size={22} color="#FFFFFF" />
-      <ThemedText style={markUnreadStyles.label}>No leído</ThemedText>
+      <ThemedText style={[markUnreadStyles.label, { color: '#FFFFFF' }]}>No leído</ThemedText>
     </TouchableOpacity>
   );
 }
@@ -26,13 +53,11 @@ function MarkUnreadAction({ onPress }: { onPress: () => void }) {
 const markUnreadStyles = StyleSheet.create({
   container: {
     width: 80,
-    backgroundColor: Tokens.structural.positive,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.one,
   },
   label: {
-    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
   },
@@ -77,8 +102,11 @@ function EventCard({
   onDelete: () => void;
   onMarkUnread: () => void;
 }) {
-  const config = EVENT_TYPE_CONFIG[event.type];
-  const swipeRef = useRef<Swipeable>(null);
+  const theme      = useTheme();
+  const config     = EVENT_TYPE_CONFIG[event.type];
+  const assetTc    = getAssetColors(event, theme);
+  const semanticTc = getSemanticColors(event.type, theme);
+  const swipeRef   = useRef<Swipeable>(null);
 
   function handleDelete() {
     swipeRef.current?.close();
@@ -100,16 +128,23 @@ function EventCard({
       overshootLeft={false}
       overshootRight={false}>
 
-      <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-        <ThemedView style={[styles.iconBox, { backgroundColor: config.bg }]}>
-          <Ionicons name={config.icon} size={20} color={config.color} />
+      <TouchableOpacity
+        style={[styles.card, { backgroundColor: theme.background }]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <ThemedView style={[styles.iconBox, { backgroundColor: assetTc.bg }]}>
+          <Ionicons name={config.icon} size={20} color={assetTc.color} />
         </ThemedView>
 
         <ThemedView style={styles.cardBody}>
           <ThemedText
             type={event.isRead ? 'default' : 'defaultBold'}
             numberOfLines={2}
-            style={[styles.cardTitle, event.isRead && styles.cardTitleRead]}>
+            style={[
+              styles.cardTitle,
+              event.isRead && { color: theme.textSecondary, fontWeight: '400' as const },
+            ]}>
             {event.title}
           </ThemedText>
           <ThemedText
@@ -120,8 +155,8 @@ function EventCard({
             {event.summary}
           </ThemedText>
           <View style={styles.cardFooter}>
-            <View style={[styles.typePill, { backgroundColor: config.bg }]}>
-              <ThemedText style={[styles.typeLabel, { color: config.color }]}>
+            <View style={[styles.typePill, { backgroundColor: semanticTc.bg }]}>
+              <ThemedText style={[styles.typeLabel, { color: semanticTc.color }]}>
                 {config.label}
               </ThemedText>
             </View>
@@ -132,7 +167,7 @@ function EventCard({
         </ThemedView>
 
         {!event.isRead && (
-          <View style={[styles.unreadDot, { backgroundColor: config.color }]} />
+          <View style={[styles.unreadDot, { backgroundColor: semanticTc.color }]} />
         )}
       </TouchableOpacity>
     </Swipeable>
@@ -140,7 +175,8 @@ function EventCard({
 }
 
 function Separator() {
-  return <View style={styles.separator} />;
+  const theme = useTheme();
+  return <View style={[styles.separator, { backgroundColor: theme.divider }]} />;
 }
 
 // ─── Pantalla principal ───────────────────────────────────────────────────────
@@ -224,7 +260,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: Spacing.three,
     paddingVertical: Spacing.three,
-    backgroundColor: Tokens.neutral.background,
   },
   iconBox: {
     width: 40,
@@ -237,7 +272,6 @@ const styles = StyleSheet.create({
   },
   cardBody: { flex: 1, gap: Spacing.one },
   cardTitle: { lineHeight: 22 },
-  cardTitleRead: { color: Tokens.neutral.muted, fontWeight: '400' },
   cardSummary: { lineHeight: 18 },
   summaryRead: { opacity: 0.55 },
   cardFooter: {
@@ -252,7 +286,6 @@ const styles = StyleSheet.create({
   unreadDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6, flexShrink: 0 },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E8E8E4',
     marginLeft: 40 + Spacing.three,
   },
 });

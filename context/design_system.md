@@ -91,3 +91,65 @@ La conexión entre activos y eventos es bidireccional pero no intrusiva:
 
 ## 12. Iteración
 Esta paleta es un **punto de partida funcional**. Los tokens son ajustables conforme Harvey vea los componentes renderizados en pantalla. Lo **no-negociable** son los principios rectores (§1, §8, §9, §10), no los códigos hex específicos.
+
+## 13. Tokens de Identidad de Activo
+
+Además de los tokens semánticos de §2, existe una segunda familia cromática: los **tokens de identidad de activo**. Su función es identificar visualmente a qué tipo de activo pertenece un elemento, sin connotar salud, urgencia ni dirección.
+
+| Token | Valor (light) | Valor (dark) | Uso |
+|---|---|---|---|
+| `assetCdt` | `#3A6B9A` | `#6A9FCA` | Identifica CDTs como objeto en cualquier pantalla |
+| `assetEtf` | `#3A7850` | `#5FAD7A` | Identifica ETFs como objeto en cualquier pantalla |
+
+### Regla de uso: cuándo usar identidad vs semántico
+
+**Tokens de identidad** — cuando el color responde a la pregunta **"¿de qué tipo de activo es esto?"**:
+- Ícono (cuadro izquierdo) en tarjetas del Buzón cuando el evento tiene `relatedAsset`
+- Título / nombre del activo en pantallas de detalle (nombre del banco para CDT, ticker para ETF)
+- Encabezados de sección en listas agrupadas por tipo ("Certificados de Depósito", "ETFs Indexados")
+- Valor acento en tarjetas de la lista del portafolio (tasa EA en CDT, valor total en ETF)
+- Segmentos en la barra de distribución apilada (CDT a la izquierda, ETF a la derecha)
+- Dot de leyenda bajo la barra de distribución
+- Barras comparativas en calculadoras que contrastan tipos de activo específicos (calculadora CDT vs ETF)
+
+**Tokens semánticos** (`positive`, `attention`, `risk`) — cuando el color responde a la pregunta **"¿qué tipo de información es esta?"** o **"¿qué tan urgente es?"**:
+- Indicadores de salud de banda de asignación (dentro / cerca / fuera)
+- Pill label de tipo en tarjetas del Buzón ("CDT próximo", "Rebalanceo", "Caída estructural")
+- Punto de no leído en tarjetas del Buzón
+- Borde lateral del disclaimer en pantalla de detalle del Buzón
+- Veredicto en calculadoras (CAGR positivo/negativo, retorno real crece/aguanta/pierde)
+- Proyección a 10 años y cualquier dato proyectado al futuro
+
+### Patrón doble en tarjetas del Buzón
+
+Las tarjetas del Buzón combinan ambas familias en elementos distintos de la misma tarjeta:
+
+1. **Ícono (cuadro izquierdo)** → color de **identidad**: el usuario sabe inmediatamente *sobre qué activo* trata el mensaje. Se deriva de `relatedAsset`: `CDT *` → `assetCdt`, ticker de ETF → `assetEtf`, sin activo → neutro.
+2. **Pill de tipo + punto de no leído** → color **semántico**: el usuario sabe *qué tipo de información* contiene y *qué tan relevante* es actuar. Se deriva del `type` del evento: `rebalance` → `positive`, `cdt_maturity` / `drawdown_context` / `market_trigger` → `attention`, `educational` → neutro.
+
+Esta separación crea una jerarquía de dos capas: el ícono responde *"¿sobre qué activo?"*; la pill responde *"¿para qué necesito prestarle atención?"*.
+
+### Extensión a futuros tipos de activo
+
+Cada nuevo tipo de activo que se incorpore debe cumplir este protocolo antes de implementar cualquier pantalla:
+1. Definir su token `assetX` en `src/constants/colors.ts` con valores para `light` y `dark`
+2. Exportarlo en los objetos `Colors.light` y `Colors.dark`
+3. Aplicarlo en: encabezado de sección en Portafolio Detalle, valor acento en tarjeta de lista, título en pantalla de detalle, ícono del Buzón cuando hay `relatedAsset`
+
+Los tokens semánticos son transversales — no varían por tipo de activo.
+
+## 14. Sistema de Temas Dinámico (Light / Dark)
+
+La app implementa soporte completo de modo oscuro vía el hook `useTheme()` en `src/hooks/use-theme.ts`. Toda la app usa este hook — no existen colores hardcodeados en `StyleSheet.create()`.
+
+### Reglas de implementación
+
+- **`StyleSheet.create()` es solo para geometría** (dimensiones, padding, margin, borderRadius, flexbox). Nunca para colores.
+- **Los colores van siempre en `style={[styles.x, { color: theme.y }]}`**, como segunda entrada del array.
+- **Los sub-componentes llaman a `useTheme()` independientemente.** No se pasa el tema como prop.
+- **Constantes de color a nivel de módulo están prohibidas.** Las constantes derivadas del tema deben vivir dentro del componente o sub-componente.
+- **Alpha hex append** para variaciones sutiles: `theme.assetCdt + '18'` (~11% alfa para fondos sutiles), `+ '35'` (~21% para bordes), `+ '12'` (~7% muy sutil), `+ '10'` (~6% mínimo).
+
+### Tokens disponibles en el tema
+
+`background`, `backgroundElement`, `text`, `textSecondary`, `divider`, `positive`, `positiveSubtle`, `positiveBorder`, `positiveChart`, `attention`, `attentionSubtle`, `attentionBorder`, `risk`, `riskSubtle`, `riskBorder`, `assetCdt`, `assetEtf`.

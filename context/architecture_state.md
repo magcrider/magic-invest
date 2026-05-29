@@ -78,6 +78,7 @@ El preview actual pesa ~107 MB. Es normal para React Native con 4 ABIs (arm64-v8
 * **Perfil de usuario:** nombre capturado en signup como `user_metadata.full_name` (Supabase Auth). Campos adicionales (documento, ciudad) en formulario de perfil post-signup — pendiente implementar.
 * **Iconografía:** `@expo/vector-icons` (Ionicons) instalado. Íconos monocromáticos conforme al sistema de diseño.
 * **Estado en cliente:** React Context + hooks. No introducir Redux/Zustand hasta que el scope lo justifique.
+* **Sistema de temas (light/dark):** `src/hooks/use-theme.ts` retorna `Colors.light` o `Colors.dark` según `useColorScheme()`. Todos los colores de UI se consumen vía `useTheme()` — `StyleSheet.create()` solo para geometría (dimensiones, padding, borderRadius). No existen colores hardcodeados en StyleSheet. Ver `design_system.md` §14 para las reglas de implementación y §13 para los tokens de identidad de activo (`assetCdt`, `assetEtf`).
 
 ## 6. Componentes de Shell Implementados
 

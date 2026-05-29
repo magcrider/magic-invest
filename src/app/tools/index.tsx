@@ -6,11 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PageHeader } from '@/components/page-header';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { TOOLS, type ToolDefinition } from '@/constants/tools-data';
 
 function ToolCard({ tool }: { tool: ToolDefinition }) {
   const router = useRouter();
+  const theme  = useTheme();
 
   return (
     <TouchableOpacity
@@ -22,8 +24,8 @@ function ToolCard({ tool }: { tool: ToolDefinition }) {
           <ThemedText type="default" style={styles.cardTitle}>{tool.name}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">{tool.description}</ThemedText>
         </ThemedView>
-        <ThemedView style={styles.iconBox}>
-          <Ionicons name={tool.icon} size={22} color={Tokens.structural.positive} />
+        <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+          <Ionicons name={tool.icon} size={22} color={theme.positive} />
         </ThemedView>
       </ThemedView>
     </TouchableOpacity>
@@ -88,7 +90,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

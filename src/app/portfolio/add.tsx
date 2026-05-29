@@ -1,7 +1,6 @@
 import {
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -10,7 +9,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/themed-view';
-import { Tokens, Spacing, BottomTabInset } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+import { Spacing, BottomTabInset } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 interface AssetOption {
   icon: string;
@@ -57,6 +58,7 @@ const OPTIONS: AssetOption[] = [
 
 export default function AddAssetScreen() {
   const router = useRouter();
+  const theme  = useTheme();
 
   function handleSelect(option: AssetOption) {
     if (!option.enabled || !option.route) return;
@@ -73,22 +75,23 @@ export default function AddAssetScreen() {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.title}>¿Qué quieres agregar?</Text>
-          <Text style={styles.subtitle}>
+          <ThemedText style={styles.title}>¿Qué quieres agregar?</ThemedText>
+          <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
             Selecciona el tipo de activo para registrarlo en tu portafolio.
-          </Text>
+          </ThemedText>
 
           {/* Options list */}
-          <View style={styles.list}>
+          <View style={[styles.list, { backgroundColor: theme.backgroundElement }]}>
             {OPTIONS.map((option, index) => (
               <TouchableOpacity
                 key={option.label}
                 style={[
                   styles.item,
+                  { borderBottomColor: theme.divider },
                   index === 0 && styles.itemFirst,
                   index === OPTIONS.length - 1 && styles.itemLast,
                   !option.enabled && styles.itemDisabled,
@@ -97,26 +100,36 @@ export default function AddAssetScreen() {
                 disabled={!option.enabled}
                 activeOpacity={0.7}
               >
-                <View style={[styles.itemIcon, !option.enabled && styles.itemIconDisabled]}>
+                <View style={[
+                  styles.itemIcon,
+                  { backgroundColor: option.enabled ? theme.background : theme.backgroundSelected },
+                ]}>
                   <Ionicons
                     name={option.icon as any}
                     size={22}
-                    color={option.enabled ? Tokens.neutral.text : Tokens.neutral.muted}
+                    color={option.enabled ? theme.text : theme.textSecondary}
                   />
                 </View>
 
                 <View style={styles.itemBody}>
-                  <Text style={[styles.itemLabel, !option.enabled && styles.itemLabelDisabled]}>
+                  <ThemedText style={[
+                    styles.itemLabel,
+                    { color: option.enabled ? theme.text : theme.textSecondary },
+                  ]}>
                     {option.label}
-                  </Text>
-                  <Text style={styles.itemDesc}>{option.description}</Text>
+                  </ThemedText>
+                  <ThemedText style={[styles.itemDesc, { color: theme.textSecondary }]}>
+                    {option.description}
+                  </ThemedText>
                 </View>
 
                 {option.enabled ? (
-                  <Ionicons name="chevron-forward" size={18} color={Tokens.neutral.muted} />
+                  <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
                 ) : (
-                  <View style={styles.soonBadge}>
-                    <Text style={styles.soonText}>próximamente</Text>
+                  <View style={[styles.soonBadge, { backgroundColor: theme.backgroundSelected }]}>
+                    <ThemedText style={[styles.soonText, { color: theme.textSecondary }]}>
+                      próximamente
+                    </ThemedText>
                   </View>
                 )}
               </TouchableOpacity>
@@ -140,18 +153,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: Tokens.neutral.text,
     marginBottom: Spacing.one,
   },
   subtitle: {
     fontSize: 14,
-    color: Tokens.neutral.muted,
     lineHeight: 20,
     marginBottom: Spacing.four,
   },
-
   list: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     overflow: 'hidden',
   },
@@ -162,45 +171,34 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0DC',
   },
   itemFirst: { borderTopLeftRadius: Spacing.two, borderTopRightRadius: Spacing.two },
   itemLast:  { borderBottomWidth: 0, borderBottomLeftRadius: Spacing.two, borderBottomRightRadius: Spacing.two },
   itemDisabled: { opacity: 0.45 },
-
   itemIcon: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#FAFAF7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  itemIconDisabled: { backgroundColor: '#EBEBЕ8' },
-
   itemBody: { flex: 1 },
   itemLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: Tokens.neutral.text,
     marginBottom: 2,
   },
-  itemLabelDisabled: { color: Tokens.neutral.muted },
   itemDesc: {
     fontSize: 12,
-    color: Tokens.neutral.muted,
     lineHeight: 17,
   },
-
   soonBadge: {
-    backgroundColor: '#E8E8E4',
     paddingHorizontal: Spacing.two,
     paddingVertical: 3,
     borderRadius: 100,
   },
   soonText: {
     fontSize: 11,
-    color: Tokens.neutral.muted,
     fontWeight: '500',
   },
 });

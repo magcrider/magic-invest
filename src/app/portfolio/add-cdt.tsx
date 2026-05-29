@@ -5,7 +5,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -17,7 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 
 import { ThemedView } from '@/components/themed-view';
-import { Tokens, Spacing, BottomTabInset } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+import { Spacing, BottomTabInset } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { formatCurrency, parseNumber } from '@/utils/format';
 import { createCdt } from '@/db/queries/cdt';
 import type { CdtCapitalization } from '@/db/schema';
@@ -66,6 +67,7 @@ function parseCOP(raw: string): number {
 export default function AddCdtScreen() {
   const router = useRouter();
   const db     = useSQLiteContext();
+  const theme  = useTheme();
 
   const [bank,             setBank]             = useState('');
   const [customBank,       setCustomBank]       = useState('');
@@ -128,20 +130,20 @@ export default function AddCdtScreen() {
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-                <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+                <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
               </TouchableOpacity>
-              <View style={styles.headerIcon}>
-                <Ionicons name="time-outline" size={20} color={Tokens.structural.positive} />
+              <View style={[styles.headerIcon, { backgroundColor: theme.positiveSubtle }]}>
+                <Ionicons name="time-outline" size={20} color={theme.assetCdt} />
               </View>
             </View>
-            <Text style={styles.screenTitle}>Registrar CDT</Text>
-            <Text style={styles.screenSubtitle}>
+            <ThemedText style={styles.screenTitle}>Registrar CDT</ThemedText>
+            <ThemedText style={[styles.screenSubtitle, { color: theme.textSecondary }]}>
               Ingresa los datos del CDT que ya tienes en tu banco.
-            </Text>
+            </ThemedText>
 
             {/* Banco */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Banco</Text>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Banco</ThemedText>
               <View style={styles.chipGrid}>
                 {BANKS.map((b) => (
                   <Chip key={b} label={b} selected={bank === b} onPress={() => setBank(b)} />
@@ -149,11 +151,11 @@ export default function AddCdtScreen() {
               </View>
               {bank === 'Otro' && (
                 <TextInput
-                  style={[styles.inputRow, styles.textInput]}
+                  style={[styles.inputRow, styles.textInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
                   value={customBank}
                   onChangeText={setCustomBank}
                   placeholder="Nombre del banco"
-                  placeholderTextColor={Tokens.neutral.muted}
+                  placeholderTextColor={theme.textSecondary}
                   returnKeyType="done"
                 />
               )}
@@ -161,56 +163,56 @@ export default function AddCdtScreen() {
 
             {/* Monto */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Monto</Text>
-              <View style={styles.inputRow}>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Monto</ThemedText>
+              <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.text }]}
                   value={amount}
                   onChangeText={setAmount}
                   placeholder="0"
-                  placeholderTextColor={Tokens.neutral.muted}
+                  placeholderTextColor={theme.textSecondary}
                   keyboardType="numeric"
                   returnKeyType="done"
                 />
-                <Text style={styles.suffix}>COP</Text>
+                <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>COP</ThemedText>
               </View>
             </View>
 
             {/* Tasa EA */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Tasa EA</Text>
-              <View style={styles.inputRow}>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Tasa EA</ThemedText>
+              <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.text }]}
                   value={rate}
                   onChangeText={setRate}
                   placeholder="0.00"
-                  placeholderTextColor={Tokens.neutral.muted}
+                  placeholderTextColor={theme.textSecondary}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                 />
-                <Text style={styles.suffix}>%</Text>
+                <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>%</ThemedText>
               </View>
             </View>
 
             {/* Fecha de inicio */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Fecha de inicio</Text>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Fecha de inicio</ThemedText>
               <TouchableOpacity
-                style={styles.dateButton}
+                style={[styles.dateButton, { backgroundColor: theme.backgroundElement }]}
                 onPress={() => setShowCalendar(true)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.dateButtonText, !isoStart && styles.datePlaceholder]}>
+                <ThemedText style={[styles.dateButtonText, { color: isoStart ? theme.text : theme.textSecondary }]}>
                   {isoStart ? fmtDateDisplay(isoStart) : 'Seleccionar fecha'}
-                </Text>
-                <Ionicons name="calendar-outline" size={18} color={Tokens.neutral.muted} />
+                </ThemedText>
+                <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
 
             {/* Plazo */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Plazo</Text>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Plazo</ThemedText>
               <View style={styles.chipGrid}>
                 {TERM_PRESETS.map((m) => (
                   <Chip
@@ -227,24 +229,24 @@ export default function AddCdtScreen() {
                 />
               </View>
               {termPreset === 'custom' && (
-                <View style={[styles.inputRow, { marginTop: Spacing.two }]}>
+                <View style={[styles.inputRow, { marginTop: Spacing.two, backgroundColor: theme.backgroundElement }]}>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: theme.text }]}
                     value={customTermMonths}
                     onChangeText={setCustomTermMonths}
                     placeholder="Número de meses"
-                    placeholderTextColor={Tokens.neutral.muted}
+                    placeholderTextColor={theme.textSecondary}
                     keyboardType="numeric"
                     returnKeyType="done"
                   />
-                  <Text style={styles.suffix}>meses</Text>
+                  <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>meses</ThemedText>
                 </View>
               )}
             </View>
 
             {/* Capitalización */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Capitalización</Text>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Capitalización</ThemedText>
               <View style={styles.chipGrid}>
                 {CAP_OPTIONS.map((o) => (
                   <Chip
@@ -259,11 +261,11 @@ export default function AddCdtScreen() {
 
             {/* Preview */}
             {isValid && isoEnd && (
-              <View style={styles.previewCard}>
-                <Text style={styles.previewTitle}>VISTA PREVIA</Text>
+              <View style={[styles.previewCard, { backgroundColor: theme.backgroundElement }]}>
+                <ThemedText style={[styles.previewTitle, { color: theme.textSecondary }]}>VISTA PREVIA</ThemedText>
                 <PreviewRow label="Vencimiento"      value={fmtDateDisplay(isoEnd)} />
                 <PreviewRow label="Plazo real"        value={`${termDays} días`} />
-                <View style={styles.previewDivider} />
+                <View style={[styles.previewDivider, { backgroundColor: theme.divider }]} />
                 <PreviewRow label="Rendimiento bruto" value={formatCurrency(grossYield, 'COP')} />
                 <PreviewRow label="Retefuente (4%)"   value={`− ${formatCurrency(retefuente, 'COP')}`} />
                 <PreviewRow
@@ -276,12 +278,18 @@ export default function AddCdtScreen() {
 
             {/* Save */}
             <TouchableOpacity
-              style={[styles.saveButton, (!isValid || saving) && styles.saveButtonDisabled]}
+              style={[
+                styles.saveButton,
+                { backgroundColor: theme.assetCdt },
+                (!isValid || saving) && styles.saveButtonDisabled,
+              ]}
               onPress={handleSave}
               disabled={!isValid || saving}
               activeOpacity={0.8}
             >
-              <Text style={styles.saveText}>{saving ? 'Guardando…' : 'Guardar CDT'}</Text>
+              <ThemedText style={[styles.saveText, { color: '#FFFFFF' }]}>
+                {saving ? 'Guardando…' : 'Guardar CDT'}
+              </ThemedText>
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -301,9 +309,11 @@ export default function AddCdtScreen() {
         >
           <TouchableOpacity activeOpacity={1} style={styles.calendarCard}>
             <View style={styles.calendarHeader}>
-              <Text style={styles.calendarTitle}>Seleccionar fecha de inicio</Text>
+              <ThemedText style={[styles.calendarTitle, { color: '#1F2024' }]}>
+                Seleccionar fecha de inicio
+              </ThemedText>
               <TouchableOpacity onPress={() => setShowCalendar(false)} hitSlop={8}>
-                <Ionicons name="close" size={20} color={Tokens.neutral.muted} />
+                <Ionicons name="close" size={20} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
             <Calendar
@@ -314,19 +324,19 @@ export default function AddCdtScreen() {
               }}
               markedDates={
                 isoStart
-                  ? { [isoStart]: { selected: true, selectedColor: Tokens.structural.positive } }
+                  ? { [isoStart]: { selected: true, selectedColor: theme.assetCdt } }
                   : {}
               }
               theme={{
                 backgroundColor: '#FFFFFF',
                 calendarBackground: '#FFFFFF',
-                selectedDayBackgroundColor: Tokens.structural.positive,
+                selectedDayBackgroundColor: theme.assetCdt,
                 selectedDayTextColor: '#FFFFFF',
-                todayTextColor: Tokens.structural.positive,
-                dayTextColor: Tokens.neutral.text,
-                textDisabledColor: Tokens.neutral.muted,
-                monthTextColor: Tokens.neutral.text,
-                arrowColor: Tokens.structural.positive,
+                todayTextColor: theme.assetCdt,
+                dayTextColor: '#1F2024',
+                textDisabledColor: '#9CA3AF',
+                monthTextColor: '#1F2024',
+                arrowColor: theme.assetCdt,
                 textMonthFontWeight: '600',
                 textDayFontSize: 14,
                 textMonthFontSize: 15,
@@ -340,22 +350,40 @@ export default function AddCdtScreen() {
 }
 
 function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const theme = useTheme();
   return (
     <TouchableOpacity
-      style={[styles.chip, selected && styles.chipSelected]}
+      style={[
+        styles.chip,
+        { backgroundColor: theme.backgroundElement },
+        selected && { backgroundColor: theme.backgroundSelected, borderColor: theme.assetCdt },
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+      <ThemedText style={[
+        styles.chipText,
+        { color: selected ? theme.assetCdt : theme.text },
+        selected ? { fontWeight: '600' as const } : undefined,
+      ]}>
+        {label}
+      </ThemedText>
     </TouchableOpacity>
   );
 }
 
 function PreviewRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  const theme = useTheme();
   return (
     <View style={styles.previewRow}>
-      <Text style={styles.previewLabel}>{label}</Text>
-      <Text style={[styles.previewValue, highlight && styles.previewValueHL]}>{value}</Text>
+      <ThemedText style={[styles.previewLabel, { color: theme.textSecondary }]}>{label}</ThemedText>
+      <ThemedText style={[
+        styles.previewValue,
+        { color: highlight ? theme.assetCdt : theme.text },
+        highlight ? { fontWeight: '700' as const, fontSize: 15 } : undefined,
+      ]}>
+        {value}
+      </ThemedText>
     </View>
   );
 }
@@ -376,19 +404,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: `${Tokens.structural.positive}18`,
     alignItems: 'center',
     justifyContent: 'center',
   },
   screenTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: Tokens.neutral.text,
     marginBottom: Spacing.one,
   },
   screenSubtitle: {
     fontSize: 14,
-    color: Tokens.neutral.muted,
     lineHeight: 20,
     marginBottom: Spacing.four,
   },
@@ -396,7 +421,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: Tokens.neutral.text,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: Spacing.two,
@@ -410,31 +434,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderRadius: 100,
-    backgroundColor: '#F0F0EC',
     borderWidth: 1,
     borderColor: 'transparent',
   },
-  chipSelected: {
-    backgroundColor: `${Tokens.structural.positive}18`,
-    borderColor: Tokens.structural.positive,
-  },
-  chipText:         { fontSize: 14, color: Tokens.neutral.text },
-  chipTextSelected: { color: Tokens.structural.positive, fontWeight: '600' },
+  chipText: { fontSize: 14 },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
   },
-  dateButtonText:  { fontSize: 16, color: Tokens.neutral.text },
-  datePlaceholder: { color: Tokens.neutral.muted },
+  dateButtonText: { fontSize: 16 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
@@ -443,13 +458,11 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: Tokens.neutral.text,
     padding: 0,
   },
-  suffix:    { fontSize: 14, color: Tokens.neutral.muted },
-  textInput: { fontSize: 16, color: Tokens.neutral.text, marginTop: Spacing.two },
+  suffix:    { fontSize: 14 },
+  textInput: { fontSize: 16, marginTop: Spacing.two },
   previewCard: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     padding: Spacing.three,
     marginBottom: Spacing.four,
@@ -458,14 +471,12 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: 11,
     fontWeight: '600',
-    color: Tokens.neutral.muted,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     marginBottom: Spacing.two,
   },
   previewDivider: {
     height: 1,
-    backgroundColor: '#E0E0DC',
     marginVertical: Spacing.two,
   },
   previewRow: {
@@ -473,17 +484,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  previewLabel:   { fontSize: 14, color: Tokens.neutral.muted },
-  previewValue:   { fontSize: 14, fontWeight: '500', color: Tokens.neutral.text },
-  previewValueHL: { color: Tokens.structural.positive, fontWeight: '700', fontSize: 15 },
+  previewLabel: { fontSize: 14 },
+  previewValue: { fontSize: 14, fontWeight: '500' },
   saveButton: {
-    backgroundColor: Tokens.structural.positive,
     paddingVertical: Spacing.three,
     borderRadius: Spacing.two,
     alignItems: 'center',
   },
   saveButtonDisabled: { opacity: 0.4 },
-  saveText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  saveText: { fontSize: 16, fontWeight: '600' },
 
   // Calendar modal
   modalBackdrop: {
@@ -508,6 +517,5 @@ const styles = StyleSheet.create({
   calendarTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Tokens.neutral.text,
   },
 });

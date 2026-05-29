@@ -8,7 +8,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { parseNumber } from '@/utils/format';
 
 // ─── Tipos y conversiones ─────────────────────────────────────────────────────
@@ -88,17 +89,25 @@ interface TabBarProps {
 }
 
 function TabBar({ active, onSelect }: TabBarProps) {
+  const theme = useTheme();
   return (
-    <View style={tabStyles.bar}>
+    <View style={[tabStyles.bar, { backgroundColor: theme.divider }]}>
       {TABS.map((tab) => (
         <TouchableOpacity
           key={tab.id}
-          style={[tabStyles.tab, active === tab.id && tabStyles.tabActive]}
+          style={[
+            tabStyles.tab,
+            active === tab.id && [tabStyles.tabActive, { backgroundColor: theme.background }],
+          ]}
           onPress={() => onSelect(tab.id)}
           activeOpacity={0.7}>
           <ThemedText
             type="smallBold"
-            style={[tabStyles.label, active === tab.id && tabStyles.labelActive]}>
+            style={[
+              tabStyles.label,
+              { color: theme.textSecondary },
+              active === tab.id && { color: theme.text },
+            ]}>
             {tab.label}
           </ThemedText>
         </TouchableOpacity>
@@ -110,7 +119,6 @@ function TabBar({ active, onSelect }: TabBarProps) {
 const tabStyles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    backgroundColor: '#E0E0DC',
     borderRadius: Spacing.two,
     padding: 3,
   },
@@ -121,7 +129,6 @@ const tabStyles = StyleSheet.create({
     alignItems: 'center',
   },
   tabActive: {
-    backgroundColor: '#FAFAF7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -129,11 +136,7 @@ const tabStyles = StyleSheet.create({
     elevation: 2,
   },
   label: {
-    color: Tokens.neutral.muted,
     fontSize: 13,
-  },
-  labelActive: {
-    color: Tokens.neutral.text,
   },
 });
 
@@ -141,6 +144,7 @@ const tabStyles = StyleSheet.create({
 
 export default function RateConverterScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [activeTab, setActiveTab] = useState<RateTab>('NM');
   const [inputValue, setInputValue] = useState('');
@@ -203,10 +207,10 @@ export default function RateConverterScreen() {
 
           <ThemedView style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <ThemedView style={styles.iconBox}>
-              <Ionicons name="swap-horizontal-outline" size={22} color={Tokens.structural.positive} />
+            <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+              <Ionicons name="swap-horizontal-outline" size={22} color={theme.positive} />
             </ThemedView>
           </ThemedView>
 
@@ -235,7 +239,7 @@ export default function RateConverterScreen() {
           </ThemedView>
 
           <TouchableOpacity
-            style={[styles.button, !isValid() && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: theme.positive }, !isValid() && styles.buttonDisabled]}
             onPress={handleConvert}
             disabled={!isValid()}
             activeOpacity={0.8}>
@@ -274,7 +278,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -292,7 +295,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   button: {
-    backgroundColor: Tokens.structural.positive,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',

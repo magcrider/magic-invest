@@ -9,7 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { CurrencySelector } from '@/components/calculator/currency-selector';
 import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { type Currency, formatCurrency, formatMonths, parseNumber } from '@/utils/format';
 
 interface PayoffResult {
@@ -35,6 +36,7 @@ interface ComparisonBarsProps {
 }
 
 function ComparisonBars({ monthsBase, monthsExtra }: ComparisonBarsProps) {
+  const theme = useTheme();
   return (
     <ThemedView style={barStyles.container}>
       <ThemedText type="small" themeColor="textSecondary" style={barStyles.title}>
@@ -45,10 +47,10 @@ function ComparisonBars({ monthsBase, monthsExtra }: ComparisonBarsProps) {
         <ThemedText type="small" themeColor="textSecondary" style={barStyles.label}>
           Solo mínimo
         </ThemedText>
-        <View style={barStyles.track}>
-          <View style={[barStyles.fill, { flex: monthsBase, backgroundColor: '#C8C8C2' }]} />
+        <View style={[barStyles.track, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[barStyles.fill, { flex: monthsBase, backgroundColor: theme.divider }]} />
         </View>
-        <ThemedText type="small" style={barStyles.months}>
+        <ThemedText type="small" style={[barStyles.months, { color: theme.textSecondary }]}>
           {monthsBase}m
         </ThemedText>
       </View>
@@ -57,11 +59,11 @@ function ComparisonBars({ monthsBase, monthsExtra }: ComparisonBarsProps) {
         <ThemedText type="small" themeColor="textSecondary" style={barStyles.label}>
           Con extra
         </ThemedText>
-        <View style={barStyles.track}>
-          <View style={[barStyles.fill, { flex: monthsExtra, backgroundColor: Tokens.structural.positive }]} />
+        <View style={[barStyles.track, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[barStyles.fill, { flex: monthsExtra, backgroundColor: theme.positive }]} />
           <View style={{ flex: monthsBase - monthsExtra }} />
         </View>
-        <ThemedText type="small" style={[barStyles.months, barStyles.monthsHighlight]}>
+        <ThemedText type="small" style={[barStyles.months, { color: theme.positive, fontWeight: '600' as const }]}>
           {monthsExtra}m
         </ThemedText>
       </View>
@@ -87,7 +89,6 @@ const barStyles = StyleSheet.create({
     borderRadius: 5,
     flexDirection: 'row',
     overflow: 'hidden',
-    backgroundColor: '#F0F0EC',
   },
   fill: {
     borderRadius: 5,
@@ -95,18 +96,14 @@ const barStyles = StyleSheet.create({
   months: {
     width: 32,
     textAlign: 'right',
-    color: Tokens.neutral.muted,
     fontSize: 12,
     flexShrink: 0,
-  },
-  monthsHighlight: {
-    color: Tokens.structural.positive,
-    fontWeight: '600',
   },
 });
 
 export default function DebtFreedomScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [currency, setCurrency] = useState<Currency>('COP');
   const [balance, setBalance] = useState('');
@@ -156,7 +153,7 @@ export default function DebtFreedomScreen() {
     ? [
         { label: 'Tiempo para quedar libre', value: formatMonths(result.base.months) },
         { label: 'Total pagado', value: formatCurrency(result.base.totalPaid, currency) },
-        { label: 'Intereses totales', value: formatCurrency(result.base.totalInterest, currency), color: Tokens.structural.risk },
+        { label: 'Intereses totales', value: formatCurrency(result.base.totalInterest, currency), color: theme.risk },
       ]
     : [];
 
@@ -164,7 +161,7 @@ export default function DebtFreedomScreen() {
     ? [
         { label: 'Tiempo para quedar libre', value: formatMonths(result.accelerated.months), highlight: true },
         { label: 'Total pagado', value: formatCurrency(result.accelerated.totalPaid, currency) },
-        { label: 'Intereses totales', value: formatCurrency(result.accelerated.totalInterest, currency), color: Tokens.structural.positive },
+        { label: 'Intereses totales', value: formatCurrency(result.accelerated.totalInterest, currency), color: theme.positive },
       ]
     : [];
 
@@ -174,7 +171,7 @@ export default function DebtFreedomScreen() {
   const savingsRows: ResultRow[] = result?.accelerated
     ? [
         { label: 'Meses que te ahorras', value: formatMonths(savedMonths), highlight: true },
-        { label: 'Intereses que no pagas', value: formatCurrency(savedInterest, currency), color: Tokens.structural.positive },
+        { label: 'Intereses que no pagas', value: formatCurrency(savedInterest, currency), color: theme.positive },
       ]
     : [];
 
@@ -190,10 +187,10 @@ export default function DebtFreedomScreen() {
 
           <ThemedView style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <ThemedView style={styles.iconBox}>
-              <Ionicons name="remove-circle-outline" size={22} color={Tokens.structural.positive} />
+            <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+              <Ionicons name="remove-circle-outline" size={22} color={theme.positive} />
             </ThemedView>
           </ThemedView>
 
@@ -242,7 +239,7 @@ export default function DebtFreedomScreen() {
           </ThemedView>
 
           <TouchableOpacity
-            style={[styles.button, !isValid() && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: theme.positive }, !isValid() && styles.buttonDisabled]}
             onPress={handleCalculate}
             disabled={!isValid()}
             activeOpacity={0.8}>
@@ -252,9 +249,9 @@ export default function DebtFreedomScreen() {
           </TouchableOpacity>
 
           {paymentTooLow && (
-            <ThemedView style={styles.alertBox}>
-              <Ionicons name="alert-circle-outline" size={24} color={Tokens.structural.attention} />
-              <ThemedText type="small" style={styles.alertText}>
+            <ThemedView style={[styles.alertBox, { backgroundColor: theme.attentionSubtle }]}>
+              <Ionicons name="alert-circle-outline" size={24} color={theme.attention} />
+              <ThemedText type="small" style={[styles.alertText, { color: theme.attention }]}>
                 El pago mínimo no alcanza a cubrir los intereses mensuales de esta deuda. Aumenta el pago mínimo para poder saldar la deuda.
               </ThemedText>
             </ThemedView>
@@ -318,7 +315,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -333,7 +329,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   button: {
-    backgroundColor: Tokens.structural.positive,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -345,14 +340,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.two,
-    backgroundColor: '#C0855218',
     borderRadius: Spacing.three,
     padding: Spacing.three,
     marginBottom: Spacing.four,
   },
   alertText: {
     flex: 1,
-    color: Tokens.structural.attention,
     lineHeight: 20,
   },
   resultSection: {

@@ -1,7 +1,8 @@
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing, Tokens } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 interface Props {
   label: string;
@@ -13,16 +14,18 @@ interface Props {
 }
 
 export function InputField({ label, value, onChangeText, suffix, placeholder = '0', hint }: Props) {
+  const theme = useTheme();
+
   return (
     <View style={styles.container}>
-      <ThemedText type="small" style={styles.label}>{label}</ThemedText>
-      <View style={styles.inputRow}>
+      <ThemedText type="small" style={[styles.label, { color: theme.text }]}>{label}</ThemedText>
+      <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: theme.text }]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={Tokens.neutral.muted}
+          placeholderTextColor={theme.textSecondary}
           keyboardType="decimal-pad"
           returnKeyType="done"
         />
@@ -45,12 +48,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: '600',
-    color: Tokens.neutral.text,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
@@ -59,7 +60,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: Tokens.neutral.text,
     padding: 0,
   },
   suffix: {

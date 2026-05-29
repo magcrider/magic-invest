@@ -9,7 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { CurrencySelector } from '@/components/calculator/currency-selector';
 import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { type Currency, formatCurrency, formatPercent, abbreviateValue, parseNumber } from '@/utils/format';
 
 // ─── Lógica de cálculo ────────────────────────────────────────────────────────
@@ -43,7 +44,8 @@ interface ValueBarsProps {
 }
 
 function ValueBars({ grossValue, netValue, currency }: ValueBarsProps) {
-  const max = grossValue;
+  const theme    = useTheme();
+  const max      = grossValue;
   const grossFlex = 100;
   const netFlex   = Math.round((netValue / max) * 100);
 
@@ -57,11 +59,11 @@ function ValueBars({ grossValue, netValue, currency }: ValueBarsProps) {
         <ThemedText type="small" themeColor="textSecondary" style={barStyles.label}>
           Sin TER
         </ThemedText>
-        <View style={barStyles.track}>
-          <View style={[barStyles.fill, { flex: grossFlex, backgroundColor: Tokens.structural.positive }]} />
+        <View style={[barStyles.track, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[barStyles.fill, { flex: grossFlex, backgroundColor: theme.positive }]} />
           <View style={{ flex: 100 - grossFlex }} />
         </View>
-        <ThemedText type="small" style={[barStyles.amount, { color: Tokens.structural.positive }]}>
+        <ThemedText type="small" style={[barStyles.amount, { color: theme.positive }]}>
           {abbreviateValue(grossValue, currency)}
         </ThemedText>
       </View>
@@ -70,11 +72,11 @@ function ValueBars({ grossValue, netValue, currency }: ValueBarsProps) {
         <ThemedText type="small" themeColor="textSecondary" style={barStyles.label}>
           Con TER
         </ThemedText>
-        <View style={barStyles.track}>
-          <View style={[barStyles.fill, { flex: netFlex, backgroundColor: Tokens.structural.attention }]} />
+        <View style={[barStyles.track, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[barStyles.fill, { flex: netFlex, backgroundColor: theme.attention }]} />
           <View style={{ flex: 100 - netFlex }} />
         </View>
-        <ThemedText type="small" style={[barStyles.amount, { color: Tokens.structural.attention }]}>
+        <ThemedText type="small" style={[barStyles.amount, { color: theme.attention }]}>
           {abbreviateValue(netValue, currency)}
         </ThemedText>
       </View>
@@ -93,7 +95,6 @@ const barStyles = StyleSheet.create({
     borderRadius: 5,
     flexDirection: 'row',
     overflow: 'hidden',
-    backgroundColor: '#F0F0EC',
   },
   fill: { borderRadius: 5 },
   amount: { width: 52, textAlign: 'right', fontSize: 12, flexShrink: 0 },
@@ -103,6 +104,7 @@ const barStyles = StyleSheet.create({
 
 export default function FeeDragScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [currency, setCurrency] = useState<Currency>('COP');
   const [capital, setCapital]   = useState('');
@@ -140,7 +142,7 @@ export default function FeeDragScreen() {
         {
           label: 'Valor final sin comisión',
           value: formatCurrency(result.fvBruto, currency),
-          color: Tokens.structural.positive,
+          color: theme.positive,
         },
         {
           label: 'Valor final con TER',
@@ -150,12 +152,12 @@ export default function FeeDragScreen() {
         {
           label: 'Capital que se llevan las comisiones',
           value: formatCurrency(result.feeCost, currency),
-          color: Tokens.structural.risk,
+          color: theme.risk,
         },
         {
           label: '% de tu ganancia potencial perdida',
           value: formatPercent(result.feePct),
-          color: Tokens.structural.risk,
+          color: theme.risk,
         },
       ]
     : [];
@@ -172,10 +174,10 @@ export default function FeeDragScreen() {
 
           <ThemedView style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <ThemedView style={styles.iconBox}>
-              <Ionicons name="hourglass-outline" size={22} color={Tokens.structural.positive} />
+            <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+              <Ionicons name="hourglass-outline" size={22} color={theme.positive} />
             </ThemedView>
           </ThemedView>
 
@@ -224,7 +226,7 @@ export default function FeeDragScreen() {
           </ThemedView>
 
           <TouchableOpacity
-            style={[styles.button, !isValid() && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: theme.positive }, !isValid() && styles.buttonDisabled]}
             onPress={handleCalculate}
             disabled={!isValid()}
             activeOpacity={0.8}>
@@ -235,11 +237,11 @@ export default function FeeDragScreen() {
 
           {result && (
             <ThemedView style={styles.resultSection}>
-              <ThemedView style={styles.costBox}>
+              <ThemedView style={[styles.costBox, { backgroundColor: theme.riskSubtle }]}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.costLabel}>
                   COSTO TOTAL DE COMISIONES
                 </ThemedText>
-                <ThemedText style={styles.costValue}>
+                <ThemedText style={[styles.costValue, { color: theme.risk }]}>
                   {formatCurrency(result.feeCost, currency)}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.costSub}>
@@ -282,7 +284,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -297,7 +298,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   button: {
-    backgroundColor: Tokens.structural.positive,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -313,11 +313,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
     borderRadius: Spacing.three,
-    backgroundColor: '#6B4E7118',
     padding: Spacing.four,
   },
   costLabel: { letterSpacing: 1 },
-  costValue: { fontSize: 32, fontWeight: '700', lineHeight: 40, color: Tokens.structural.risk },
+  costValue: { fontSize: 32, fontWeight: '700', lineHeight: 40 },
   costSub: { textAlign: 'center' },
   disclaimer: {
     textAlign: 'center',

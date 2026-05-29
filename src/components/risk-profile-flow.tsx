@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Tokens, Spacing } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import {
   RISK_QUESTIONS,
   PROFILE_CONFIG,
@@ -16,7 +18,19 @@ interface Props {
   onComplete: (profile: RiskProfile) => Promise<void>;
 }
 
+type ThemeColors = ReturnType<typeof useTheme>;
+
+function getProfileThemeColor(label: RiskProfileLabel, theme: ThemeColors): string {
+  switch (label) {
+    case 'conservador': return theme.positive;
+    case 'moderado':    return theme.attention;
+    case 'arriesgado':  return theme.risk;
+  }
+}
+
 export function RiskProfileFlow({ onComplete }: Props) {
+  const theme = useTheme();
+
   const [step, setStep]       = useState(0);
   const [answers, setAnswers] = useState<(string | null)[]>(
     Array(RISK_QUESTIONS.length).fill(null)
@@ -67,32 +81,40 @@ export function RiskProfileFlow({ onComplete }: Props) {
 
   return (
     <View style={styles.root}>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { flex: progress }]} />
+      <View style={[styles.progressTrack, { backgroundColor: theme.divider }]}>
+        <View style={[styles.progressFill, { flex: progress, backgroundColor: theme.positive }]} />
         <View style={{ flex: 1 - progress }} />
       </View>
 
       {!isResult && question ? (
         <View style={styles.questionContainer}>
-          <Text style={styles.stepLabel}>
+          <ThemedText style={[styles.stepLabel, { color: theme.textSecondary }]}>
             {step + 1} de {RISK_QUESTIONS.length}
-          </Text>
-          <Text style={styles.questionText}>{question.question}</Text>
+          </ThemedText>
+          <ThemedText style={styles.questionText}>{question.question}</ThemedText>
           <View style={styles.optionsList}>
             {question.options.map((opt) => {
               const selected = answers[step] === opt.id;
               return (
                 <TouchableOpacity
                   key={opt.id}
-                  style={[styles.optionCard, selected && styles.optionCardSelected]}
+                  style={[
+                    styles.optionCard,
+                    { backgroundColor: theme.backgroundElement },
+                    selected && { backgroundColor: theme.positiveSubtle, borderColor: theme.positive },
+                  ]}
                   onPress={() => selectOption(opt.id)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                  <ThemedText style={[
+                    styles.optionText,
+                    { color: selected ? theme.positive : theme.text },
+                    selected ? { fontWeight: '500' as const } : undefined,
+                  ]}>
                     {opt.label}
-                  </Text>
+                  </ThemedText>
                   {selected && (
-                    <Ionicons name="checkmark-circle" size={18} color={Tokens.structural.positive} />
+                    <Ionicons name="checkmark-circle" size={18} color={theme.positive} />
                   )}
                 </TouchableOpacity>
               );
@@ -117,8 +139,10 @@ interface ResultScreenProps {
 }
 
 function ResultScreen({ profileLabel, saving, onConfirm }: ResultScreenProps) {
-  const config = PROFILE_CONFIG[profileLabel];
-  const bands  = PROFILE_BANDS[profileLabel];
+  const theme        = useTheme();
+  const config       = PROFILE_CONFIG[profileLabel];
+  const bands        = PROFILE_BANDS[profileLabel];
+  const profileColor = getProfileThemeColor(profileLabel, theme);
 
   return (
     <ScrollView
@@ -126,43 +150,43 @@ function ResultScreen({ profileLabel, saving, onConfirm }: ResultScreenProps) {
       contentContainerStyle={styles.resultContainer}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.resultHeading}>Tu perfil de inversión</Text>
+      <ThemedText style={[styles.resultHeading, { color: theme.textSecondary }]}>
+        Tu perfil de inversión
+      </ThemedText>
 
-      <View style={[styles.profileBadge, { borderColor: config.color + '80' }]}>
-        <View style={[styles.profileDot, { backgroundColor: config.color }]} />
-        <Text style={[styles.profileTitle, { color: config.color }]}>{config.title}</Text>
+      <View style={[styles.profileBadge, { borderColor: profileColor + '80' }]}>
+        <View style={[styles.profileDot, { backgroundColor: profileColor }]} />
+        <ThemedText style={[styles.profileTitle, { color: profileColor }]}>{config.title}</ThemedText>
       </View>
 
-      <Text style={styles.profileDescription}>{config.description}</Text>
+      <ThemedText style={styles.profileDescription}>{config.description}</ThemedText>
 
-      <View style={styles.bandsCard}>
-        <Text style={styles.bandsCardTitle}>Distribución sugerida</Text>
-        <BandRow
-          label="CDTs"
-          min={bands.cdt_min}
-          max={bands.cdt_max}
-          color={Tokens.structural.positive}
-        />
-        <View style={styles.bandDivider} />
-        <BandRow
-          label="ETFs"
-          min={bands.etf_min}
-          max={bands.etf_max}
-          color={Tokens.structural.attention}
-        />
+      <View style={[styles.bandsCard, { backgroundColor: theme.backgroundElement }]}>
+        <ThemedText style={[styles.bandsCardTitle, { color: theme.textSecondary }]}>
+          Distribución sugerida
+        </ThemedText>
+        <BandRow label="CDTs" min={bands.cdt_min} max={bands.cdt_max} color={theme.assetCdt} />
+        <View style={[styles.bandDivider, { backgroundColor: theme.divider }]} />
+        <BandRow label="ETFs" min={bands.etf_min} max={bands.etf_max} color={theme.assetEtf} />
       </View>
 
-      <Text style={styles.bandsNote}>
+      <ThemedText style={[styles.bandsNote, { color: theme.textSecondary }]}>
         Estas bandas son un punto de partida. Puedes ajustarlas más adelante desde tu perfil.
-      </Text>
+      </ThemedText>
 
       <TouchableOpacity
-        style={[styles.confirmButton, saving && styles.confirmButtonDisabled]}
+        style={[
+          styles.confirmButton,
+          { backgroundColor: theme.positive },
+          saving && styles.confirmButtonDisabled,
+        ]}
         onPress={onConfirm}
         disabled={saving}
         activeOpacity={0.8}
       >
-        <Text style={styles.confirmText}>{saving ? 'Guardando…' : 'Comenzar'}</Text>
+        <ThemedText style={[styles.confirmText, { color: '#FFFFFF' }]}>
+          {saving ? 'Guardando…' : 'Comenzar'}
+        </ThemedText>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -179,10 +203,10 @@ function BandRow({ label, min, max, color }: BandRowProps) {
   return (
     <View style={styles.bandRow}>
       <View style={[styles.bandDot, { backgroundColor: color }]} />
-      <Text style={styles.bandLabel}>{label}</Text>
-      <Text style={[styles.bandValue, { color }]}>
+      <ThemedText style={styles.bandLabel}>{label}</ThemedText>
+      <ThemedText style={[styles.bandValue, { color }]}>
         {Math.round(min * 100)}–{Math.round(max * 100)}%
-      </Text>
+      </ThemedText>
     </View>
   );
 }
@@ -194,12 +218,9 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 3,
     flexDirection: 'row',
-    backgroundColor: '#E5E7EB',
     marginBottom: Spacing.four,
   },
-  progressFill: {
-    backgroundColor: Tokens.structural.positive,
-  },
+  progressFill: {},
 
   // Question step
   questionContainer: {
@@ -208,7 +229,6 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     fontSize: 12,
-    color: Tokens.neutral.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: Spacing.two,
@@ -216,7 +236,6 @@ const styles = StyleSheet.create({
   questionText: {
     fontSize: 20,
     fontWeight: '600',
-    color: Tokens.neutral.text,
     lineHeight: 28,
     marginBottom: Spacing.four,
   },
@@ -230,22 +249,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.two,
-    backgroundColor: '#F0F0EC',
     borderWidth: 1,
     borderColor: 'transparent',
   },
-  optionCardSelected: {
-    backgroundColor: `${Tokens.structural.positive}18`,
-    borderColor: Tokens.structural.positive,
-  },
   optionText: {
     fontSize: 16,
-    color: Tokens.neutral.text,
     fontWeight: '400',
-  },
-  optionTextSelected: {
-    color: Tokens.structural.positive,
-    fontWeight: '500',
   },
 
   // Result step
@@ -258,7 +267,6 @@ const styles = StyleSheet.create({
   },
   resultHeading: {
     fontSize: 12,
-    color: Tokens.neutral.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: Spacing.three,
@@ -287,25 +295,21 @@ const styles = StyleSheet.create({
   profileDescription: {
     fontSize: 15,
     lineHeight: 23,
-    color: Tokens.neutral.text,
     marginBottom: Spacing.four,
   },
   bandsCard: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     padding: Spacing.three,
     marginBottom: Spacing.three,
   },
   bandsCardTitle: {
     fontSize: 12,
-    color: Tokens.neutral.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: Spacing.three,
   },
   bandDivider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
     marginVertical: Spacing.two,
   },
   bandRow: {
@@ -321,7 +325,6 @@ const styles = StyleSheet.create({
   bandLabel: {
     flex: 1,
     fontSize: 14,
-    color: Tokens.neutral.text,
   },
   bandValue: {
     fontSize: 14,
@@ -329,12 +332,10 @@ const styles = StyleSheet.create({
   },
   bandsNote: {
     fontSize: 13,
-    color: Tokens.neutral.muted,
     lineHeight: 19,
     marginBottom: Spacing.five,
   },
   confirmButton: {
-    backgroundColor: Tokens.structural.positive,
     paddingVertical: Spacing.three,
     borderRadius: Spacing.two,
     alignItems: 'center',
@@ -345,6 +346,5 @@ const styles = StyleSheet.create({
   confirmText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

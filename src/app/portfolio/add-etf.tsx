@@ -4,7 +4,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -15,7 +14,9 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/themed-view';
-import { Tokens, Spacing, BottomTabInset } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+import { Spacing, BottomTabInset } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { parseNumber } from '@/utils/format';
 import { createEtf } from '@/db/queries/etf';
 
@@ -51,6 +52,7 @@ function parseCOP(raw: string): number {
 export default function AddEtfScreen() {
   const router = useRouter();
   const db     = useSQLiteContext();
+  const theme  = useTheme();
 
   // Identification
   const [ticker, setTicker] = useState('');
@@ -65,8 +67,8 @@ export default function AddEtfScreen() {
   const [priceUsd,  setPriceUsd]  = useState('');
 
   // Shares (always optional)
-  const [shares,          setShares]          = useState('');
-  const [showSharesInfo,  setShowSharesInfo]  = useState(false);
+  const [shares,         setShares]         = useState('');
+  const [showSharesInfo, setShowSharesInfo] = useState(false);
 
   // TER (optional)
   const [ter,         setTer]         = useState('');
@@ -153,27 +155,27 @@ export default function AddEtfScreen() {
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-                <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+                <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
               </TouchableOpacity>
-              <View style={styles.headerIcon}>
-                <Ionicons name="analytics-outline" size={20} color={Tokens.structural.attention} />
+              <View style={[styles.headerIcon, { backgroundColor: theme.positiveSubtle }]}>
+                <Ionicons name="analytics-outline" size={20} color={theme.assetEtf} />
               </View>
             </View>
-            <Text style={styles.screenTitle}>Registrar ETF</Text>
-            <Text style={styles.screenSubtitle}>
+            <ThemedText style={styles.screenTitle}>Registrar ETF</ThemedText>
+            <ThemedText style={[styles.screenSubtitle, { color: theme.textSecondary }]}>
               Ingresa los datos del ETF que ya tienes en tu broker.
-            </Text>
+            </ThemedText>
 
             {/* ── Ticker ── */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Ticker</Text>
-              <View style={styles.inputRow}>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Ticker</ThemedText>
+              <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                 <TextInput
-                  style={[styles.input, styles.tickerInput]}
+                  style={[styles.input, styles.tickerInput, { color: theme.text }]}
                   value={ticker}
                   onChangeText={handleTickerChange}
                   placeholder="VOO"
-                  placeholderTextColor={Tokens.neutral.muted}
+                  placeholderTextColor={theme.textSecondary}
                   autoCapitalize="characters"
                   autoCorrect={false}
                   returnKeyType="done"
@@ -181,25 +183,27 @@ export default function AddEtfScreen() {
                 />
               </View>
               {ETF_CATALOG[ticker] ? (
-                <Text style={styles.catalogHint}>
-                  <Ionicons name="checkmark-circle" size={13} color={Tokens.structural.positive} />
+                <ThemedText style={[styles.catalogHint, { color: theme.positive }]}>
+                  <Ionicons name="checkmark-circle" size={13} color={theme.positive} />
                   {'  '}{ETF_CATALOG[ticker]}
-                </Text>
+                </ThemedText>
               ) : ticker.length >= 2 ? (
-                <Text style={styles.fieldHint}>Ticker no reconocido — escribe el nombre del fondo manualmente.</Text>
+                <ThemedText style={[styles.fieldHint, { color: theme.textSecondary }]}>
+                  Ticker no reconocido — escribe el nombre del fondo manualmente.
+                </ThemedText>
               ) : null}
             </View>
 
             {/* ── Nombre del fondo ── */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Nombre del fondo</Text>
-              <View style={styles.inputRow}>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Nombre del fondo</ThemedText>
+              <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.text }]}
                   value={name}
                   onChangeText={setName}
                   placeholder="Nombre completo del ETF"
-                  placeholderTextColor={Tokens.neutral.muted}
+                  placeholderTextColor={theme.textSecondary}
                   returnKeyType="done"
                 />
               </View>
@@ -207,10 +211,10 @@ export default function AddEtfScreen() {
 
             {/* ── Costo de adquisición ── */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Costo de adquisición</Text>
-              <Text style={styles.fieldHint}>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Costo de adquisición</ThemedText>
+              <ThemedText style={[styles.fieldHint, { color: theme.textSecondary }]}>
                 Necesitamos esto para calcular tu ganancia o pérdida cuando conectemos precios de mercado.
-              </Text>
+              </ThemedText>
 
               {/* Currency selector */}
               <View style={[styles.chipGrid, { marginTop: Spacing.two, marginBottom: Spacing.three }]}>
@@ -228,41 +232,43 @@ export default function AddEtfScreen() {
 
               {entryMode === 'COP' ? (
                 <>
-                  <Text style={styles.inputLabel}>Total invertido</Text>
-                  <View style={styles.inputRow}>
-                    <Text style={styles.prefix}>$</Text>
+                  <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Total invertido</ThemedText>
+                  <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
+                    <ThemedText style={[styles.prefix, { color: theme.textSecondary }]}>$</ThemedText>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { color: theme.text }]}
                       value={totalCop}
                       onChangeText={setTotalCop}
                       placeholder="2 000 000"
-                      placeholderTextColor={Tokens.neutral.muted}
+                      placeholderTextColor={theme.textSecondary}
                       keyboardType="numeric"
                       returnKeyType="done"
                     />
-                    <Text style={styles.suffix}>COP</Text>
+                    <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>COP</ThemedText>
                   </View>
 
-                  <Text style={[styles.inputLabel, { marginTop: Spacing.three }]}>TRM (tasa de cambio COP/USD)</Text>
-                  <View style={styles.inputRow}>
+                  <ThemedText style={[styles.inputLabel, { marginTop: Spacing.three, color: theme.textSecondary }]}>
+                    TRM (tasa de cambio COP/USD)
+                  </ThemedText>
+                  <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { color: theme.text }]}
                       value={trm}
                       onChangeText={setTrm}
                       placeholder="4200"
-                      placeholderTextColor={Tokens.neutral.muted}
+                      placeholderTextColor={theme.textSecondary}
                       keyboardType="decimal-pad"
                       returnKeyType="done"
                     />
-                    <Text style={styles.suffix}>COP / USD</Text>
+                    <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>COP / USD</ThemedText>
                   </View>
-                  <Text style={styles.fieldHint}>
+                  <ThemedText style={[styles.fieldHint, { color: theme.textSecondary }]}>
                     Busca "TRM Colombia hoy" en Google para obtener el valor actual. Próximamente la consultaremos automáticamente.
-                  </Text>
+                  </ThemedText>
                   {totalCopNum > 0 && trmNum > 0 && (
-                    <Text style={styles.computedHint}>
+                    <ThemedText style={[styles.computedHint, { color: theme.assetEtf }]}>
                       → Equivalente: USD {(totalCopNum / trmNum).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </Text>
+                    </ThemedText>
                   )}
                 </>
               ) : (
@@ -283,41 +289,41 @@ export default function AddEtfScreen() {
 
                   {costMode === 'total' ? (
                     <>
-                      <View style={styles.inputRow}>
+                      <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                         <TextInput
-                          style={styles.input}
+                          style={[styles.input, { color: theme.text }]}
                           value={totalUsd}
                           onChangeText={setTotalUsd}
                           placeholder="0.00"
-                          placeholderTextColor={Tokens.neutral.muted}
+                          placeholderTextColor={theme.textSecondary}
                           keyboardType="decimal-pad"
                           returnKeyType="done"
                         />
-                        <Text style={styles.suffix}>USD total</Text>
+                        <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>USD total</ThemedText>
                       </View>
                       {totalUsdNum > 0 && sharesNum > 0 && (
-                        <Text style={styles.computedHint}>
+                        <ThemedText style={[styles.computedHint, { color: theme.assetEtf }]}>
                           → Precio por acción: USD {(totalUsdNum / sharesNum).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </Text>
+                        </ThemedText>
                       )}
                     </>
                   ) : (
                     <>
-                      <View style={styles.inputRow}>
+                      <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                         <TextInput
-                          style={styles.input}
+                          style={[styles.input, { color: theme.text }]}
                           value={priceUsd}
                           onChangeText={setPriceUsd}
                           placeholder="0.00"
-                          placeholderTextColor={Tokens.neutral.muted}
+                          placeholderTextColor={theme.textSecondary}
                           keyboardType="decimal-pad"
                           returnKeyType="done"
                         />
-                        <Text style={styles.suffix}>USD / acción</Text>
+                        <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>USD / acción</ThemedText>
                       </View>
-                      <Text style={styles.fieldHint}>
+                      <ThemedText style={[styles.fieldHint, { color: theme.textSecondary }]}>
                         Precio promedio de compra por acción. Aparece en el historial de transacciones de tu broker.
-                      </Text>
+                      </ThemedText>
                     </>
                   )}
                 </>
@@ -327,94 +333,104 @@ export default function AddEtfScreen() {
             {/* ── Acciones (opcional) ── */}
             <View style={styles.section}>
               <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>Número de acciones</Text>
+                <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Número de acciones</ThemedText>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.one }}>
-                  <Text style={styles.optionalLabel}>opcional</Text>
+                  <ThemedText style={[styles.optionalLabel, { color: theme.textSecondary }]}>opcional</ThemedText>
                   <TouchableOpacity onPress={() => setShowSharesInfo(!showSharesInfo)} hitSlop={8}>
                     <Ionicons
                       name={showSharesInfo ? 'information-circle' : 'information-circle-outline'}
                       size={17}
-                      color={Tokens.structural.attention}
+                      color={theme.assetEtf}
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
               {showSharesInfo && (
-                <View style={styles.infoCard}>
-                  <Text style={styles.infoText}>
+                <View style={[styles.infoCard, { backgroundColor: theme.attentionSubtle, borderLeftColor: theme.attention }]}>
+                  <ThemedText style={[styles.infoText, { color: theme.text }]}>
                     Con el número de acciones podemos calcular el precio promedio exacto y analizar el rendimiento por unidad.{'\n\n'}
                     Sin él, registramos solo el monto total invertido — suficiente para comenzar, pero con menos detalle para analizar después.
-                  </Text>
+                  </ThemedText>
                 </View>
               )}
 
-              <Text style={styles.fieldHint}>
+              <ThemedText style={[styles.fieldHint, { color: theme.textSecondary }]}>
                 Si no lo tienes a mano puedes omitirlo — el registro igual se guarda.
-              </Text>
-              <View style={[styles.inputRow, { marginTop: Spacing.two }]}>
+              </ThemedText>
+              <View style={[styles.inputRow, { marginTop: Spacing.two, backgroundColor: theme.backgroundElement }]}>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.text }]}
                   value={shares}
                   onChangeText={setShares}
                   placeholder="0"
-                  placeholderTextColor={Tokens.neutral.muted}
+                  placeholderTextColor={theme.textSecondary}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                 />
-                <Text style={styles.suffix}>acc</Text>
+                <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>acc</ThemedText>
               </View>
             </View>
 
             {/* ── TER (opcional) ── */}
             <View style={styles.section}>
               <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>
+                <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
                   TER — gasto anual del fondo
-                </Text>
+                </ThemedText>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.one }}>
-                  <Text style={styles.optionalLabel}>opcional</Text>
+                  <ThemedText style={[styles.optionalLabel, { color: theme.textSecondary }]}>opcional</ThemedText>
                   <TouchableOpacity onPress={() => setShowTerInfo(!showTerInfo)} hitSlop={8}>
                     <Ionicons
                       name={showTerInfo ? 'information-circle' : 'information-circle-outline'}
                       size={17}
-                      color={Tokens.structural.attention}
+                      color={theme.assetEtf}
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
               {showTerInfo && (
-                <View style={styles.infoCard}>
-                  <Text style={styles.infoText}>
+                <View style={[styles.infoCard, { backgroundColor: theme.attentionSubtle, borderLeftColor: theme.attention }]}>
+                  <ThemedText style={[styles.infoText, { color: theme.text }]}>
                     El TER (Total Expense Ratio) es el costo anual del fondo. Lo descuenta el fondo automáticamente — nunca lo pagas de tu bolsillo, pero reduce tu rentabilidad compuesta.{'\n\n'}
                     Cómo encontrarlo: busca "{ticker || 'TICKER'} expense ratio" en Google, o consulta la ficha técnica en la web del emisor.{'\n\n'}
                     Ejemplos: VOO → 0.03% · VTI → 0.03% · IWDA → 0.20% · EIMI → 0.18%
-                  </Text>
+                  </ThemedText>
                 </View>
               )}
 
-              <View style={[styles.inputRow, { marginTop: Spacing.two }]}>
+              <View style={[styles.inputRow, { marginTop: Spacing.two, backgroundColor: theme.backgroundElement }]}>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.text }]}
                   value={ter}
                   onChangeText={setTer}
                   placeholder="0.03"
-                  placeholderTextColor={Tokens.neutral.muted}
+                  placeholderTextColor={theme.textSecondary}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                 />
-                <Text style={styles.suffix}>%</Text>
+                <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>%</ThemedText>
               </View>
               <View style={[styles.chipGrid, { marginTop: Spacing.two }]}>
                 {TER_PRESETS.map((t) => (
                   <TouchableOpacity
                     key={t}
-                    style={[styles.chip, ter === t && styles.chipSelected]}
+                    style={[
+                      styles.chip,
+                      { backgroundColor: theme.backgroundElement },
+                      ter === t && { backgroundColor: theme.backgroundSelected, borderColor: theme.assetEtf },
+                    ]}
                     onPress={() => setTer(t)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.chipText, ter === t && styles.chipTextSelected]}>{t}%</Text>
+                    <ThemedText style={[
+                      styles.chipText,
+                      { color: ter === t ? theme.assetEtf : theme.text },
+                      ter === t ? { fontWeight: '600' as const } : undefined,
+                    ]}>
+                      {t}%
+                    </ThemedText>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -422,8 +438,8 @@ export default function AddEtfScreen() {
 
             {/* ── Preview ── */}
             {isValid && (
-              <View style={styles.previewCard}>
-                <Text style={styles.previewTitle}>VISTA PREVIA</Text>
+              <View style={[styles.previewCard, { backgroundColor: theme.backgroundElement }]}>
+                <ThemedText style={[styles.previewTitle, { color: theme.textSecondary }]}>VISTA PREVIA</ThemedText>
 
                 {entryMode === 'COP' && (
                   <>
@@ -435,7 +451,7 @@ export default function AddEtfScreen() {
                       label="TRM aplicado"
                       value={trmNum.toLocaleString('es-CO')}
                     />
-                    <View style={styles.previewDivider} />
+                    <View style={[styles.previewDivider, { backgroundColor: theme.divider }]} />
                     <PreviewRow
                       label="Equivalente USD"
                       value={`USD ${(totalCopNum / trmNum).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
@@ -470,7 +486,7 @@ export default function AddEtfScreen() {
 
                 {sharesNum > 0 && (
                   <>
-                    <View style={styles.previewDivider} />
+                    <View style={[styles.previewDivider, { backgroundColor: theme.divider }]} />
                     <PreviewRow
                       label="Fracciones"
                       value={sharesNum % 1 === 0 ? sharesNum.toFixed(0) : sharesNum.toFixed(4)}
@@ -485,26 +501,71 @@ export default function AddEtfScreen() {
                 )}
 
                 {sharesNum === 0 && (
-                  <Text style={styles.previewNote}>
+                  <ThemedText style={[styles.previewNote, { color: theme.textSecondary }]}>
                     Sin fracciones registradas — podrás agregarlas después.
-                  </Text>
+                  </ThemedText>
                 )}
               </View>
             )}
 
             {/* ── Save ── */}
             <TouchableOpacity
-              style={[styles.saveButton, (!isValid || saving) && styles.saveButtonDisabled]}
+              style={[
+                styles.saveButton,
+                { backgroundColor: theme.assetEtf },
+                (!isValid || saving) && styles.saveButtonDisabled,
+              ]}
               onPress={handleSave}
               disabled={!isValid || saving}
               activeOpacity={0.8}
             >
-              <Text style={styles.saveText}>{saving ? 'Guardando…' : 'Guardar ETF'}</Text>
+              <ThemedText style={[styles.saveText, { color: '#FFFFFF' }]}>
+                {saving ? 'Guardando…' : 'Guardar ETF'}
+              </ThemedText>
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <TouchableOpacity
+      style={[
+        styles.chip,
+        { backgroundColor: theme.backgroundElement },
+        selected && { backgroundColor: theme.backgroundSelected, borderColor: theme.assetEtf },
+      ]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <ThemedText style={[
+        styles.chipText,
+        { color: selected ? theme.assetEtf : theme.text },
+        selected ? { fontWeight: '600' as const } : undefined,
+      ]}>
+        {label}
+      </ThemedText>
+    </TouchableOpacity>
+  );
+}
+
+function PreviewRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  const theme = useTheme();
+  return (
+    <View style={styles.previewRow}>
+      <ThemedText style={[styles.previewLabel, { color: theme.textSecondary }]}>{label}</ThemedText>
+      <ThemedText style={[
+        styles.previewValue,
+        { color: highlight ? theme.assetEtf : theme.text },
+        highlight ? { fontWeight: '700' as const, fontSize: 15 } : undefined,
+      ]}>
+        {value}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -524,19 +585,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: `${Tokens.structural.attention}18`,
     alignItems: 'center',
     justifyContent: 'center',
   },
   screenTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: Tokens.neutral.text,
     marginBottom: Spacing.one,
   },
   screenSubtitle: {
     fontSize: 14,
-    color: Tokens.neutral.muted,
     lineHeight: 20,
     marginBottom: Spacing.four,
   },
@@ -550,7 +608,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: Tokens.neutral.text,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: Spacing.one,
@@ -558,37 +615,30 @@ const styles = StyleSheet.create({
   optionalLabel: {
     fontSize: 11,
     fontWeight: '400',
-    color: Tokens.neutral.muted,
   },
   inputLabel: {
     fontSize: 12,
-    color: Tokens.neutral.muted,
     marginBottom: Spacing.one,
     marginTop: Spacing.one,
   },
   fieldHint: {
     fontSize: 12,
-    color: Tokens.neutral.muted,
     lineHeight: 17,
     marginBottom: Spacing.one,
   },
   computedHint: {
     fontSize: 13,
-    color: Tokens.structural.positive,
     marginTop: Spacing.one,
     fontWeight: '500',
   },
   infoCard: {
-    backgroundColor: `${Tokens.structural.attention}10`,
     borderLeftWidth: 3,
-    borderLeftColor: Tokens.structural.attention,
     borderRadius: Spacing.one,
     padding: Spacing.three,
     marginBottom: Spacing.two,
   },
   infoText: {
     fontSize: 13,
-    color: Tokens.neutral.text,
     lineHeight: 19,
   },
   chipGrid: {
@@ -600,20 +650,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderRadius: 100,
-    backgroundColor: '#F0F0EC',
     borderWidth: 1,
     borderColor: 'transparent',
   },
-  chipSelected: {
-    backgroundColor: `${Tokens.structural.positive}18`,
-    borderColor: Tokens.structural.positive,
-  },
-  chipText:         { fontSize: 14, color: Tokens.neutral.text },
-  chipTextSelected: { color: Tokens.structural.positive, fontWeight: '600' },
+  chipText: { fontSize: 14 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
@@ -622,20 +665,17 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: Tokens.neutral.text,
     padding: 0,
   },
   tickerInput: { fontWeight: '700', fontSize: 18, letterSpacing: 1 },
-  prefix: { fontSize: 14, color: Tokens.neutral.muted, fontWeight: '600' },
-  suffix: { fontSize: 13, color: Tokens.neutral.muted },
+  prefix: { fontSize: 14, fontWeight: '600' },
+  suffix: { fontSize: 13 },
   catalogHint: {
     marginTop: Spacing.one,
     fontSize: 13,
-    color: Tokens.structural.positive,
     paddingHorizontal: Spacing.one,
   },
   previewCard: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     padding: Spacing.three,
     marginBottom: Spacing.four,
@@ -644,14 +684,12 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: 11,
     fontWeight: '600',
-    color: Tokens.neutral.muted,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     marginBottom: Spacing.two,
   },
   previewDivider: {
     height: 1,
-    backgroundColor: '#E0E0DC',
     marginVertical: Spacing.two,
   },
   previewRow: {
@@ -659,42 +697,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  previewLabel:   { fontSize: 14, color: Tokens.neutral.muted },
-  previewValue:   { fontSize: 14, fontWeight: '500', color: Tokens.neutral.text },
-  previewValueHL: { fontSize: 15, fontWeight: '700', color: Tokens.structural.attention },
+  previewLabel: { fontSize: 14 },
+  previewValue: { fontSize: 14, fontWeight: '500' },
   previewNote: {
     marginTop: Spacing.two,
     fontSize: 12,
-    color: Tokens.neutral.muted,
     lineHeight: 18,
   },
   saveButton: {
-    backgroundColor: Tokens.structural.attention,
     paddingVertical: Spacing.three,
     borderRadius: Spacing.two,
     alignItems: 'center',
   },
   saveButtonDisabled: { opacity: 0.4 },
-  saveText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  saveText: { fontSize: 16, fontWeight: '600' },
 });
-
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      style={[styles.chip, selected && styles.chipSelected]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function PreviewRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <View style={styles.previewRow}>
-      <Text style={styles.previewLabel}>{label}</Text>
-      <Text style={highlight ? styles.previewValueHL : styles.previewValue}>{value}</Text>
-    </View>
-  );
-}

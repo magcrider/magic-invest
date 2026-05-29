@@ -10,7 +10,8 @@ import { CurrencySelector } from '@/components/calculator/currency-selector';
 import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
 import { GrowthChart } from '@/components/calculator/growth-chart';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { type Currency, formatCurrency, parseNumber } from '@/utils/format';
 
 function calcCompoundInterest(
@@ -36,6 +37,7 @@ function calcCompoundInterest(
 
 export default function CompoundInterestScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const [currency, setCurrency] = useState<Currency>('COP');
   const [principal, setPrincipal] = useState('');
   const [monthly, setMonthly] = useState('');
@@ -78,12 +80,12 @@ export default function CompoundInterestScreen() {
         {
           label: 'Capital aportado',
           value: formatCurrency(result.totalContributed, currency),
-          color: '#5B8E8E66',
+          color: theme.positiveChart,
         },
         {
           label: 'Ganancias generadas',
           value: formatCurrency(result.totalGains, currency),
-          color: Tokens.structural.positive,
+          color: theme.positive,
         },
       ]
     : [];
@@ -100,10 +102,10 @@ export default function CompoundInterestScreen() {
 
           <ThemedView style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <ThemedView style={styles.iconBox}>
-              <Ionicons name="trending-up-outline" size={22} color={Tokens.structural.positive} />
+            <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+              <Ionicons name="trending-up-outline" size={22} color={theme.positive} />
             </ThemedView>
           </ThemedView>
 
@@ -152,7 +154,7 @@ export default function CompoundInterestScreen() {
           </ThemedView>
 
           <TouchableOpacity
-            style={[styles.button, !isValid() && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: theme.positive }, !isValid() && styles.buttonDisabled]}
             onPress={handleCalculate}
             disabled={!isValid()}
             activeOpacity={0.8}>
@@ -207,7 +209,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -225,7 +226,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   button: {
-    backgroundColor: Tokens.structural.positive,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',

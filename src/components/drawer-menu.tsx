@@ -17,7 +17,8 @@ import { useSQLiteContext } from 'expo-sqlite';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
-import { Spacing, Tokens } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { supabase } from '@/lib/supabase';
 import { resetRiskProfile, clearUserData } from '@/db/queries/config';
@@ -35,6 +36,7 @@ interface Props {
 export function DrawerMenu({ visible, onClose }: Props) {
   const { displayName, session } = useAuth();
   const db      = useSQLiteContext();
+  const theme   = useTheme();
   const email   = session?.user?.email ?? '';
   const initial = (displayName || email)[0]?.toUpperCase() ?? '?';
   const version = Constants.expoConfig?.version ?? '1.0.0';
@@ -97,23 +99,25 @@ export function DrawerMenu({ visible, onClose }: Props) {
       onRequestClose={onClose}
       statusBarTranslucent>
 
-      {/* Backdrop */}
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
-      {/* Panel */}
-      <Animated.View style={[styles.panel, { transform: [{ translateX }] }]}>
+      <Animated.View style={[
+        styles.panel,
+        { backgroundColor: theme.background, transform: [{ translateX }] },
+      ]}>
         <SafeAreaView style={styles.safe} edges={['top', 'right', 'bottom']}>
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={8}>
-            <Ionicons name="close" size={22} color={Tokens.neutral.muted} />
+            <Ionicons name="close" size={22} color={theme.textSecondary} />
           </TouchableOpacity>
 
-          {/* Perfil del usuario */}
           <ThemedView style={styles.profile}>
-            <ThemedView style={styles.avatar}>
-              <ThemedText type="smallBold" style={styles.avatarText}>{initial}</ThemedText>
+            <ThemedView style={[styles.avatar, { backgroundColor: theme.positiveSubtle }]}>
+              <ThemedText type="smallBold" style={[styles.avatarText, { color: theme.positive }]}>
+                {initial}
+              </ThemedText>
             </ThemedView>
             <ThemedText type="subtitle">{displayName || email}</ThemedText>
             {displayName ? (
@@ -121,7 +125,7 @@ export function DrawerMenu({ visible, onClose }: Props) {
             ) : null}
           </ThemedView>
 
-          <ThemedView style={styles.divider} />
+          <ThemedView style={[styles.divider, { backgroundColor: theme.divider }]} />
 
           <ScrollView showsVerticalScrollIndicator={false}>
 
@@ -133,26 +137,26 @@ export function DrawerMenu({ visible, onClose }: Props) {
               <Switch
                 value={false}
                 disabled
-                trackColor={{ true: Tokens.structural.positive, false: '#E0E0DC' }}
+                trackColor={{ true: theme.positive, false: theme.divider }}
               />
             </ThemedView>
             <TouchableOpacity style={styles.row} onPress={handleResetProfile}>
               <ThemedText type="default">Reevaluar perfil de riesgo</ThemedText>
-              <Ionicons name="chevron-forward" size={16} color={Tokens.neutral.muted} />
+              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
 
-            <ThemedView style={styles.divider} />
+            <ThemedView style={[styles.divider, { backgroundColor: theme.divider }]} />
 
             <ThemedText type="small" themeColor="textSecondary" style={styles.sectionLabel}>
               LEGAL
             </ThemedText>
             <TouchableOpacity style={styles.row} disabled>
               <ThemedText type="default">Términos y condiciones</ThemedText>
-              <Ionicons name="chevron-forward" size={16} color={Tokens.neutral.muted} />
+              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.row} disabled>
               <ThemedText type="default">Política de privacidad</ThemedText>
-              <Ionicons name="chevron-forward" size={16} color={Tokens.neutral.muted} />
+              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
 
           </ScrollView>
@@ -160,8 +164,8 @@ export function DrawerMenu({ visible, onClose }: Props) {
           <ThemedView style={styles.footer}>
             <ThemedText type="small" themeColor="textSecondary">Versión {version}</ThemedText>
             <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}>
-              <Ionicons name="log-out-outline" size={18} color={Tokens.structural.risk} />
-              <ThemedText type="default" style={styles.signOutText}>Cerrar sesión</ThemedText>
+              <Ionicons name="log-out-outline" size={18} color={theme.risk} />
+              <ThemedText type="default" style={{ color: theme.risk }}>Cerrar sesión</ThemedText>
             </TouchableOpacity>
           </ThemedView>
 
@@ -182,7 +186,6 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: Tokens.neutral.background,
     elevation: 16,
     shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },
@@ -203,18 +206,15 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.two,
   },
   avatarText: {
-    color: Tokens.structural.positive,
     fontSize: 20,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E0E0DC',
     marginHorizontal: Spacing.four,
     marginVertical: Spacing.two,
   },
@@ -241,8 +241,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     paddingVertical: Spacing.two,
-  },
-  signOutText: {
-    color: Tokens.structural.risk,
   },
 });

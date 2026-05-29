@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1 local) — perfil, estado vacío, formularios CDT/ETF, detalle CDT/ETF, pantalla principal con tabs Resumen/Detalle.**
-* **Última sesión (mayo 2026):** §7.7 — vinculación Portafolio ↔ Buzón. En detalle CDT/ETF: sección "Eventos relacionados" al final (filtra INBOX_EVENTS por banco/ticker, excluye eliminados, navegable a detalle del evento). En detalle de evento del Buzón: chip `relatedAsset` se vuelve tappable cuando el activo existe en SQLite (resuelve ETF por ticker vía `getEtfByTicker`, CDT por banco vía `getAllCdts`), muestra flecha → navega a detalle del activo. Próximo paso: §8 Backend Supabase (Edge Functions Banrep + EOD).
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1 local).** **Sistema de color dinámico (light/dark) + convenciones de identidad de activo: ✅ COMPLETO.**
+* **Última sesión (mayo 2026):** Sistema de color completo. (1) Migración total de `Tokens.*` estáticos a `useTheme()` dinámico en toda la app — `StyleSheet` solo geometría, colores siempre inline. (2) Convención de doble familia cromática establecida e implementada: tokens de identidad de activo (`assetCdt` azul / `assetEtf` verde) para identificar el tipo de activo; tokens semánticos (`positive`/`attention`/`risk`) para urgencia e información. (3) Barra de distribución en portafolio rediseñada: una sola barra apilada CDT+ETF en lugar de dos barras separadas. (4) Buzón: doble color en tarjetas — ícono usa identidad del activo, pill y punto de no leído usan semántico. (5) Encabezados de sección en Portafolio Detalle y valores acento en tarjetas de activos ahora usan sus tokens de identidad. Próximo paso: §8 Backend Supabase (Edge Functions Banrep + EOD).
 
 ---
 
@@ -118,6 +118,40 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * **Credenciales:** `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` almacenadas como EAS Secrets (no en git), disponibles en entornos `preview` y `production`.
 * **Por qué no build local:** NDK 27 cambió el ABI de libc++ y los módulos nativos (reanimated, worklets, gesture-handler, screens, expo-modules-core) no declaran `c++_shared` en sus CMakeLists.txt. EAS usa su propio entorno Linux sin este problema.
 * **Tamaño futuro:** una build de producción con R8 + AAB splits por ABI producirá ~25–35 MB por ABI. Pendiente para cuando haya un release real.
+
+### Sistema de color dinámico (light/dark) + convenciones de identidad de activo
+
+#### Migración Tokens.* → useTheme()
+Toda la app migrada de colores estáticos (`Tokens.*`) a un sistema dinámico de temas que soporta light y dark mode. El hook `useTheme()` retorna `Colors.light` o `Colors.dark` según `useColorScheme()`.
+
+**Regla de implementación:** `StyleSheet.create()` solo para geometría. Colores siempre en el segundo array de `style`: `style={[styles.x, { color: theme.y }]}`. Los sub-componentes llaman a `useTheme()` de forma independiente — el tema nunca se pasa como prop.
+
+**Archivos migrados:** `src/app/_layout.tsx`, todos los tools (9 calculadoras + index + [id]), `src/app/portfolio/index.tsx`, `src/app/portfolio/cdt/[id].tsx`, `src/app/portfolio/etf/[id].tsx`, `src/app/inbox/index.tsx`, `src/app/inbox/[id].tsx`, todos los componentes compartidos de `src/components/`.
+
+#### Convención de doble familia cromática
+Dos familias de tokens con funciones distintas, nunca intercambiables:
+
+**Tokens de identidad de activo** (`assetCdt: #3A6B9A`, `assetEtf: #3A7850`):
+- Encabezados de sección agrupada en Portafolio Detalle
+- Título/nombre del activo en pantallas de detalle
+- Valor acento en tarjetas de lista (tasa EA para CDT, valor total para ETF)
+- Ícono en tarjetas del Buzón cuando hay `relatedAsset`
+- Segmentos de la barra de distribución apilada
+- Barras comparativas en calculadora CDT vs ETF
+
+**Tokens semánticos** (`positive`/`attention`/`risk`):
+- Salud de bandas de asignación (dentro/cerca/fuera)
+- Pill label y punto de no leído en tarjetas del Buzón
+- Borde de disclaimer en detalle del Buzón
+- Veredictos en calculadoras (CAGR, retorno real)
+
+#### Barra de distribución rediseñada
+La sección "Distribución" en Portafolio Resumen usa una sola barra apilada: CDT a la izquierda en `assetCdt` (azul), ETF a la derecha en `assetEtf` (verde), juntos suman 100%. Las dos barras separadas con colores de salud idénticos fueron eliminadas. El badge de salud general permanece en el header de la sección.
+
+#### Doble color en tarjetas del Buzón
+Las tarjetas del Buzón combinan ambas familias: ícono → identidad del activo (derivado de `relatedAsset`); pill de tipo + punto de no leído → semántico (derivado del `type` del evento). Ver `design_system.md` §13 para la regla completa.
+
+---
 
 ### Módulo Portafolio — Formularios, detalle y navegación FAB
 * **Migración 2** (`src/db/migrations.ts`): 3 columnas nuevas en `etf_positions` — `total_invested_cop REAL`, `trm_at_purchase REAL`, `total_invested_usd REAL`. Permite registrar el monto original en COP + TRM sin perder precisión.

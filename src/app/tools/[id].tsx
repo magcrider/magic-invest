@@ -5,12 +5,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { TOOLS } from '@/constants/tools-data';
 
 export default function ToolDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const theme  = useTheme();
   const tool = TOOLS.find((t) => t.id === id);
 
   if (!tool) {
@@ -29,10 +31,10 @@ export default function ToolDetailScreen() {
 
         <ThemedView style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+            <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
           </TouchableOpacity>
-          <ThemedView style={styles.iconBox}>
-            <Ionicons name={tool.icon} size={22} color={Tokens.structural.positive} />
+          <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+            <Ionicons name={tool.icon} size={22} color={theme.positive} />
           </ThemedView>
         </ThemedView>
 
@@ -42,7 +44,7 @@ export default function ToolDetailScreen() {
         </ThemedView>
 
         <ThemedView type="backgroundElement" style={styles.placeholder}>
-          <Ionicons name="construct-outline" size={32} color={Tokens.neutral.muted} />
+          <Ionicons name="construct-outline" size={32} color={theme.textSecondary} />
           <ThemedText type="default" themeColor="textSecondary">En construcción</ThemedText>
         </ThemedView>
 
@@ -69,7 +71,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,7 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing, Tokens } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export interface ResultRow {
   label: string;
@@ -15,12 +16,14 @@ interface Props {
 }
 
 export function ResultCard({ rows }: Props) {
+  const theme = useTheme();
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
       {rows.map((row, index) => (
         <View key={row.label}>
-          {index > 0 && <View style={styles.divider} />}
-          <View style={[styles.row, row.highlight && styles.rowHighlight]}>
+          {index > 0 && <View style={[styles.divider, { backgroundColor: theme.divider }]} />}
+          <View style={[styles.row, row.highlight && { backgroundColor: theme.positiveSubtle }]}>
             <View style={styles.labelRow}>
               {row.color ? (
                 <View style={[styles.colorDot, { backgroundColor: row.color }]} />
@@ -28,13 +31,17 @@ export function ResultCard({ rows }: Props) {
               <ThemedText
                 type={row.highlight ? 'smallBold' : 'small'}
                 themeColor="textSecondary"
-                style={row.highlight && styles.labelHighlight}>
+                style={row.highlight && { color: theme.positive }}>
                 {row.label}
               </ThemedText>
             </View>
             <ThemedText
               type={row.highlight ? 'smallBold' : 'small'}
-              style={[styles.value, row.highlight && styles.valueHighlight]}>
+              style={[
+                styles.value,
+                { color: theme.text },
+                row.highlight && { color: theme.positive, fontSize: 18 },
+              ]}>
               {row.value}
             </ThemedText>
           </View>
@@ -46,7 +53,6 @@ export function ResultCard({ rows }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.three,
     overflow: 'hidden',
   },
@@ -70,24 +76,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     flexShrink: 0,
   },
-  rowHighlight: {
-    backgroundColor: '#5B8E8E18',
-  },
-  labelHighlight: {
-    color: Tokens.structural.positive,
-  },
   value: {
     textAlign: 'right',
-    color: Tokens.neutral.text,
     flexShrink: 1,
-  },
-  valueHighlight: {
-    color: Tokens.structural.positive,
-    fontSize: 18,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E0E0DC',
     marginHorizontal: Spacing.three,
   },
 });

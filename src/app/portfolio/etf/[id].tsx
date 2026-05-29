@@ -4,7 +4,6 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -14,10 +13,12 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/themed-view';
-import { Tokens, Spacing, BottomTabInset } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+import { Spacing, BottomTabInset } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { getEtfById, deleteEtf } from '@/db/queries/etf';
 import type { EtfPosition } from '@/db/schema';
-import { INBOX_EVENTS, EVENT_TYPE_CONFIG } from '@/constants/inbox-mock';
+import { INBOX_EVENTS } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
 
 const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -39,6 +40,7 @@ export default function EtfDetailScreen() {
   const { id }    = useLocalSearchParams<{ id: string }>();
   const router    = useRouter();
   const db        = useSQLiteContext();
+  const theme     = useTheme();
   const [etf, setEtf]           = useState<EtfPosition | null | undefined>(undefined);
   const [deleting, setDeleting] = useState(false);
 
@@ -73,7 +75,7 @@ export default function EtfDetailScreen() {
     return (
       <ThemedView style={{ flex: 1 }}>
         <SafeAreaView style={styles.centered}>
-          <ActivityIndicator color={Tokens.neutral.muted} />
+          <ActivityIndicator color={theme.textSecondary} />
         </SafeAreaView>
       </ThemedView>
     );
@@ -83,7 +85,7 @@ export default function EtfDetailScreen() {
     return (
       <ThemedView style={{ flex: 1 }}>
         <SafeAreaView style={styles.centered}>
-          <Text style={styles.errorText}>ETF no encontrado.</Text>
+          <ThemedText themeColor="textSecondary">ETF no encontrado.</ThemedText>
         </SafeAreaView>
       </ThemedView>
     );
@@ -93,13 +95,14 @@ export default function EtfDetailScreen() {
   const hasShares     = etf.shares > 0;
   const hasCostPerShare = etf.average_cost_usd > 0;
 
-  // Best estimate of total USD equivalent
   const totalUsd =
     etf.total_invested_usd != null
       ? etf.total_invested_usd
       : hasShares && hasCostPerShare
       ? etf.shares * etf.average_cost_usd
       : null;
+
+  const badgeColor = isCop ? theme.positive : theme.assetEtf;
 
   return (
     <ThemedView style={{ flex: 1 }}>
@@ -111,58 +114,72 @@ export default function EtfDetailScreen() {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <View style={styles.headerIcon}>
-              <Ionicons name="analytics-outline" size={20} color={Tokens.structural.attention} />
+            <View style={[styles.headerIcon, { backgroundColor: theme.positiveSubtle }]}>
+              <Ionicons name="analytics-outline" size={20} color={theme.assetEtf} />
             </View>
           </View>
 
-          <Text style={styles.tickerText}>{etf.ticker}</Text>
-          <Text style={styles.fundName}>{etf.name}</Text>
+          <ThemedText style={[styles.tickerText, { color: theme.assetEtf }]}>{etf.ticker}</ThemedText>
+          <ThemedText style={[styles.fundName, { color: theme.textSecondary }]}>{etf.name}</ThemedText>
 
           {/* Currency badge */}
-          <View style={[styles.badge, isCop ? styles.badgeCop : styles.badgeUsd]}>
-            <View style={[styles.badgeDot, isCop ? styles.dotCop : styles.dotUsd]} />
-            <Text style={[styles.badgeText, isCop ? styles.textCop : styles.textUsd]}>
+          <View style={[styles.badge, { backgroundColor: `${badgeColor}18` }]}>
+            <View style={[styles.badgeDot, { backgroundColor: badgeColor }]} />
+            <ThemedText style={[styles.badgeText, { color: badgeColor }]}>
               {isCop ? 'Inversión en COP' : 'Inversión en USD'}
-            </Text>
+            </ThemedText>
           </View>
 
+          <RelatedMessages ticker={etf.ticker} onPress={(evtId) => router.push(`/inbox/${evtId}` as never)} />
+
           {/* Investment card */}
-          <View style={styles.principalCard}>
+          <View style={[styles.principalCard, { backgroundColor: theme.backgroundElement }]}>
             {isCop && etf.total_invested_cop != null ? (
               <>
-                <Text style={styles.principalLabel}>Total invertido</Text>
-                <Text style={styles.principalAmount}>{fmtCop(etf.total_invested_cop)}</Text>
+                <ThemedText style={[styles.principalLabel, { color: theme.textSecondary }]}>
+                  Total invertido
+                </ThemedText>
+                <ThemedText style={[styles.principalAmount, { color: theme.text }]}>
+                  {fmtCop(etf.total_invested_cop)}
+                </ThemedText>
                 {etf.trm_at_purchase != null && (
-                  <Text style={styles.principalSub}>
+                  <ThemedText style={[styles.principalSub, { color: theme.textSecondary }]}>
                     TRM al registrar: {etf.trm_at_purchase.toLocaleString('es-CO')}
-                  </Text>
+                  </ThemedText>
                 )}
                 {totalUsd != null && (
-                  <Text style={styles.principalSub}>
+                  <ThemedText style={[styles.principalSub, { color: theme.textSecondary }]}>
                     ≈ USD {fmtUsd(totalUsd)}
-                  </Text>
+                  </ThemedText>
                 )}
               </>
             ) : totalUsd != null ? (
               <>
-                <Text style={styles.principalLabel}>Total invertido</Text>
-                <Text style={styles.principalAmount}>USD {fmtUsd(totalUsd)}</Text>
+                <ThemedText style={[styles.principalLabel, { color: theme.textSecondary }]}>
+                  Total invertido
+                </ThemedText>
+                <ThemedText style={[styles.principalAmount, { color: theme.text }]}>
+                  USD {fmtUsd(totalUsd)}
+                </ThemedText>
               </>
             ) : (
               <>
-                <Text style={styles.principalLabel}>Total invertido</Text>
-                <Text style={styles.principalAmountMuted}>No registrado</Text>
+                <ThemedText style={[styles.principalLabel, { color: theme.textSecondary }]}>
+                  Total invertido
+                </ThemedText>
+                <ThemedText style={[styles.principalAmountMuted, { color: theme.textSecondary }]}>
+                  No registrado
+                </ThemedText>
               </>
             )}
           </View>
 
           {/* Position section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Posición</Text>
-            <View style={styles.detailCard}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Posición</ThemedText>
+            <View style={[styles.detailCard, { backgroundColor: theme.backgroundElement }]}>
               <DetailRow
                 label="Fracciones (acciones)"
                 value={
@@ -188,8 +205,10 @@ export default function EtfDetailScreen() {
           {/* Costs section */}
           {etf.ter > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Costo operativo</Text>
-              <View style={styles.detailCard}>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+                Costo operativo
+              </ThemedText>
+              <View style={[styles.detailCard, { backgroundColor: theme.backgroundElement }]}>
                 <DetailRow
                   label="TER (gasto anual del fondo)"
                   value={`${(etf.ter * 100).toFixed(2)}%`}
@@ -206,8 +225,8 @@ export default function EtfDetailScreen() {
 
           {/* Registration */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Registro</Text>
-            <View style={styles.detailCard}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Registro</ThemedText>
+            <View style={[styles.detailCard, { backgroundColor: theme.backgroundElement }]}>
               <DetailRow
                 label="Registrado el"
                 value={fmtDate(etf.created_at.slice(0, 10))}
@@ -216,27 +235,28 @@ export default function EtfDetailScreen() {
           </View>
 
           {/* Future data note */}
-          <View style={styles.futureCard}>
-            <Ionicons name="time-outline" size={16} color={Tokens.structural.attention} />
-            <Text style={styles.futureText}>
+          <View style={[styles.futureCard, { backgroundColor: theme.attentionSubtle, borderColor: theme.attentionBorder }]}>
+            <Ionicons name="time-outline" size={16} color={theme.attention} />
+            <ThemedText style={[styles.futureText, { color: theme.textSecondary }]}>
               Próximamente conectaremos precios de mercado en tiempo real para mostrarte el valor actual y tu rentabilidad neta.
-            </Text>
+            </ThemedText>
           </View>
-
-          {/* Eventos relacionados */}
-          <RelatedEvents ticker={etf.ticker} onPress={(evtId) => router.push(`/inbox/${evtId}` as never)} />
 
           {/* Eliminar */}
           <TouchableOpacity
-            style={[styles.deleteButton, deleting && styles.deleteButtonDisabled]}
+            style={[
+              styles.deleteButton,
+              { borderColor: theme.riskBorder, backgroundColor: theme.riskSubtle },
+              deleting && styles.deleteButtonDisabled,
+            ]}
             onPress={confirmDelete}
             disabled={deleting}
             activeOpacity={0.7}
           >
-            <Ionicons name="trash-outline" size={16} color={Tokens.structural.risk} />
-            <Text style={styles.deleteText}>
+            <Ionicons name="trash-outline" size={16} color={theme.risk} />
+            <ThemedText style={[styles.deleteText, { color: theme.risk }]}>
               {deleting ? 'Eliminando…' : 'Eliminar inversión'}
-            </Text>
+            </ThemedText>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -244,39 +264,34 @@ export default function EtfDetailScreen() {
   );
 }
 
-function RelatedEvents({ ticker, onPress }: { ticker: string; onPress: (id: string) => void }) {
+function RelatedMessages({ ticker, onPress }: { ticker: string; onPress: (id: string) => void }) {
+  const theme = useTheme();
   const events = INBOX_EVENTS.filter(
     (e) => !inboxState.isDeleted(e.id) && e.relatedAsset === ticker,
   );
   if (events.length === 0) return null;
 
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Eventos relacionados</Text>
-      <View style={styles.detailCard}>
-        {events.map((evt, i) => {
-          const cfg = EVENT_TYPE_CONFIG[evt.type];
-          return (
-            <View key={evt.id}>
-              {i > 0 && <Divider />}
-              <TouchableOpacity
-                style={styles.eventRow}
-                onPress={() => onPress(evt.id)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.eventIconBg, { backgroundColor: cfg.bg }]}>
-                  <Ionicons name={cfg.icon} size={14} color={cfg.color} />
-                </View>
-                <View style={styles.eventContent}>
-                  <Text style={styles.eventType}>{cfg.label}</Text>
-                  <Text style={styles.eventTitle} numberOfLines={2}>{evt.title}</Text>
-                </View>
-                <Text style={styles.eventDate}>{evt.date}</Text>
-                <Ionicons name="chevron-forward" size={14} color={Tokens.neutral.muted} />
-              </TouchableOpacity>
-            </View>
-          );
-        })}
+    <View style={[styles.msgBox, { backgroundColor: theme.assetEtf + '10', borderColor: theme.assetEtf + '35' }]}>
+      <View style={styles.msgMailIcon}>
+        <Ionicons name="mail-outline" size={15} color={theme.assetEtf} />
+      </View>
+      <View style={styles.msgList}>
+        {events.map((evt, i) => (
+          <View key={evt.id}>
+            {i > 0 && <View style={[styles.msgDivider, { backgroundColor: theme.assetEtf + '35' }]} />}
+            <TouchableOpacity
+              style={styles.msgRow}
+              onPress={() => onPress(evt.id)}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.msgTitle, { color: theme.text }]} numberOfLines={2}>
+                {evt.title}
+              </ThemedText>
+              <Ionicons name="chevron-forward" size={13} color={theme.assetEtf} />
+            </TouchableOpacity>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -291,16 +306,24 @@ function DetailRow({
   value: string;
   valueMuted?: boolean;
 }) {
+  const theme = useTheme();
   return (
     <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={[styles.detailValue, valueMuted && styles.detailValueMuted]}>{value}</Text>
+      <ThemedText style={[styles.detailLabel, { color: theme.textSecondary }]}>{label}</ThemedText>
+      <ThemedText style={[
+        styles.detailValue,
+        { color: valueMuted ? theme.textSecondary : theme.text },
+        valueMuted && { fontWeight: '400' },
+      ]}>
+        {value}
+      </ThemedText>
     </View>
   );
 }
 
 function Divider() {
-  return <View style={styles.divider} />;
+  const theme = useTheme();
+  return <View style={[styles.divider, { backgroundColor: theme.divider }]} />;
 }
 
 const styles = StyleSheet.create({
@@ -313,8 +336,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  errorText: { fontSize: 15, color: Tokens.neutral.muted },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -326,24 +347,19 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: `${Tokens.structural.attention}18`,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   tickerText: {
     fontSize: 32,
     fontWeight: '700',
-    color: Tokens.neutral.text,
     letterSpacing: 1,
     marginBottom: Spacing.one,
   },
   fundName: {
     fontSize: 15,
-    color: Tokens.neutral.muted,
     marginBottom: Spacing.two,
   },
-
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -354,56 +370,28 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     marginBottom: Spacing.four,
   },
-  badgeCop:  { backgroundColor: `${Tokens.structural.positive}18` },
-  badgeUsd:  { backgroundColor: `${Tokens.structural.attention}18` },
   badgeDot:  { width: 6, height: 6, borderRadius: 3 },
-  dotCop:    { backgroundColor: Tokens.structural.positive },
-  dotUsd:    { backgroundColor: Tokens.structural.attention },
   badgeText: { fontSize: 13, fontWeight: '500' },
-  textCop:   { color: Tokens.structural.positive },
-  textUsd:   { color: Tokens.structural.attention },
-
   principalCard: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     padding: Spacing.four,
     alignItems: 'center',
     marginBottom: Spacing.four,
     gap: Spacing.one,
   },
-  principalLabel:  {
-    fontSize: 12,
-    color: Tokens.neutral.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  principalAmount: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Tokens.neutral.text,
-  },
-  principalAmountMuted: {
-    fontSize: 20,
-    fontWeight: '500',
-    color: Tokens.neutral.muted,
-  },
-  principalSub: {
-    fontSize: 13,
-    color: Tokens.neutral.muted,
-  },
-
+  principalLabel:  { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  principalAmount: { fontSize: 28, fontWeight: '700' },
+  principalAmountMuted: { fontSize: 20, fontWeight: '500' },
+  principalSub: { fontSize: 13 },
   section:      { marginBottom: Spacing.four },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: Tokens.neutral.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: Spacing.two,
   },
-
   detailCard: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
   },
@@ -413,18 +401,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.three,
   },
-  detailLabel:      { fontSize: 14, color: Tokens.neutral.muted },
-  detailValue:      { fontSize: 14, fontWeight: '500', color: Tokens.neutral.text },
-  detailValueMuted: { color: Tokens.neutral.muted, fontWeight: '400' },
-  divider:          { height: 1, backgroundColor: '#E0E0DC' },
-
+  detailLabel: { fontSize: 14 },
+  detailValue: { fontSize: 14, fontWeight: '500' },
+  divider:     { height: 1 },
   futureCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.two,
-    backgroundColor: `${Tokens.structural.attention}10`,
     borderWidth: 1,
-    borderColor: `${Tokens.structural.attention}30`,
     borderRadius: Spacing.two,
     padding: Spacing.three,
     marginBottom: Spacing.four,
@@ -432,10 +416,8 @@ const styles = StyleSheet.create({
   futureText: {
     flex: 1,
     fontSize: 13,
-    color: Tokens.neutral.muted,
     lineHeight: 19,
   },
-
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -444,47 +426,27 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     borderRadius: Spacing.two,
     borderWidth: 1,
-    borderColor: `${Tokens.structural.risk}40`,
-    backgroundColor: `${Tokens.structural.risk}08`,
     marginBottom: Spacing.four,
   },
   deleteButtonDisabled: { opacity: 0.5 },
-  deleteText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: Tokens.structural.risk,
+  deleteText: { fontSize: 15, fontWeight: '500' },
+  msgBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    marginBottom: Spacing.four,
   },
-  eventRow: {
+  msgMailIcon: { marginTop: 2, flexShrink: 0 },
+  msgList:     { flex: 1 },
+  msgDivider:  { height: 1, marginVertical: Spacing.one },
+  msgRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    paddingVertical: Spacing.three,
+    paddingVertical: Spacing.one,
   },
-  eventIconBg: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  eventContent: { flex: 1 },
-  eventType: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Tokens.neutral.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-    marginBottom: 2,
-  },
-  eventTitle: {
-    fontSize: 13,
-    color: Tokens.neutral.text,
-    lineHeight: 17,
-  },
-  eventDate: {
-    fontSize: 11,
-    color: Tokens.neutral.muted,
-    flexShrink: 0,
-  },
+  msgTitle: { flex: 1, fontSize: 13, lineHeight: 18 },
 });

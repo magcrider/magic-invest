@@ -7,11 +7,56 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { INBOX_EVENTS, EVENT_TYPE_CONFIG, type ConsequenceRow } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
 import { getAllCdts } from '@/db/queries/cdt';
 import { getEtfByTicker } from '@/db/queries/etf';
+
+function RelatedAssetBox({
+  relatedAsset,
+  assetRoute,
+  onPress,
+}: {
+  relatedAsset: string;
+  assetRoute: string | null;
+  onPress: () => void;
+}) {
+  const theme  = useTheme();
+  const isCdt  = relatedAsset.startsWith('CDT ');
+  const name   = isCdt ? relatedAsset.slice(4) : relatedAsset;
+  const color  = isCdt ? theme.assetCdt : theme.assetEtf;
+  const boxStyle = [styles.assetBox, { backgroundColor: color + '10', borderColor: color + '35' }];
+
+  const inner = (
+    <>
+      <View style={[styles.assetBoxIcon, { backgroundColor: color + '20' }]}>
+        <Ionicons
+          name={isCdt ? 'business-outline' : 'analytics-outline'}
+          size={15}
+          color={color}
+        />
+      </View>
+      <View style={styles.assetBoxContent}>
+        <ThemedText style={[styles.assetBoxType, { color }]}>
+          {isCdt ? 'CDT' : 'ETF'} · Activo relacionado
+        </ThemedText>
+        <ThemedText style={[styles.assetBoxName, { color: theme.text }]}>{name}</ThemedText>
+      </View>
+      {assetRoute && <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />}
+    </>
+  );
+
+  if (assetRoute) {
+    return (
+      <TouchableOpacity style={boxStyle} onPress={onPress} activeOpacity={0.8}>
+        {inner}
+      </TouchableOpacity>
+    );
+  }
+  return <View style={boxStyle}>{inner}</View>;
+}
 
 function ConsequenceCard({ row }: { row: ConsequenceRow }) {
   return (
@@ -33,9 +78,23 @@ export default function InboxDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const db     = useSQLiteContext();
+  const theme  = useTheme();
 
   const event  = INBOX_EVENTS.find((e) => e.id === id);
   const config = event ? EVENT_TYPE_CONFIG[event.type] : null;
+
+  const accentColor =
+    event?.type === 'rebalance'                                   ? theme.positive
+    : (event?.type === 'cdt_maturity'
+      || event?.type === 'drawdown_context'
+      || event?.type === 'market_trigger')                        ? theme.attention
+    : theme.textSecondary;
+  const accentBg =
+    event?.type === 'rebalance'                                   ? theme.positiveSubtle
+    : (event?.type === 'cdt_maturity'
+      || event?.type === 'drawdown_context'
+      || event?.type === 'market_trigger')                        ? theme.attentionSubtle
+    : theme.backgroundElement;
 
   const [assetRoute, setAssetRoute] = useState<string | null>(null);
 
@@ -65,7 +124,7 @@ export default function InboxDetailScreen() {
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safe}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+            <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
           </TouchableOpacity>
           <ThemedText type="default" themeColor="textSecondary">Evento no encontrado.</ThemedText>
         </SafeAreaView>
@@ -83,38 +142,25 @@ export default function InboxDetailScreen() {
 
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <View style={[styles.typePill, { backgroundColor: config.bg }]}>
-              <Ionicons name={config.icon} size={14} color={config.color} />
-              <ThemedText style={[styles.typeLabel, { color: config.color }]}>
+            <View style={[styles.typePill, { backgroundColor: accentBg }]}>
+              <Ionicons name={config.icon} size={14} color={accentColor} />
+              <ThemedText style={[styles.typeLabel, { color: accentColor }]}>
                 {config.label}
               </ThemedText>
             </View>
           </View>
 
-          <View style={styles.meta}>
-            <ThemedText type="small" themeColor="textSecondary">{event.date}</ThemedText>
-            {event.relatedAsset && (
-              <>
-                <ThemedText type="small" themeColor="textSecondary">·</ThemedText>
-                {assetRoute ? (
-                  <TouchableOpacity
-                    style={styles.assetChip}
-                    onPress={() => router.push(assetRoute as never)}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText style={styles.assetLabel}>{event.relatedAsset}</ThemedText>
-                    <Ionicons name="arrow-forward-outline" size={10} color={Tokens.structural.positive} />
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.assetChip}>
-                    <ThemedText style={styles.assetLabel}>{event.relatedAsset}</ThemedText>
-                  </View>
-                )}
-              </>
-            )}
-          </View>
+          <ThemedText type="small" themeColor="textSecondary">{event.date}</ThemedText>
+
+          {event.relatedAsset && (
+            <RelatedAssetBox
+              relatedAsset={event.relatedAsset}
+              assetRoute={assetRoute}
+              onPress={() => router.push(assetRoute as never)}
+            />
+          )}
 
           <ThemedText type="subtitle" style={styles.title}>{event.title}</ThemedText>
 
@@ -137,7 +183,7 @@ export default function InboxDetailScreen() {
             </View>
           )}
 
-          <View style={[styles.disclaimerBox, { borderLeftColor: config.color }]}>
+          <View style={[styles.disclaimerBox, { borderLeftColor: accentColor }]}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
               {event.disclaimer}
             </ThemedText>
@@ -164,17 +210,33 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   typeLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  assetChip: {
+  assetBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#5B8E8E18',
-    borderRadius: 4,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
   },
-  assetLabel: { fontSize: 12, fontWeight: '600', color: Tokens.structural.positive },
+  assetBoxIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  assetBoxContent: { flex: 1, gap: 2 },
+  assetBoxType: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  assetBoxName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   title: { fontSize: 22, lineHeight: 30 },
   body: { gap: Spacing.three },
   paragraph: { lineHeight: 22 },

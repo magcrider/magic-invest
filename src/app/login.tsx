@@ -13,12 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing, Tokens } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
 type Mode = 'signin' | 'signup';
 
 export default function LoginScreen() {
+  const theme = useTheme();
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -101,7 +103,7 @@ export default function LoginScreen() {
             {/* Selector de modo */}
             <ThemedView type="backgroundElement" style={styles.modeSelector}>
               <TouchableOpacity
-                style={[styles.modeButton, mode === 'signin' && styles.modeButtonActive]}
+                style={[styles.modeButton, mode === 'signin' && { backgroundColor: theme.background }]}
                 onPress={() => { setMode('signin'); setName(''); setError(null); setSuccessMsg(null); }}>
                 <ThemedText
                   type="small"
@@ -110,7 +112,7 @@ export default function LoginScreen() {
                 </ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modeButton, mode === 'signup' && styles.modeButtonActive]}
+                style={[styles.modeButton, mode === 'signup' && { backgroundColor: theme.background }]}
                 onPress={() => { setMode('signup'); setError(null); setSuccessMsg(null); }}>
 
                 <ThemedText
@@ -123,9 +125,9 @@ export default function LoginScreen() {
 
             {mode === 'signup' && (
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: theme.divider, color: theme.text, backgroundColor: theme.backgroundElement }]}
                 placeholder="¿Cómo te llamamos?"
-                placeholderTextColor={Tokens.neutral.muted}
+                placeholderTextColor={theme.textSecondary}
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
@@ -135,9 +137,9 @@ export default function LoginScreen() {
             )}
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { borderColor: theme.divider, color: theme.text, backgroundColor: theme.backgroundElement }]}
               placeholder="tu@email.com"
-              placeholderTextColor={Tokens.neutral.muted}
+              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -147,9 +149,9 @@ export default function LoginScreen() {
 
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
+                style={[styles.input, styles.passwordInput, { borderColor: theme.divider, color: theme.text, backgroundColor: theme.backgroundElement }]}
                 placeholder="Contraseña (mínimo 6 caracteres)"
-                placeholderTextColor={Tokens.neutral.muted}
+                placeholderTextColor={theme.textSecondary}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -163,18 +165,18 @@ export default function LoginScreen() {
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={20}
-                  color={Tokens.neutral.muted}
+                  color={theme.textSecondary}
                 />
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, { backgroundColor: theme.text }, loading && styles.buttonDisabled]}
               onPress={handleSubmit}
               disabled={loading || !email.trim() || password.length < 6 || (mode === 'signup' && !name.trim())}>
               {loading
-                ? <ActivityIndicator color={Tokens.neutral.background} />
-                : <ThemedText type="smallBold" style={styles.buttonText}>
+                ? <ActivityIndicator color={theme.background} />
+                : <ThemedText type="smallBold" style={[styles.buttonText, { color: theme.background }]}>
                     {mode === 'signin' ? 'Ingresar' : 'Crear cuenta'}
                   </ThemedText>
               }
@@ -189,10 +191,10 @@ export default function LoginScreen() {
             )}
 
             {error && (
-              <ThemedText type="small" style={styles.error}>{error}</ThemedText>
+              <ThemedText type="small" style={[styles.error, { color: theme.risk }]}>{error}</ThemedText>
             )}
             {successMsg && (
-              <ThemedText type="small" style={styles.success}>{successMsg}</ThemedText>
+              <ThemedText type="small" style={[styles.success, { color: theme.positive }]}>{successMsg}</ThemedText>
             )}
           </ThemedView>
 
@@ -224,7 +226,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.five,
   },
   header: { gap: Spacing.two, paddingTop: Spacing.five },
-  title: { color: Tokens.neutral.text },
+  title: {},
   form: { gap: Spacing.three },
   modeSelector: {
     flexDirection: 'row',
@@ -237,21 +239,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Spacing.one,
   },
-  modeButtonActive: {
-    backgroundColor: Tokens.neutral.background,
-  },
+  modeButtonActive: {},
   input: {
     borderWidth: 1,
-    borderColor: '#E0E0DC',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 16,
-    color: Tokens.neutral.text,
-    backgroundColor: '#FFFFFF',
   },
   button: {
-    backgroundColor: Tokens.neutral.text,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -259,7 +255,7 @@ const styles = StyleSheet.create({
     height: 52,
   },
   buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: Tokens.neutral.background },
+  buttonText: {},
   passwordContainer: {
     position: 'relative',
   },
@@ -274,7 +270,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   linkButton: { alignItems: 'center', paddingVertical: Spacing.one },
-  error: { color: Tokens.structural.risk, textAlign: 'center' },
-  success: { color: Tokens.structural.positive, textAlign: 'center' },
+  error: { textAlign: 'center' },
+  success: { textAlign: 'center' },
   disclaimer: { textAlign: 'center' },
 });

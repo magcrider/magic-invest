@@ -1,7 +1,8 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing, Tokens } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import type { Currency } from '@/utils/format';
 
 interface Props {
@@ -10,17 +11,21 @@ interface Props {
 }
 
 export function CurrencySelector({ value, onChange }: Props) {
+  const theme = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.divider }]}>
       {(['COP', 'USD'] as Currency[]).map((c) => (
         <TouchableOpacity
           key={c}
-          style={[styles.option, value === c && styles.optionActive]}
+          style={[styles.option, value === c && { backgroundColor: theme.background }]}
           onPress={() => onChange(c)}
           activeOpacity={0.7}>
           <ThemedText
             type="small"
-            style={[styles.label, value === c && styles.labelActive]}>
+            style={value === c
+              ? { color: theme.text, fontWeight: '600' }
+              : { color: theme.textSecondary }}>
             $ {c}
           </ThemedText>
         </TouchableOpacity>
@@ -32,7 +37,6 @@ export function CurrencySelector({ value, onChange }: Props) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#E0E0DC',
     borderRadius: Spacing.two,
     padding: 3,
     alignSelf: 'flex-start',
@@ -41,20 +45,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
     borderRadius: Spacing.one + 1,
-  },
-  optionActive: {
-    backgroundColor: '#FAFAF7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0,
     shadowRadius: 2,
-    elevation: 2,
-  },
-  label: {
-    color: Tokens.neutral.muted,
-  },
-  labelActive: {
-    color: Tokens.neutral.text,
-    fontWeight: '600',
+    elevation: 0,
   },
 });

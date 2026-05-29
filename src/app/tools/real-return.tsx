@@ -9,7 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { CurrencySelector } from '@/components/calculator/currency-selector';
 import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { type Currency, formatCurrency, formatPercent, parseNumber } from '@/utils/format';
 
 // ─── Lógica de cálculo ────────────────────────────────────────────────────────
@@ -49,25 +50,26 @@ interface VerdictBlockProps {
 }
 
 function VerdictBlock({ verdict, realRate }: VerdictBlockProps) {
+  const theme = useTheme();
   const config = {
     grows: {
       icon: 'trending-up-outline' as const,
-      color: Tokens.structural.positive,
-      bg: '#5B8E8E18',
+      color: theme.positive,
+      bg: theme.positiveSubtle,
       text: 'Tu plata CRECE en términos reales.',
       sub: 'Cada año ganas poder adquisitivo por encima de la inflación.',
     },
     holds: {
       icon: 'remove-outline' as const,
-      color: Tokens.structural.attention,
-      bg: '#C0855218',
+      color: theme.attention,
+      bg: theme.attentionSubtle,
       text: 'Tu plata apenas AGUANTA.',
       sub: 'El rendimiento cubre la inflación pero no genera ganancia real.',
     },
     loses: {
       icon: 'trending-down-outline' as const,
-      color: Tokens.structural.risk,
-      bg: '#6B4E7118',
+      color: theme.risk,
+      bg: theme.riskSubtle,
       text: 'Tu plata PIERDE poder adquisitivo.',
       sub: 'El rendimiento no alcanza a cubrir la inflación.',
     },
@@ -107,6 +109,7 @@ const verdictStyles = StyleSheet.create({
 
 export default function RealReturnScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [currency, setCurrency] = useState<Currency>('COP');
   const [capital, setCapital]     = useState('');
@@ -157,7 +160,7 @@ export default function RealReturnScreen() {
         {
           label: result.realGain >= 0 ? 'Ganancia real' : 'Pérdida de poder adquisitivo',
           value: formatCurrency(Math.abs(result.realGain), currency),
-          color: result.realGain >= 0 ? Tokens.structural.positive : Tokens.structural.risk,
+          color: result.realGain >= 0 ? theme.positive : theme.risk,
         },
       ]
     : [];
@@ -174,10 +177,10 @@ export default function RealReturnScreen() {
 
           <ThemedView style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <ThemedView style={styles.iconBox}>
-              <Ionicons name="pulse-outline" size={22} color={Tokens.structural.positive} />
+            <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+              <Ionicons name="pulse-outline" size={22} color={theme.positive} />
             </ThemedView>
           </ThemedView>
 
@@ -226,7 +229,7 @@ export default function RealReturnScreen() {
           </ThemedView>
 
           <TouchableOpacity
-            style={[styles.button, !isValid() && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: theme.positive }, !isValid() && styles.buttonDisabled]}
             onPress={handleCalculate}
             disabled={!isValid()}
             activeOpacity={0.8}>
@@ -268,7 +271,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -283,7 +285,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   button: {
-    backgroundColor: Tokens.structural.positive,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',

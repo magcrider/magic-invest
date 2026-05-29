@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import AppTabs from '@/components/app-tabs';
-import { Tokens, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { migrateDbIfNeeded } from '@/db';
 import { useAuth } from '@/hooks/use-auth';
 import { signOutState } from '@/utils/sign-out-state';
@@ -13,6 +14,7 @@ import LoginScreen from './login';
 
 function AppContent() {
   const colorScheme = useColorScheme();
+  const theme = useTheme();
   const { session, loading } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -30,11 +32,11 @@ function AppContent() {
 
   if (loading || signingOut) {
     return (
-      <View style={styles.loading}>
+      <View style={[styles.loading, { backgroundColor: theme.background }]}>
         {signingOut ? (
-          <Text style={styles.signingOutText}>Cerrando sesión...</Text>
+          <Text style={[styles.signingOutText, { color: theme.textSecondary }]}>Cerrando sesión...</Text>
         ) : (
-          <ActivityIndicator color={Tokens.neutral.muted} />
+          <ActivityIndicator color={theme.textSecondary} />
         )}
       </View>
     );
@@ -61,13 +63,11 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   loading: {
     flex: 1,
-    backgroundColor: Tokens.neutral.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
   signingOutText: {
     fontSize: 15,
-    color: Tokens.neutral.muted,
     marginTop: Spacing.two,
   },
 });

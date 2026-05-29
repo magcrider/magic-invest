@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -14,8 +13,10 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { PageHeader } from '@/components/page-header';
 import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
 import { RiskProfileFlow } from '@/components/risk-profile-flow';
-import { Tokens, Spacing, BottomTabInset } from '@/constants/theme';
+import { Spacing, BottomTabInset } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { PROFILE_CONFIG, PROFILE_BANDS, type RiskProfile } from '@/constants/risk-profile';
 import { getRiskProfile, setRiskProfile } from '@/db/queries/config';
 import { profileEvents } from '@/utils/profile-events';
@@ -28,11 +29,10 @@ import { INBOX_EVENTS, type InboxEvent } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
 
 // ── Macro context hardcodeado — vendrá del backend §8 ────────────────────
-const TRM_COP       = 4_200;  // COP por USD
-const BANREP_RATE   = 9.25;   // %
-const CDT_MKT_RATE  = 11.2;   // %
-const INFLATION_COL = 5.3;    // %
-// Supuestos CAGR ETF (nominal USD) para proyección pesimista/optimista
+const TRM_COP       = 4_200;
+const BANREP_RATE   = 9.25;
+const CDT_MKT_RATE  = 11.2;
+const INFLATION_COL = 5.3;
 const ETF_CAGR_LOW  = 0.05;
 const ETF_CAGR_HIGH = 0.11;
 // ─────────────────────────────────────────────────────────────────────────
@@ -70,12 +70,6 @@ function bandHealth(pct: number, min: number, max: number): BandHealth {
   if (pct >= min && pct <= max) return 'dentro';
   if (pct >= min - 0.05 && pct <= max + 0.05) return 'cerca';
   return 'fuera';
-}
-
-function bandColor(h: BandHealth): string {
-  if (h === 'dentro') return Tokens.structural.positive;
-  if (h === 'cerca')  return Tokens.structural.attention;
-  return Tokens.structural.risk;
 }
 
 function isEffectivelyUnread(evt: InboxEvent): boolean {
@@ -117,6 +111,7 @@ export default function PortfolioScreen() {
   const { displayName }       = useAuth();
   const db                    = useSQLiteContext();
   const router                = useRouter();
+  const theme                 = useTheme();
   const [state, setState]     = useState<ScreenState>('loading');
   const [profile, setProfile] = useState<RiskProfile | null>(null);
   const [cdts, setCdts]       = useState<CdtPosition[]>([]);
@@ -164,7 +159,7 @@ export default function PortfolioScreen() {
 
         {state === 'loading' && (
           <View style={styles.centered}>
-            <ActivityIndicator color={Tokens.neutral.muted} />
+            <ActivityIndicator color={theme.textSecondary} />
           </View>
         )}
 
@@ -192,23 +187,21 @@ interface PortfolioContentProps {
 
 function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
   const router  = useRouter();
+  const theme   = useTheme();
   const config  = PROFILE_CONFIG[profile.label];
   const bands   = PROFILE_BANDS[profile.label];
   const isEmpty = cdts.length === 0 && etfs.length === 0;
   const [tab, setTab] = useState<PortfolioTab>('resumen');
 
-  // Si se eliminan todos los activos estando en Detalle, volver a Resumen
   useEffect(() => {
     if (isEmpty) setTab('resumen');
   }, [isEmpty]);
 
-  // Re-render cuando cambia el estado del Buzón (leído, eliminado, etc.)
   const [, setInboxTick] = useState(0);
   useEffect(() => {
     return inboxState.subscribe(() => setInboxTick((n) => n + 1));
   }, []);
 
-  // Totales del portafolio
   const cdtTotal       = cdts.reduce((s, c) => s + c.amount, 0);
   const etfTotalCOP    = etfs.reduce((s, e) => s + etfValueCOP(e), 0);
   const portfolioTotal = cdtTotal + etfTotalCOP;
@@ -227,45 +220,50 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
 
   return (
     <View style={styles.contentRoot}>
-      {/* Fila superior: chip de perfil (izq) + botón Agregar (der) */}
+      {/* Fila superior: chip de perfil + botón Agregar */}
       <View style={styles.profileRow}>
-        <View style={[styles.profileChip, { borderColor: config.color + '60' }]}>
-          <Text style={styles.chipLine} numberOfLines={1}>
-            <Text style={[styles.chipLabel, { color: config.color }]}>{config.title}</Text>
-            <Text style={styles.chipBands}>
+        <View style={[styles.profileChip, {
+          borderColor: config.color + '60',
+          backgroundColor: theme.backgroundElement,
+        }]}>
+          <ThemedText style={styles.chipLine} numberOfLines={1}>
+            <ThemedText style={[styles.chipLabel, { color: config.color }]}>{config.title}</ThemedText>
+            <ThemedText style={[styles.chipBands, { color: theme.textSecondary }]}>
               {`: CDT ${Math.round(bands.cdt_min * 100)}–${Math.round(bands.cdt_max * 100)}% / ETF ${Math.round(bands.etf_min * 100)}–${Math.round(bands.etf_max * 100)}%`}
-            </Text>
-          </Text>
+            </ThemedText>
+          </ThemedText>
         </View>
         <TouchableOpacity
-          style={styles.fab}
+          style={[styles.fab, { backgroundColor: theme.positive }]}
           onPress={() => router.push('/portfolio/add')}
           activeOpacity={0.85}
         >
           <Ionicons name="add-outline" size={15} color="#FFFFFF" />
-          <Text style={styles.fabText}>Agregar</Text>
+          <ThemedText style={styles.fabText}>Agregar</ThemedText>
         </TouchableOpacity>
       </View>
 
-      {/* Tab bar — siempre visible; Detalle desactivado sin activos */}
-      <View style={styles.tabBar}>
+      {/* Tab bar */}
+      <View style={[styles.tabBar, { backgroundColor: theme.backgroundElement }]}>
         <TouchableOpacity
-          style={[styles.tabItem, tab === 'resumen' && styles.tabItemActive]}
+          style={[styles.tabItem, tab === 'resumen' && { backgroundColor: theme.background }]}
           onPress={() => setTab('resumen')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.tabLabel, tab === 'resumen' && styles.tabLabelActive]}>
+          <ThemedText style={[styles.tabLabel, { color: tab === 'resumen' ? theme.text : theme.textSecondary },
+            tab === 'resumen' && { fontWeight: '600' }]}>
             Resumen
-          </Text>
+          </ThemedText>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabItem, tab === 'detalle' && styles.tabItemActive, isEmpty && styles.tabItemDisabled]}
+          style={[styles.tabItem, tab === 'detalle' && { backgroundColor: theme.background }, isEmpty && styles.tabItemDisabled]}
           onPress={() => { if (!isEmpty) setTab('detalle'); }}
           activeOpacity={isEmpty ? 1 : 0.7}
         >
-          <Text style={[styles.tabLabel, tab === 'detalle' && styles.tabLabelActive, isEmpty && styles.tabLabelDisabled]}>
+          <ThemedText style={[styles.tabLabel, { color: (tab === 'detalle' && !isEmpty) ? theme.text : theme.textSecondary },
+            tab === 'detalle' && !isEmpty && { fontWeight: '600' }]}>
             Detalle
-          </Text>
+          </ThemedText>
         </TouchableOpacity>
       </View>
 
@@ -277,83 +275,89 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
           showsVerticalScrollIndicator={false}
         >
           {isEmpty ? (
-            /* Estado vacío */
-            <View style={styles.emptyCard}>
-              <Ionicons name="layers-outline" size={40} color={Tokens.neutral.muted} />
-              <Text style={styles.emptyTitle}>Tu portafolio está vacío</Text>
-              <Text style={styles.emptySubtitle}>
+            <View style={[styles.emptyCard, { backgroundColor: theme.backgroundElement }]}>
+              <Ionicons name="layers-outline" size={40} color={theme.textSecondary} />
+              <ThemedText style={[styles.emptyTitle, { color: theme.text }]}>
+                Tu portafolio está vacío
+              </ThemedText>
+              <ThemedText style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
                 Registra los activos que ya tienes en tu banco o broker para ver el análisis completo.
-              </Text>
+              </ThemedText>
               <View style={styles.emptyCtas}>
                 <TouchableOpacity
-                  style={styles.emptyCtaBtn}
+                  style={[styles.emptyCtaBtn, { backgroundColor: theme.background, borderColor: theme.divider }]}
                   onPress={() => router.push('/portfolio/add-cdt')}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="business-outline" size={16} color={Tokens.structural.positive} />
-                  <Text style={[styles.emptyCtaText, { color: Tokens.structural.positive }]}>
+                  <Ionicons name="business-outline" size={16} color={theme.assetCdt} />
+                  <ThemedText style={[styles.emptyCtaText, { color: theme.assetCdt }]}>
                     Agregar CDT
-                  </Text>
+                  </ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.emptyCtaBtn}
+                  style={[styles.emptyCtaBtn, { backgroundColor: theme.background, borderColor: theme.divider }]}
                   onPress={() => router.push('/portfolio/add-etf')}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="trending-up-outline" size={16} color={Tokens.structural.attention} />
-                  <Text style={[styles.emptyCtaText, { color: Tokens.structural.attention }]}>
+                  <Ionicons name="trending-up-outline" size={16} color={theme.assetEtf} />
+                  <ThemedText style={[styles.emptyCtaText, { color: theme.assetEtf }]}>
                     Agregar ETF
-                  </Text>
+                  </ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
-            /* Con activos */
             <>
               {unreadCount > 0 && (
                 <TouchableOpacity
-                  style={styles.inboxBanner}
+                  style={[styles.inboxBanner, { backgroundColor: theme.attentionSubtle, borderColor: theme.attentionBorder }]}
                   onPress={() => setTab('detalle')}
                   activeOpacity={0.8}
                 >
-                  <View style={styles.inboxBannerIcon}>
-                    <Ionicons name="mail-outline" size={16} color={Tokens.structural.attention} />
+                  <View style={[styles.inboxBannerIcon, { backgroundColor: theme.attentionSubtle }]}>
+                    <Ionicons name="mail-outline" size={16} color={theme.attention} />
                   </View>
                   <View style={styles.inboxBannerText}>
-                    <Text style={styles.inboxBannerTitle}>
+                    <ThemedText style={[styles.inboxBannerTitle, { color: theme.text }]}>
                       {unreadCount === 1 ? '1 mensaje' : `${unreadCount} mensajes`} en el Buzón
-                    </Text>
-                    <Text style={styles.inboxBannerSub}>relacionados con tu portafolio</Text>
+                    </ThemedText>
+                    <ThemedText style={[styles.inboxBannerSub, { color: theme.textSecondary }]}>
+                      relacionados con tu portafolio
+                    </ThemedText>
                   </View>
-                  <Ionicons name="chevron-forward" size={14} color={Tokens.neutral.muted} />
+                  <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
                 </TouchableOpacity>
               )}
 
-              <View style={styles.metricsRow}>
+              <View style={[styles.metricsRow, { backgroundColor: theme.backgroundElement }]}>
                 <View style={styles.metricLeft}>
-                  <Text style={styles.metricLabel}>Portafolio</Text>
-                  <Text style={styles.metricTotal} numberOfLines={1} adjustsFontSizeToFit>
+                  <ThemedText style={[styles.metricLabel, { color: theme.textSecondary }]}>Portafolio</ThemedText>
+                  <ThemedText style={[styles.metricTotal, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
                     ${abbreviateValue(portfolioTotal, 'COP')}
-                  </Text>
+                  </ThemedText>
                   <View style={styles.metricBreakdown}>
                     <View style={styles.summaryBreakdownItem}>
-                      <View style={[styles.summaryDot, { backgroundColor: Tokens.structural.positive }]} />
-                      <Text style={styles.metricPart}>CDT  ${abbreviateValue(cdtTotal, 'COP')}</Text>
+                      <View style={[styles.summaryDot, { backgroundColor: theme.assetCdt }]} />
+                      <ThemedText style={[styles.metricPart, { color: theme.textSecondary }]}>
+                        CDT  ${abbreviateValue(cdtTotal, 'COP')}
+                      </ThemedText>
                     </View>
                     <View style={styles.summaryBreakdownItem}>
-                      <View style={[styles.summaryDot, { backgroundColor: Tokens.structural.attention }]} />
-                      <Text style={styles.metricPart}>ETF  ${abbreviateValue(etfTotalCOP, 'COP')}</Text>
+                      <View style={[styles.summaryDot, { backgroundColor: theme.assetEtf }]} />
+                      <ThemedText style={[styles.metricPart, { color: theme.textSecondary }]}>
+                        ETF  ${abbreviateValue(etfTotalCOP, 'COP')}
+                      </ThemedText>
                     </View>
                   </View>
                 </View>
-                <View style={styles.metricDivider} />
+                <View style={[styles.metricDivider, { backgroundColor: theme.divider }]} />
                 <View style={styles.metricRight}>
-                  <Text style={[styles.metricLabel, { color: Tokens.structural.positive }]}>
+                  <ThemedText style={[styles.metricLabel, { color: theme.positive }]}>
                     Proyección 10A
-                  </Text>
-                  <Text style={styles.metricRange} numberOfLines={2} adjustsFontSizeToFit>
+                  </ThemedText>
+                  <ThemedText style={[styles.metricRange, { color: theme.text }]} numberOfLines={2} adjustsFontSizeToFit>
                     ${abbreviateValue(projLow, 'COP')} –{'\n'}${abbreviateValue(projHigh, 'COP')}
-                  </Text>
+                  </ThemedText>
                 </View>
               </View>
 
@@ -373,7 +377,9 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
         >
           {cdts.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionHeader}>Certificados de Depósito</Text>
+              <ThemedText style={[styles.sectionHeader, { color: theme.assetCdt }]}>
+                Certificados de Depósito
+              </ThemedText>
               {cdts.map((cdt) => (
                 <CdtCard
                   key={cdt.id}
@@ -386,7 +392,9 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
           )}
           {etfs.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionHeader}>ETFs Indexados</Text>
+              <ThemedText style={[styles.sectionHeader, { color: theme.assetEtf }]}>
+                ETFs Indexados
+              </ThemedText>
               {etfs.map((etf) => (
                 <EtfCard
                   key={etf.id}
@@ -412,58 +420,60 @@ function DistributionSection({
   etfPct: number;
   bands:  AllocationBands;
 }) {
+  const theme = useTheme();
   const cdtH = bandHealth(cdtPct, bands.cdt_min, bands.cdt_max);
   const etfH = bandHealth(etfPct, bands.etf_min, bands.etf_max);
   const overallH: BandHealth =
     cdtH === 'fuera' || etfH === 'fuera' ? 'fuera' :
     cdtH === 'cerca' || etfH === 'cerca' ? 'cerca' :
     'dentro';
-  const hc = bandColor(overallH);
+  const hc = overallH === 'dentro' ? theme.positive : overallH === 'cerca' ? theme.attention : theme.risk;
   const statusLabel =
     overallH === 'dentro' ? 'Dentro de bandas' :
     overallH === 'cerca'  ? 'Cerca del límite' :
     'Fuera de bandas';
 
+  const cdtHc = cdtH === 'dentro' ? theme.positive : cdtH === 'cerca' ? theme.attention : theme.risk;
+  const etfHc = etfH === 'dentro' ? theme.positive : etfH === 'cerca' ? theme.attention : theme.risk;
+  const cdtN  = Math.round(cdtPct * 100);
+  const etfN  = Math.round(etfPct * 100);
+
   return (
-    <View style={styles.distributionSection}>
+    <View style={[styles.distributionSection, { backgroundColor: theme.backgroundElement }]}>
       <View style={styles.distributionHeader}>
-        <Text style={styles.sectionHeader}>Distribución</Text>
+        <ThemedText style={[styles.sectionHeader, { color: theme.textSecondary }]}>Distribución</ThemedText>
         <View style={[styles.healthBadge, { backgroundColor: hc + '18', borderColor: hc + '50' }]}>
-          <Text style={[styles.healthLabel, { color: hc }]}>{statusLabel}</Text>
+          <ThemedText style={[styles.healthLabel, { color: hc }]}>{statusLabel}</ThemedText>
         </View>
       </View>
-      <DistributionBar label="CDTs" pct={cdtPct} min={bands.cdt_min} max={bands.cdt_max} />
-      <DistributionBar label="ETFs" pct={etfPct} min={bands.etf_min} max={bands.etf_max} />
-    </View>
-  );
-}
 
-function DistributionBar({
-  label, pct, min, max,
-}: {
-  label: string;
-  pct:   number;
-  min:   number;
-  max:   number;
-}) {
-  const h    = bandHealth(pct, min, max);
-  const hc   = bandColor(h);
-  const pctN = Math.round(pct * 100);
-  const minN = Math.round(min * 100);
-  const maxN = Math.round(max * 100);
-
-  return (
-    <View style={styles.barRow}>
-      <View style={styles.barLabelRow}>
-        <Text style={styles.barLabel}>{label}</Text>
-        <Text style={[styles.barPct, { color: hc }]}>{pctN}%</Text>
-        <Text style={styles.barBandText}>[{minN}–{maxN}%]</Text>
-        {h === 'dentro' && <Ionicons name="checkmark"             size={13} color={hc} />}
-        {h === 'cerca'  && <Ionicons name="alert-circle-outline"  size={13} color={hc} />}
-        {h === 'fuera'  && <Ionicons name="close-circle-outline"  size={13} color={hc} />}
+      <View style={[styles.stackedTrack, { backgroundColor: theme.divider }]}>
+        <View style={{ flex: cdtN, backgroundColor: theme.assetCdt }} />
+        <View style={{ flex: etfN, backgroundColor: theme.assetEtf }} />
       </View>
-      <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${pctN}%`, backgroundColor: hc }]} />
+
+      <View style={styles.distLegendRow}>
+        <View style={[styles.distDot, { backgroundColor: theme.assetCdt }]} />
+        <ThemedText style={[styles.distLabel, { color: theme.text }]}>CDT</ThemedText>
+        <ThemedText style={[styles.distPct, { color: theme.assetCdt }]}>{cdtN}%</ThemedText>
+        <ThemedText style={[styles.distBand, { color: theme.textSecondary }]}>
+          [{Math.round(bands.cdt_min * 100)}–{Math.round(bands.cdt_max * 100)}%]
+        </ThemedText>
+        {cdtH === 'dentro' && <Ionicons name="checkmark"            size={13} color={cdtHc} />}
+        {cdtH === 'cerca'  && <Ionicons name="alert-circle-outline" size={13} color={cdtHc} />}
+        {cdtH === 'fuera'  && <Ionicons name="close-circle-outline" size={13} color={cdtHc} />}
+      </View>
+
+      <View style={styles.distLegendRow}>
+        <View style={[styles.distDot, { backgroundColor: theme.assetEtf }]} />
+        <ThemedText style={[styles.distLabel, { color: theme.text }]}>ETF</ThemedText>
+        <ThemedText style={[styles.distPct, { color: theme.assetEtf }]}>{etfN}%</ThemedText>
+        <ThemedText style={[styles.distBand, { color: theme.textSecondary }]}>
+          [{Math.round(bands.etf_min * 100)}–{Math.round(bands.etf_max * 100)}%]
+        </ThemedText>
+        {etfH === 'dentro' && <Ionicons name="checkmark"            size={13} color={etfHc} />}
+        {etfH === 'cerca'  && <Ionicons name="alert-circle-outline" size={13} color={etfHc} />}
+        {etfH === 'fuera'  && <Ionicons name="close-circle-outline" size={13} color={etfHc} />}
       </View>
     </View>
   );
@@ -472,27 +482,29 @@ function DistributionBar({
 // ── Contexto macro ────────────────────────────────────────────────────────
 
 function ContextStrip() {
+  const theme = useTheme();
   return (
-    <View style={styles.contextStrip}>
-      <Text style={styles.contextTitle}>Contexto actual</Text>
+    <View style={[styles.contextStrip, { backgroundColor: theme.backgroundElement }]}>
+      <ThemedText style={[styles.contextTitle, { color: theme.textSecondary }]}>Contexto actual</ThemedText>
       <View style={styles.contextRow}>
         <ContextItem label="Banrep"      value={`${BANREP_RATE}%`} />
         <ContextItem label="CDT mercado" value={`${CDT_MKT_RATE}%`} />
         <ContextItem label="Inflación"   value={`${INFLATION_COL}%`} />
         <ContextItem label="TRM"         value={`$${TRM_COP.toLocaleString('es-CO')}`} />
       </View>
-      <Text style={styles.contextNote}>
+      <ThemedText style={[styles.contextNote, { color: theme.textSecondary }]}>
         Datos de referencia · se actualizarán automáticamente en §8
-      </Text>
+      </ThemedText>
     </View>
   );
 }
 
 function ContextItem({ label, value }: { label: string; value: string }) {
+  const theme = useTheme();
   return (
     <View style={styles.contextItem}>
-      <Text style={styles.contextValue}>{value}</Text>
-      <Text style={styles.contextLabel}>{label}</Text>
+      <ThemedText style={[styles.contextValue, { color: theme.text }]}>{value}</ThemedText>
+      <ThemedText style={[styles.contextLabel, { color: theme.textSecondary }]}>{label}</ThemedText>
     </View>
   );
 }
@@ -500,35 +512,43 @@ function ContextItem({ label, value }: { label: string; value: string }) {
 // ── Tarjetas de activos ───────────────────────────────────────────────────
 
 function CdtCard({ cdt, onPress, hasUnread }: { cdt: CdtPosition; onPress: () => void; hasUnread: boolean }) {
+  const theme   = useTheme();
   const days    = daysUntil(cdt.end_date);
   const net     = cdtNetYield(cdt);
   const expired = days < 0;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      {hasUnread && <View style={styles.cardInboxDot} />}
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: theme.backgroundElement }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      {hasUnread && <View style={[styles.cardInboxDot, { backgroundColor: theme.attention }]} />}
       <View style={styles.cardRow}>
-        <Text style={styles.cardTitle}>{cdt.bank}</Text>
-        <Text style={[styles.cardRate, { color: Tokens.structural.positive }]}>
+        <ThemedText style={[styles.cardTitle, { color: theme.text }]}>{cdt.bank}</ThemedText>
+        <ThemedText style={[styles.cardRate, { color: theme.assetCdt }]}>
           {(cdt.rate * 100).toFixed(2)}% EA
-        </Text>
+        </ThemedText>
       </View>
-      <Text style={styles.cardAmount}>{formatCurrency(cdt.amount, 'COP')}</Text>
+      <ThemedText style={[styles.cardAmount, { color: theme.text }]}>
+        {formatCurrency(cdt.amount, 'COP')}
+      </ThemedText>
       <View style={styles.cardRow}>
-        <Text style={styles.cardMeta}>
+        <ThemedText style={[styles.cardMeta, { color: theme.textSecondary }]}>
           {expired ? 'Venció ' : 'Vence '}
           {fmtDate(cdt.end_date)}
           {!expired && days <= 90 ? `  ·  ${days} días` : ''}
-        </Text>
-        <Text style={[styles.cardNet, { color: Tokens.structural.positive }]}>
+        </ThemedText>
+        <ThemedText style={[styles.cardNet, { color: theme.assetCdt }]}>
           +{abbreviateValue(net, 'COP')} neto
-        </Text>
+        </ThemedText>
       </View>
     </TouchableOpacity>
   );
 }
 
 function EtfCard({ etf, onPress, hasUnread }: { etf: EtfPosition; onPress: () => void; hasUnread: boolean }) {
+  const theme     = useTheme();
   const isCop     = etf.currency === 'COP';
   const hasShares = etf.shares > 0;
 
@@ -550,22 +570,28 @@ function EtfCard({ etf, onPress, hasUnread }: { etf: EtfPosition; onPress: () =>
     : null;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      {hasUnread && <View style={styles.cardInboxDot} />}
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: theme.backgroundElement }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      {hasUnread && <View style={[styles.cardInboxDot, { backgroundColor: theme.attention }]} />}
       <View style={styles.cardRow}>
-        <Text style={styles.cardTitle}>{etf.ticker}</Text>
+        <ThemedText style={[styles.cardTitle, { color: theme.text }]}>{etf.ticker}</ThemedText>
         {etf.ter > 0 && (
-          <Text style={styles.cardMeta}>TER {(etf.ter * 100).toFixed(2)}%</Text>
+          <ThemedText style={[styles.cardMeta, { color: theme.textSecondary }]}>
+            TER {(etf.ter * 100).toFixed(2)}%
+          </ThemedText>
         )}
       </View>
-      <Text style={styles.cardSubtitle}>{etf.name}</Text>
+      <ThemedText style={[styles.cardSubtitle, { color: theme.textSecondary }]}>{etf.name}</ThemedText>
       <View style={styles.cardRow}>
-        <Text style={styles.cardMeta}>
+        <ThemedText style={[styles.cardMeta, { color: theme.textSecondary }]}>
           {sharesDisplay}{costDisplay ? ` · ${costDisplay}` : ''}
-        </Text>
-        <Text style={[styles.cardNet, { color: Tokens.structural.attention }]}>
+        </ThemedText>
+        <ThemedText style={[styles.cardNet, { color: theme.assetEtf }]}>
           {totalDisplay}
-        </Text>
+        </ThemedText>
       </View>
     </TouchableOpacity>
   );
@@ -586,8 +612,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // Fila perfil + botón Agregar
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -597,7 +621,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    backgroundColor: Tokens.structural.positive,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderRadius: 100,
@@ -607,17 +630,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-
-  // Contenedor del contenido del portafolio (chip + tab bar + scroll)
   contentRoot: {
     flex: 1,
     gap: Spacing.two,
   },
-
-  // Tab bar Resumen / Detalle
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     padding: Spacing.half,
     gap: Spacing.half,
@@ -627,14 +645,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     alignItems: 'center',
     borderRadius: Spacing.one + Spacing.half,
-  },
-  tabItemActive: {
-    backgroundColor: Tokens.neutral.background,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0,
     shadowRadius: 2,
-    elevation: 1,
+    elevation: 0,
   },
   tabItemDisabled: {
     opacity: 0.38,
@@ -642,38 +657,23 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: Tokens.neutral.muted,
   },
-  tabLabelActive: {
-    color: Tokens.neutral.text,
-    fontWeight: '600',
-  },
-  tabLabelDisabled: {
-    color: Tokens.neutral.muted,
-  },
-
   scroll: { flex: 1 },
   scrollContent: {
     gap: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.three,
   },
-
-  // Chip de perfil
   profileChip: {
     flex: 1,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: 100,
     borderWidth: 1,
-    backgroundColor: '#F0F0EC',
   },
   chipLine:  { fontSize: 12, flexShrink: 1 },
   chipLabel: { fontSize: 12, fontWeight: '600' },
-  chipBands: { fontSize: 12, color: Tokens.neutral.muted },
-
-  // Estado vacío
+  chipBands: { fontSize: 12 },
   emptyCard: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.three,
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
@@ -683,13 +683,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: Tokens.neutral.text,
     textAlign: 'center',
     marginTop: Spacing.two,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: Tokens.neutral.muted,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -707,23 +705,17 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two + Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.two,
-    backgroundColor: Tokens.neutral.background,
     borderWidth: 1,
-    borderColor: '#E0E0DC',
   },
   emptyCtaText: {
     fontSize: 13,
     fontWeight: '600',
   },
-
-  // Banner Buzón
   inboxBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    backgroundColor: Tokens.structural.attention + '12',
     borderWidth: 1,
-    borderColor: Tokens.structural.attention + '35',
     borderRadius: Spacing.two,
     padding: Spacing.three,
   },
@@ -731,82 +723,29 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: Tokens.structural.attention + '20',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   inboxBannerText: { flex: 1, gap: 2 },
-  inboxBannerTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Tokens.neutral.text,
-  },
-  inboxBannerSub: {
-    fontSize: 12,
-    color: Tokens.neutral.muted,
-  },
-
-  // Métricas en dos columnas
+  inboxBannerTitle: { fontSize: 13, fontWeight: '600' },
+  inboxBannerSub:   { fontSize: 12 },
   metricsRow: {
     flexDirection: 'row',
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.three,
     padding: Spacing.three,
   },
-  metricLeft: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  metricRight: {
-    flex: 1,
-    paddingLeft: Spacing.three,
-    gap: Spacing.one,
-  },
-  metricDivider: {
-    width: 1,
-    backgroundColor: '#E0E0DC',
-    marginVertical: 2,
-  },
-  metricLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Tokens.neutral.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  metricTotal: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Tokens.neutral.text,
-    letterSpacing: -0.5,
-  },
-  metricRange: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Tokens.neutral.text,
-    letterSpacing: -0.3,
-    lineHeight: 26,
-  },
-  metricBreakdown: {
-    gap: 3,
-    marginTop: Spacing.one,
-  },
-  metricPart: {
-    fontSize: 11,
-    color: Tokens.neutral.muted,
-  },
-  // Conservados por DistributionSection
-  summaryBreakdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one + Spacing.half,
-  },
-  summaryDot: { width: 6, height: 6, borderRadius: 3 },
-
-  // Distribución
+  metricLeft:    { flex: 1, gap: Spacing.one },
+  metricRight:   { flex: 1, paddingLeft: Spacing.three, gap: Spacing.one },
+  metricDivider: { width: 1, marginVertical: 2 },
+  metricLabel:   { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  metricTotal:   { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  metricRange:   { fontSize: 20, fontWeight: '700', letterSpacing: -0.3, lineHeight: 26 },
+  metricBreakdown: { gap: 3, marginTop: Spacing.one },
+  metricPart:    { fontSize: 11 },
+  summaryBreakdownItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half },
+  summaryDot:    { width: 6, height: 6, borderRadius: 3 },
   distributionSection: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.three,
     padding: Spacing.three,
     gap: Spacing.two,
@@ -822,96 +761,32 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     borderWidth: 1,
   },
-  healthLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-
-  // Barra de distribución
-  barRow: {
-    gap: Spacing.one,
-  },
-  barLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  barLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: Tokens.neutral.text,
-    width: 38,
-  },
-  barPct: {
-    fontSize: 13,
-    fontWeight: '700',
-    width: 36,
-  },
-  barBandText: {
-    fontSize: 11,
-    color: Tokens.neutral.muted,
-    flex: 1,
-  },
-  barTrack: {
-    height: 6,
-    backgroundColor: '#E0E0DC',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: 6,
-    borderRadius: 3,
-  },
-
-  // Contexto macro
+  healthLabel:  { fontSize: 11, fontWeight: '600' },
+  stackedTrack:  { height: 10, borderRadius: 5, flexDirection: 'row', overflow: 'hidden' },
+  distLegendRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  distDot:       { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  distLabel:     { fontSize: 13, fontWeight: '500', width: 36 },
+  distPct:       { fontSize: 13, fontWeight: '700', width: 36 },
+  distBand:      { fontSize: 11, flex: 1 },
   contextStrip: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  contextTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Tokens.neutral.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  contextRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  contextItem: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  contextValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Tokens.neutral.text,
-  },
-  contextLabel: {
-    fontSize: 10,
-    color: Tokens.neutral.muted,
-    textAlign: 'center',
-  },
-  contextNote: {
-    fontSize: 10,
-    color: Tokens.neutral.muted,
-    fontStyle: 'italic',
-  },
-
-  // Listas de activos
-  section: { gap: Spacing.two },
+  contextTitle: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  contextRow:   { flexDirection: 'row', justifyContent: 'space-between' },
+  contextItem:  { alignItems: 'center', gap: 2 },
+  contextValue: { fontSize: 14, fontWeight: '600' },
+  contextLabel: { fontSize: 10, textAlign: 'center' },
+  contextNote:  { fontSize: 10, fontStyle: 'italic' },
+  section:      { gap: Spacing.two },
   sectionHeader: {
     fontSize: 12,
     fontWeight: '600',
-    color: Tokens.neutral.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   card: {
-    backgroundColor: '#F0F0EC',
     borderRadius: Spacing.two,
     padding: Spacing.three,
     gap: Spacing.one,
@@ -923,17 +798,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Tokens.structural.attention,
   },
-  cardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardTitle:    { fontSize: 15, fontWeight: '600', color: Tokens.neutral.text },
-  cardSubtitle: { fontSize: 13, color: Tokens.neutral.muted },
-  cardAmount:   { fontSize: 16, fontWeight: '700', color: Tokens.neutral.text },
-  cardRate:     { fontSize: 13, fontWeight: '600' },
-  cardMeta:     { fontSize: 13, color: Tokens.neutral.muted },
-  cardNet:      { fontSize: 13, fontWeight: '600' },
+  cardRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardTitle:   { fontSize: 15, fontWeight: '600' },
+  cardSubtitle:{ fontSize: 13 },
+  cardAmount:  { fontSize: 16, fontWeight: '700' },
+  cardRate:    { fontSize: 13, fontWeight: '600' },
+  cardMeta:    { fontSize: 13 },
+  cardNet:     { fontSize: 13, fontWeight: '600' },
 });

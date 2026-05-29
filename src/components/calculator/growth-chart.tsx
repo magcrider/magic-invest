@@ -2,7 +2,8 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing, Tokens } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { abbreviateValue, type Currency } from '@/utils/format';
 
 const CHART_HEIGHT = 160;
@@ -50,6 +51,7 @@ interface Props {
 }
 
 export function GrowthChart({ principal, monthly, annualRate, years, currency }: Props) {
+  const theme = useTheme();
   const points = buildPoints(principal, monthly, annualRate, years);
   const maxValue = points[points.length - 1].total;
 
@@ -61,7 +63,6 @@ export function GrowthChart({ principal, monthly, annualRate, years, currency }:
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View>
-          {/* Área de barras con espacio para etiquetas arriba */}
           <View style={styles.barsArea}>
             {points.map((point) => {
               const barH = Math.max(4, Math.round((point.total / maxValue) * CHART_HEIGHT));
@@ -70,25 +71,24 @@ export function GrowthChart({ principal, monthly, annualRate, years, currency }:
 
               return (
                 <View key={point.year} style={[styles.barOuter, { height: CHART_HEIGHT + LABEL_HEIGHT }]}>
-                  {/* Etiqueta de valor sobre la barra */}
                   <ThemedText
                     type="small"
-                    style={[styles.valueLabel, { bottom: barH + 4 }]}
+                    style={[styles.valueLabel, { bottom: barH + 4, color: theme.textSecondary }]}
                     numberOfLines={1}>
                     {abbreviateValue(point.total, currency)}
                   </ThemedText>
 
-                  {/* Barra apilada */}
                   <View style={[styles.bar, { height: barH }]}>
-                    {gainsH > 0 && <View style={[styles.gainsSection, { height: gainsH }]} />}
-                    <View style={[styles.contributedSection, { height: contributedH }]} />
+                    {gainsH > 0 && (
+                      <View style={[styles.barSection, { height: gainsH, backgroundColor: theme.positive }]} />
+                    )}
+                    <View style={[styles.barSection, { height: contributedH, backgroundColor: theme.positiveChart }]} />
                   </View>
                 </View>
               );
             })}
           </View>
 
-          {/* Etiquetas de año */}
           <View style={styles.labelsRow}>
             {points.map((point) => (
               <ThemedText
@@ -103,14 +103,13 @@ export function GrowthChart({ principal, monthly, annualRate, years, currency }:
         </View>
       </ScrollView>
 
-      {/* Leyenda */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: Tokens.structural.positive }]} />
+          <View style={[styles.legendDot, { backgroundColor: theme.positive }]} />
           <ThemedText type="small" themeColor="textSecondary">Ganancias</ThemedText>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#5B8E8E66' }]} />
+          <View style={[styles.legendDot, { backgroundColor: theme.positiveChart }]} />
           <ThemedText type="small" themeColor="textSecondary">Capital aportado</ThemedText>
         </View>
       </View>
@@ -139,7 +138,6 @@ const styles = StyleSheet.create({
   valueLabel: {
     position: 'absolute',
     fontSize: 10,
-    color: Tokens.neutral.muted,
     width: BAR_WIDTH + BAR_GAP,
     textAlign: 'center',
   },
@@ -148,13 +146,8 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     overflow: 'hidden',
   },
-  gainsSection: {
+  barSection: {
     width: BAR_WIDTH,
-    backgroundColor: Tokens.structural.positive,
-  },
-  contributedSection: {
-    width: BAR_WIDTH,
-    backgroundColor: '#5B8E8E66',
   },
   labelsRow: {
     flexDirection: 'row',

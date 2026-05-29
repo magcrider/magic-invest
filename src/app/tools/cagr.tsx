@@ -10,7 +10,8 @@ import { CurrencySelector } from '@/components/calculator/currency-selector';
 import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
 import { GrowthChart } from '@/components/calculator/growth-chart';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { type Currency, formatCurrency, formatPercent, parseNumber } from '@/utils/format';
 
 // ─── Lógica de cálculo ────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ function calcCagr(initial: number, final: number, years: number): CagrResult {
 
 export default function CagrScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [currency, setCurrency] = useState<Currency>('COP');
   const [initialValue, setInitialValue] = useState('');
@@ -64,8 +66,8 @@ export default function CagrScreen() {
   function reset() { setResult(null); }
 
   const cagrColor = result
-    ? result.cagr >= 0 ? Tokens.structural.positive : Tokens.structural.risk
-    : Tokens.structural.positive;
+    ? result.cagr >= 0 ? theme.positive : theme.risk
+    : theme.positive;
 
   const showChart = result !== null && result.cagr > 0 && parseNumber(years) >= 2;
 
@@ -76,7 +78,7 @@ export default function CagrScreen() {
         {
           label: result.totalGain >= 0 ? 'Ganancia total' : 'Pérdida total',
           value: formatCurrency(Math.abs(result.totalGain), currency),
-          color: result.totalGain >= 0 ? Tokens.structural.positive : Tokens.structural.risk,
+          color: result.totalGain >= 0 ? theme.positive : theme.risk,
         },
         {
           label: 'Retorno total acumulado',
@@ -102,10 +104,10 @@ export default function CagrScreen() {
 
           <ThemedView style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <ThemedView style={styles.iconBox}>
-              <Ionicons name="speedometer-outline" size={22} color={Tokens.structural.positive} />
+            <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+              <Ionicons name="speedometer-outline" size={22} color={theme.positive} />
             </ThemedView>
           </ThemedView>
 
@@ -147,7 +149,7 @@ export default function CagrScreen() {
           </ThemedView>
 
           <TouchableOpacity
-            style={[styles.button, !isValid() && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: theme.positive }, !isValid() && styles.buttonDisabled]}
             onPress={handleCalculate}
             disabled={!isValid()}
             activeOpacity={0.8}>
@@ -209,7 +211,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -224,7 +225,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   button: {
-    backgroundColor: Tokens.structural.positive,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',

@@ -9,13 +9,9 @@ import { ThemedView } from '@/components/themed-view';
 import { CurrencySelector } from '@/components/calculator/currency-selector';
 import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { type Currency, formatCurrency, abbreviateValue, parseNumber } from '@/utils/format';
-
-// ─── Lógica de cálculo ────────────────────────────────────────────────────────
-
-const LUMP_COLOR = Tokens.structural.positive;   // teal — invierto todo ya
-const DCA_COLOR  = Tokens.structural.attention;  // ámbar — promedio en el tiempo
 
 function calcLumpSum(capital: number, annualRateEA: number, totalMonths: number): number {
   const r = Math.pow(1 + annualRateEA / 100, 1 / 12) - 1;
@@ -41,7 +37,8 @@ interface ValueBarsProps {
 }
 
 function ValueBars({ lumpValue, dcaValue, currency }: ValueBarsProps) {
-  const max = Math.max(lumpValue, dcaValue);
+  const theme    = useTheme();
+  const max      = Math.max(lumpValue, dcaValue);
   const lumpFlex = Math.round((lumpValue / max) * 100);
   const dcaFlex  = Math.round((dcaValue  / max) * 100);
 
@@ -55,11 +52,11 @@ function ValueBars({ lumpValue, dcaValue, currency }: ValueBarsProps) {
         <ThemedText type="small" themeColor="textSecondary" style={barStyles.label}>
           De una vez
         </ThemedText>
-        <View style={barStyles.track}>
-          <View style={[barStyles.fill, { flex: lumpFlex, backgroundColor: LUMP_COLOR }]} />
+        <View style={[barStyles.track, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[barStyles.fill, { flex: lumpFlex, backgroundColor: theme.positive }]} />
           <View style={{ flex: 100 - lumpFlex }} />
         </View>
-        <ThemedText type="small" style={[barStyles.amount, { color: LUMP_COLOR }]}>
+        <ThemedText type="small" style={[barStyles.amount, { color: theme.positive }]}>
           {abbreviateValue(lumpValue, currency)}
         </ThemedText>
       </View>
@@ -68,11 +65,11 @@ function ValueBars({ lumpValue, dcaValue, currency }: ValueBarsProps) {
         <ThemedText type="small" themeColor="textSecondary" style={barStyles.label}>
           Mes a mes
         </ThemedText>
-        <View style={barStyles.track}>
-          <View style={[barStyles.fill, { flex: dcaFlex, backgroundColor: DCA_COLOR }]} />
+        <View style={[barStyles.track, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[barStyles.fill, { flex: dcaFlex, backgroundColor: theme.attention }]} />
           <View style={{ flex: 100 - dcaFlex }} />
         </View>
-        <ThemedText type="small" style={[barStyles.amount, { color: DCA_COLOR }]}>
+        <ThemedText type="small" style={[barStyles.amount, { color: theme.attention }]}>
           {abbreviateValue(dcaValue, currency)}
         </ThemedText>
       </View>
@@ -91,7 +88,6 @@ const barStyles = StyleSheet.create({
     borderRadius: 5,
     flexDirection: 'row',
     overflow: 'hidden',
-    backgroundColor: '#F0F0EC',
   },
   fill: { borderRadius: 5 },
   amount: { width: 52, textAlign: 'right', fontSize: 12, flexShrink: 0 },
@@ -101,6 +97,7 @@ const barStyles = StyleSheet.create({
 
 export default function DcaVsLumpScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [currency, setCurrency] = useState<Currency>('COP');
   const [capital, setCapital]       = useState('');
@@ -156,7 +153,7 @@ export default function DcaVsLumpScreen() {
   const lumpRows: ResultRow[] = result
     ? [
         { label: 'Valor final proyectado', value: formatCurrency(result.lumpFV, currency), highlight: true },
-        { label: 'Ganancia total', value: formatCurrency(result.lumpFV - parseNumber(capital), currency), color: LUMP_COLOR },
+        { label: 'Ganancia total', value: formatCurrency(result.lumpFV - parseNumber(capital), currency), color: theme.positive },
       ]
     : [];
 
@@ -164,7 +161,7 @@ export default function DcaVsLumpScreen() {
     ? [
         { label: 'Cuota mensual', value: formatCurrency(result.installment, currency) },
         { label: 'Valor final proyectado', value: formatCurrency(result.dcaFV, currency), highlight: true },
-        { label: 'Ganancia total', value: formatCurrency(result.dcaFV - parseNumber(capital), currency), color: DCA_COLOR },
+        { label: 'Ganancia total', value: formatCurrency(result.dcaFV - parseNumber(capital), currency), color: theme.attention },
       ]
     : [];
 
@@ -192,10 +189,10 @@ export default function DcaVsLumpScreen() {
 
           <ThemedView style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <ThemedView style={styles.iconBox}>
-              <Ionicons name="calendar-outline" size={22} color={Tokens.structural.positive} />
+            <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+              <Ionicons name="calendar-outline" size={22} color={theme.positive} />
             </ThemedView>
           </ThemedView>
 
@@ -245,7 +242,7 @@ export default function DcaVsLumpScreen() {
           </ThemedView>
 
           <TouchableOpacity
-            style={[styles.button, !isValid() && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: theme.positive }, !isValid() && styles.buttonDisabled]}
             onPress={handleCalculate}
             disabled={!isValid()}
             activeOpacity={0.8}>
@@ -255,9 +252,9 @@ export default function DcaVsLumpScreen() {
           </TouchableOpacity>
 
           {dcaError && (
-            <ThemedView style={styles.alertBox}>
-              <Ionicons name="alert-circle-outline" size={24} color={Tokens.structural.attention} />
-              <ThemedText type="small" style={styles.alertText}>
+            <ThemedView style={[styles.alertBox, { backgroundColor: theme.attentionSubtle }]}>
+              <Ionicons name="alert-circle-outline" size={24} color={theme.attention} />
+              <ThemedText type="small" style={[styles.alertText, { color: theme.attention }]}>
                 Los meses de distribución no pueden ser mayores al horizonte total de inversión.
               </ThemedText>
             </ThemedView>
@@ -313,7 +310,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -328,7 +324,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   button: {
-    backgroundColor: Tokens.structural.positive,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -340,14 +335,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.two,
-    backgroundColor: '#C0855218',
     borderRadius: Spacing.three,
     padding: Spacing.three,
     marginBottom: Spacing.four,
   },
   alertText: {
     flex: 1,
-    color: Tokens.structural.attention,
     lineHeight: 20,
   },
   resultSection: {

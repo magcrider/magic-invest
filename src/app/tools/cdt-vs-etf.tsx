@@ -9,12 +9,9 @@ import { ThemedView } from '@/components/themed-view';
 import { CurrencySelector } from '@/components/calculator/currency-selector';
 import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
-import { BottomTabInset, Spacing, Tokens } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { type Currency, formatCurrency, abbreviateValue, parseNumber } from '@/utils/format';
-
-// ─── Lógica de cálculo ────────────────────────────────────────────────────────
-
-const CDT_COLOR = Tokens.structural.attention; // ámbar cálido — instrumento fijo/seguro
 
 interface CdtResult {
   finalValueGross: number;
@@ -52,7 +49,8 @@ interface ValueBarsProps {
 }
 
 function ValueBars({ cdtValue, etfValue, currency }: ValueBarsProps) {
-  const max = Math.max(cdtValue, etfValue);
+  const theme   = useTheme();
+  const max     = Math.max(cdtValue, etfValue);
   const cdtFlex = Math.round((cdtValue / max) * 100);
   const etfFlex = Math.round((etfValue / max) * 100);
 
@@ -64,22 +62,22 @@ function ValueBars({ cdtValue, etfValue, currency }: ValueBarsProps) {
 
       <View style={barStyles.row}>
         <ThemedText type="small" themeColor="textSecondary" style={barStyles.label}>CDT</ThemedText>
-        <View style={barStyles.track}>
-          <View style={[barStyles.fill, { flex: cdtFlex, backgroundColor: CDT_COLOR }]} />
+        <View style={[barStyles.track, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[barStyles.fill, { flex: cdtFlex, backgroundColor: theme.assetCdt }]} />
           <View style={{ flex: 100 - cdtFlex }} />
         </View>
-        <ThemedText type="small" style={[barStyles.amount, { color: CDT_COLOR }]}>
+        <ThemedText type="small" style={[barStyles.amount, { color: theme.assetCdt }]}>
           {abbreviateValue(cdtValue, currency)}
         </ThemedText>
       </View>
 
       <View style={barStyles.row}>
         <ThemedText type="small" themeColor="textSecondary" style={barStyles.label}>ETF</ThemedText>
-        <View style={barStyles.track}>
-          <View style={[barStyles.fill, { flex: etfFlex, backgroundColor: Tokens.structural.positive }]} />
+        <View style={[barStyles.track, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[barStyles.fill, { flex: etfFlex, backgroundColor: theme.assetEtf }]} />
           <View style={{ flex: 100 - etfFlex }} />
         </View>
-        <ThemedText type="small" style={[barStyles.amount, { color: Tokens.structural.positive }]}>
+        <ThemedText type="small" style={[barStyles.amount, { color: theme.assetEtf }]}>
           {abbreviateValue(etfValue, currency)}
         </ThemedText>
       </View>
@@ -98,7 +96,6 @@ const barStyles = StyleSheet.create({
     borderRadius: 5,
     flexDirection: 'row',
     overflow: 'hidden',
-    backgroundColor: '#F0F0EC',
   },
   fill: { borderRadius: 5 },
   amount: { width: 52, textAlign: 'right', fontSize: 12, flexShrink: 0 },
@@ -108,6 +105,7 @@ const barStyles = StyleSheet.create({
 
 export default function CdtVsEtfScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const [currency, setCurrency] = useState<Currency>('COP');
   const [capital, setCapital] = useState('');
@@ -145,7 +143,7 @@ export default function CdtVsEtfScreen() {
   const cdtRows: ResultRow[] = result
     ? [
         { label: 'Valor bruto al vencimiento', value: formatCurrency(result.cdt.finalValueGross, currency) },
-        { label: 'Retefuente (4% sobre rendimientos)', value: '− ' + formatCurrency(result.cdt.retefuente, currency), color: Tokens.structural.risk },
+        { label: 'Retefuente (4% sobre rendimientos)', value: '− ' + formatCurrency(result.cdt.retefuente, currency), color: theme.risk },
         { label: 'Valor neto recibido', value: formatCurrency(result.cdt.finalValueNet, currency), highlight: true },
       ]
     : [];
@@ -153,7 +151,7 @@ export default function CdtVsEtfScreen() {
   const etfRows: ResultRow[] = result
     ? [
         { label: 'Valor proyectado', value: formatCurrency(result.etf.finalValue, currency), highlight: true },
-        { label: 'Ganancia proyectada', value: formatCurrency(result.etf.gains, currency), color: Tokens.structural.positive },
+        { label: 'Ganancia proyectada', value: formatCurrency(result.etf.gains, currency), color: theme.assetEtf },
       ]
     : [];
 
@@ -182,10 +180,10 @@ export default function CdtVsEtfScreen() {
 
           <ThemedView style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={Tokens.neutral.muted} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
-            <ThemedView style={styles.iconBox}>
-              <Ionicons name="scale-outline" size={22} color={Tokens.structural.positive} />
+            <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+              <Ionicons name="scale-outline" size={22} color={theme.positive} />
             </ThemedView>
           </ThemedView>
 
@@ -235,7 +233,7 @@ export default function CdtVsEtfScreen() {
           </ThemedView>
 
           <TouchableOpacity
-            style={[styles.button, !isValid() && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: theme.positive }, !isValid() && styles.buttonDisabled]}
             onPress={handleCalculate}
             disabled={!isValid()}
             activeOpacity={0.8}>
@@ -294,7 +292,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#5B8E8E22',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -309,7 +306,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   button: {
-    backgroundColor: Tokens.structural.positive,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',

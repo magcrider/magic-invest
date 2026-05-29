@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1 local) — perfil, estado vacío, formularios CDT/ETF, detalle CDT/ETF, FAB de navegación, eliminación con confirmación.**
-* **Última sesión (mayo 2026):** Infraestructura de distribución. Se estableció el flujo definitivo de build: **Expo Go + Android Studio** para desarrollo diario, **EAS Build (cloud)** para pruebas en dispositivo físico. Se configuró EAS (`eas.json`, proyecto `@ey.magic/magic-invest`, secretos de Supabase en EAS). El APK preview se instala vía `adb install` directo al dispositivo. El NDK 27 de la toolchain local tiene un bug de linkeo con los módulos nativos — irrelevante porque no compilamos localmente. Próximo paso: Módulo Portafolio §7.6 (pantalla principal con activos).
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1 local) — perfil, estado vacío, formularios CDT/ETF, detalle CDT/ETF, pantalla principal con tabs Resumen/Detalle.**
+* **Última sesión (mayo 2026):** §7.6 — pantalla principal del portafolio con activos. Dos tabs (Resumen / Detalle). Resumen: valor total, proyección a 10 años, distribución vs bandas con salud estructural, contexto macro hardcodeado. Detalle: listas CDT/ETF navegables. Estado vacío: Detalle desactivado, Resumen con CTAs directos para agregar activos. Bug crítico corregido: logout ahora limpia SQLite antes de cerrar sesión (los datos del usuario anterior ya no persisten para el siguiente). Próximo paso: §7.7 vinculación con Buzón.
 
 ---
 
@@ -106,6 +106,12 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * **`src/utils/profile-events.ts`** (nuevo): pub/sub mínimo `emitReset` / `subscribe` — mismo patrón que `inbox-state.ts`. Permite que el DrawerMenu notifique al PortfolioScreen en tiempo real.
 * **DrawerMenu** actualizado: botón "Reevaluar perfil de riesgo" en sección Configuración con `Alert` de confirmación. Al confirmar: borra SQLite + emite `profileEvents.emitReset()` + cierra drawer.
 
+### Corrección crítica: aislamiento de datos por usuario
+* **Bug:** al hacer logout, la base de datos SQLite local persistía con los datos del usuario anterior. El nuevo usuario veía las posiciones ajenas.
+* **Fix:** `clearUserData(db)` en `src/db/queries/config.ts` — borra `cdt_positions`, `etf_positions`, `user_config`, `inbox_events` en una transacción atómica antes de `supabase.auth.signOut()`.
+* **UX:** `src/utils/sign-out-state.ts` — flag global que `_layout.tsx` observa para mostrar pantalla "Cerrando sesión..." durante la limpieza. Evita el flash del cuestionario de perfil mientras se procesan los datos.
+* **Flujo:** drawer cierra → `signOutState.begin()` → `clearUserData()` → `supabase.auth.signOut()` → session null → login screen.
+
 ### Infraestructura de distribución (EAS Build)
 * **Expo Go + Android Studio:** flujo de desarrollo diario. Sin compilación nativa, hot reload, sin NDK.
 * **EAS Build → perfil `preview`:** produce APK con JS bundleado (~107 MB, 4 ABIs, debug). Se instala con `adb -s RFGL22B24FF install -r <apk>`. Play Protect bloquea la instalación manual — siempre usar ADB.
@@ -196,30 +202,23 @@ Rediseñado: COP/USD primero, TRM, acciones opcionales. Ver sección Completado 
 CDT: proyección al vencimiento, retefuente, fechas. ETF: fracciones, precio promedio, TER.
 **Pendiente:** CAGR desde compra, MaxDD, Sortino, comparación vs Hurdle Rate (requiere backend §8).
 
-#### 7.6 Estado con activos (diseño de la pantalla principal)
-```
-Portafolio · $XX.XXX.000 COP
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Proyección a 10 años: $XXM – $XXM  ← elemento visual protagonista
+#### 7.6 Pantalla principal con activos ✅ COMPLETO
 
-DISTRIBUCIÓN          [estado: dentro/cerca/fuera de bandas]
-CDTs  68% ████████░░  [50–70%] ✓
-ETFs  32% ████░░░░░░  [30–50%] ✓
+**Fila superior (siempre visible):** chip pill de perfil con formato `Perfil: CDT x–x% / ETF x–x%` (una sola línea) + botón Agregar inline a la derecha.
 
-— lista de CDTs —
-CDT Bancolombia · $15.000.000 · 12.8% EA
-Vence en 45 días · proyectado $15.213k neto
+**Dos tabs:**
+- **Resumen** (default):
+  - Con activos: SummaryCard (total COP, breakdown CDT/ETF con dots de color), ProjectionBanner (proyección a 10 años, rango pesimista–optimista con tasa mezclada), DistributionSection (barras de progreso CDT/ETF vs bandas, badge de salud estructural: teal/ámbar/púrpura), ContextStrip (Banrep, CDT mercado, inflación, TRM — hardcodeados hasta §8).
+  - Sin activos: card con mensaje + CTAs directos "Agregar CDT" y "Agregar ETF".
+- **Detalle:** lista de CDTs + lista de ETFs con tarjetas navegables. Desactivado (opacidad 38%) cuando no hay posiciones.
 
-— lista de ETFs —
-VOO · 12 acciones
-Costo: USD 480 · Hoy: USD 521
-$14.992.800 COP (TRM $3.960) · CAGR desde compra: +8.5%
+**Matemática de proyección (local, sin backend):**
+- `cdtTotal` = suma de `cdt.amount`; `etfTotalCOP` = total invertido en COP usando TRM hardcodeado ($4.200)
+- `avgCdtRateNet` = tasa neta promedio ponderada de CDTs (después de retefuente)
+- `blendedLow/High` = `cdtPct × avgCdtRateNet + etfPct × ETF_CAGR (5%/11% USD)`
+- `projLow/High` = `portfolioTotal × (1 + blendedRate)^10`
 
-CONTEXTO ACTUAL
-Banrep 9.25% · CDT mercado 11.2% · Inflación 5.3% · TRM $3.960
-```
-
-Color de "salud estructural": teal (dentro de bandas), ámbar (cerca del límite), púrpura (fuera). Nunca rojo/verde de mercado.
+**Constantes hardcodeadas hasta backend §8:** `TRM_COP = 4.200`, `BANREP_RATE = 9.25%`, `CDT_MKT_RATE = 11.2%`, `INFLATION_COL = 5.3%`, `ETF_CAGR_LOW = 5%`, `ETF_CAGR_HIGH = 11%`.
 
 #### 7.7 Vinculación con el Buzón
 - En el detalle de un activo: sección "Eventos relacionados" al final

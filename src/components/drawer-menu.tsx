@@ -20,8 +20,9 @@ import { ThemedView } from './themed-view';
 import { Spacing, Tokens } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { supabase } from '@/lib/supabase';
-import { resetRiskProfile } from '@/db/queries/config';
+import { resetRiskProfile, clearUserData } from '@/db/queries/config';
 import { profileEvents } from '@/utils/profile-events';
+import { signOutState } from '@/utils/sign-out-state';
 
 const DRAWER_WIDTH = Dimensions.get('window').width * 0.82;
 const DURATION = 240;
@@ -64,6 +65,8 @@ export function DrawerMenu({ visible, onClose }: Props) {
 
   async function handleSignOut() {
     onClose();
+    signOutState.begin();
+    await clearUserData(db);
     await supabase.auth.signOut();
   }
 

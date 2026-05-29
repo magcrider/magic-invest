@@ -1,23 +1,41 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { useColorScheme } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import AppTabs from '@/components/app-tabs';
-import { Tokens } from '@/constants/theme';
+import { Tokens, Spacing } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db';
 import { useAuth } from '@/hooks/use-auth';
+import { signOutState } from '@/utils/sign-out-state';
 import LoginScreen from './login';
 
 function AppContent() {
   const colorScheme = useColorScheme();
   const { session, loading } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    return signOutState.subscribe(() => setSigningOut(signOutState.active));
+  }, []);
+
+  // Cuando la sesión se limpia tras el signOut, resetear el flag
+  useEffect(() => {
+    if (!loading && !session) {
+      signOutState.reset();
+      setSigningOut(false);
+    }
+  }, [session, loading]);
+
+  if (loading || signingOut) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color={Tokens.neutral.muted} />
+        {signingOut ? (
+          <Text style={styles.signingOutText}>Cerrando sesión...</Text>
+        ) : (
+          <ActivityIndicator color={Tokens.neutral.muted} />
+        )}
       </View>
     );
   }
@@ -46,5 +64,10 @@ const styles = StyleSheet.create({
     backgroundColor: Tokens.neutral.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  signingOutText: {
+    fontSize: 15,
+    color: Tokens.neutral.muted,
+    marginTop: Spacing.two,
   },
 });

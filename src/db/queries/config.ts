@@ -74,3 +74,15 @@ export async function resetRiskProfile(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM user_config WHERE key = ?', 'risk_profile');
   await db.runAsync('DELETE FROM user_config WHERE key = ?', 'allocation_bands');
 }
+
+// Borra todos los datos del usuario actual. Llamar antes de signOut.
+export async function clearUserData(db: SQLiteDatabase): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.execAsync(`
+      DELETE FROM cdt_positions;
+      DELETE FROM etf_positions;
+      DELETE FROM user_config;
+      DELETE FROM inbox_events;
+    `);
+  });
+}

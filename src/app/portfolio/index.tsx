@@ -21,11 +21,22 @@ import { getRiskProfile, setRiskProfile } from '@/db/queries/config';
 import { profileEvents } from '@/utils/profile-events';
 import { getAllCdts } from '@/db/queries/cdt';
 import { getAllEtfs } from '@/db/queries/etf';
-import { formatCurrency } from '@/utils/format';
+import { formatCurrency, abbreviateValue } from '@/utils/format';
 import { useAuth } from '@/hooks/use-auth';
-import type { CdtPosition, EtfPosition } from '@/db/schema';
+import type { CdtPosition, EtfPosition, AllocationBands } from '@/db/schema';
+
+// ── Macro context hardcodeado — vendrá del backend §8 ────────────────────
+const TRM_COP       = 4_200;  // COP por USD
+const BANREP_RATE   = 9.25;   // %
+const CDT_MKT_RATE  = 11.2;   // %
+const INFLATION_COL = 5.3;    // %
+// Supuestos CAGR ETF (nominal USD) para proyección pesimista/optimista
+const ETF_CAGR_LOW  = 0.05;
+const ETF_CAGR_HIGH = 0.11;
+// ─────────────────────────────────────────────────────────────────────────
 
 type ScreenState = 'loading' | 'risk_profile' | 'portfolio';
+type BandHealth  = 'dentro' | 'cerca' | 'fuera';
 
 const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -45,6 +56,27 @@ function cdtNetYield(cdt: CdtPosition): number {
   const gross = cdt.amount * (Math.pow(1 + cdt.rate, cdt.term_days / 365) - 1);
   return gross * (1 - cdt.withholding_rate);
 }
+
+function etfValueCOP(etf: EtfPosition): number {
+  if (etf.currency === 'COP' && etf.total_invested_cop != null) return etf.total_invested_cop;
+  if (etf.total_invested_usd != null) return etf.total_invested_usd * TRM_COP;
+  if (etf.shares > 0 && etf.average_cost_usd > 0) return etf.shares * etf.average_cost_usd * TRM_COP;
+  return 0;
+}
+
+function bandHealth(pct: number, min: number, max: number): BandHealth {
+  if (pct >= min && pct <= max) return 'dentro';
+  if (pct >= min - 0.05 && pct <= max + 0.05) return 'cerca';
+  return 'fuera';
+}
+
+function bandColor(h: BandHealth): string {
+  if (h === 'dentro') return Tokens.structural.positive;
+  if (h === 'cerca')  return Tokens.structural.attention;
+  return Tokens.structural.risk;
+}
+
+// ── Main screen ───────────────────────────────────────────────────────────
 
 export default function PortfolioScreen() {
   const { displayName }       = useAuth();
@@ -90,22 +122,10 @@ export default function PortfolioScreen() {
 
   const subtitle = displayName ? `Hola, ${displayName}` : 'Tus posiciones reales';
 
-  // FAB solo aparece cuando hay portafolio activo
-  const fabAction = (state === 'portfolio' && profile) ? (
-    <TouchableOpacity
-      style={styles.fab}
-      onPress={() => router.push('/portfolio/add')}
-      activeOpacity={0.85}
-    >
-      <Ionicons name="add-outline" size={16} color="#FFFFFF" />
-      <Text style={styles.fabText}>Agregar</Text>
-    </TouchableOpacity>
-  ) : undefined;
-
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
-        <PageHeader title="Portafolio" subtitle={subtitle} rightAction={fabAction} />
+        <PageHeader title="Portafolio" subtitle={subtitle} />
 
         {state === 'loading' && (
           <View style={styles.centered}>
@@ -118,16 +138,16 @@ export default function PortfolioScreen() {
         )}
 
         {state === 'portfolio' && profile && (
-          <PortfolioContent
-            profile={profile}
-            cdts={cdts}
-            etfs={etfs}
-          />
+          <PortfolioContent profile={profile} cdts={cdts} etfs={etfs} />
         )}
       </SafeAreaView>
     </ThemedView>
   );
 }
+
+// ── Portfolio content ─────────────────────────────────────────────────────
+
+type PortfolioTab = 'resumen' | 'detalle';
 
 interface PortfolioContentProps {
   profile: RiskProfile;
@@ -140,49 +160,153 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
   const config  = PROFILE_CONFIG[profile.label];
   const bands   = PROFILE_BANDS[profile.label];
   const isEmpty = cdts.length === 0 && etfs.length === 0;
+  const [tab, setTab] = useState<PortfolioTab>('resumen');
+
+  // Si se eliminan todos los activos estando en Detalle, volver a Resumen
+  useEffect(() => {
+    if (isEmpty) setTab('resumen');
+  }, [isEmpty]);
+
+  // Totales del portafolio
+  const cdtTotal       = cdts.reduce((s, c) => s + c.amount, 0);
+  const etfTotalCOP    = etfs.reduce((s, e) => s + etfValueCOP(e), 0);
+  const portfolioTotal = cdtTotal + etfTotalCOP;
+  const cdtPct = portfolioTotal > 0 ? cdtTotal / portfolioTotal : 0;
+  const etfPct = portfolioTotal > 0 ? etfTotalCOP / portfolioTotal : 0;
+
+  const avgCdtRateNet = cdtTotal > 0
+    ? cdts.reduce((s, c) => s + c.rate * (1 - c.withholding_rate) * c.amount, 0) / cdtTotal
+    : (CDT_MKT_RATE / 100) * 0.96;
+
+  const blendedLow  = cdtPct * avgCdtRateNet + etfPct * ETF_CAGR_LOW;
+  const blendedHigh = cdtPct * avgCdtRateNet + etfPct * ETF_CAGR_HIGH;
+  const projLow     = portfolioTotal * Math.pow(1 + blendedLow,  10);
+  const projHigh    = portfolioTotal * Math.pow(1 + blendedHigh, 10);
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Profile chip */}
-      <View style={[styles.profileChip, { borderColor: config.color + '60' }]}>
-        <View style={[styles.chipDot, { backgroundColor: config.color }]} />
-        <Text style={[styles.chipLabel, { color: config.color }]}>{config.title}</Text>
-        <Text style={styles.chipBands}>
-          CDTs {Math.round(bands.cdt_min * 100)}–{Math.round(bands.cdt_max * 100)}%
-          {'  ·  '}
-          ETFs {Math.round(bands.etf_min * 100)}–{Math.round(bands.etf_max * 100)}%
-        </Text>
-      </View>
-
-      {isEmpty ? (
-        <View style={styles.emptyCard}>
-          <Ionicons name="layers-outline" size={40} color={Tokens.neutral.muted} />
-          <Text style={styles.emptyTitle}>No tienes posiciones registradas</Text>
-          <Text style={styles.emptySubtitle}>
-            Registra los activos que ya tienes en tu banco o broker para comenzar a analizar tu portafolio.
+    <View style={styles.contentRoot}>
+      {/* Fila superior: chip de perfil (izq) + botón Agregar (der) */}
+      <View style={styles.profileRow}>
+        <View style={[styles.profileChip, { borderColor: config.color + '60' }]}>
+          <Text style={styles.chipLine} numberOfLines={1}>
+            <Text style={[styles.chipLabel, { color: config.color }]}>{config.title}</Text>
+            <Text style={styles.chipBands}>
+              {`: CDT ${Math.round(bands.cdt_min * 100)}–${Math.round(bands.cdt_max * 100)}% / ETF ${Math.round(bands.etf_min * 100)}–${Math.round(bands.etf_max * 100)}%`}
+            </Text>
           </Text>
         </View>
-      ) : (
-        <>
-          {/* ETFs — primero */}
-          {etfs.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionHeader}>ETFs Indexados</Text>
-              {etfs.map((etf) => (
-                <EtfCard
-                  key={etf.id}
-                  etf={etf}
-                  onPress={() => router.push({ pathname: '/portfolio/etf/[id]', params: { id: etf.id } })}
-                />
-              ))}
-            </View>
-          )}
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/portfolio/add')}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add-outline" size={15} color="#FFFFFF" />
+          <Text style={styles.fabText}>Agregar</Text>
+        </TouchableOpacity>
+      </View>
 
-          {/* CDTs — después */}
+      {/* Tab bar — siempre visible; Detalle desactivado sin activos */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabItem, tab === 'resumen' && styles.tabItemActive]}
+          onPress={() => setTab('resumen')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabLabel, tab === 'resumen' && styles.tabLabelActive]}>
+            Resumen
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabItem, tab === 'detalle' && styles.tabItemActive, isEmpty && styles.tabItemDisabled]}
+          onPress={() => { if (!isEmpty) setTab('detalle'); }}
+          activeOpacity={isEmpty ? 1 : 0.7}
+        >
+          <Text style={[styles.tabLabel, tab === 'detalle' && styles.tabLabelActive, isEmpty && styles.tabLabelDisabled]}>
+            Detalle
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Pestaña Resumen ── */}
+      {tab === 'resumen' && (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {isEmpty ? (
+            /* Estado vacío */
+            <View style={styles.emptyCard}>
+              <Ionicons name="layers-outline" size={40} color={Tokens.neutral.muted} />
+              <Text style={styles.emptyTitle}>Tu portafolio está vacío</Text>
+              <Text style={styles.emptySubtitle}>
+                Registra los activos que ya tienes en tu banco o broker para ver el análisis completo.
+              </Text>
+              <View style={styles.emptyCtas}>
+                <TouchableOpacity
+                  style={styles.emptyCtaBtn}
+                  onPress={() => router.push('/portfolio/add-cdt')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="business-outline" size={16} color={Tokens.structural.positive} />
+                  <Text style={[styles.emptyCtaText, { color: Tokens.structural.positive }]}>
+                    Agregar CDT
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.emptyCtaBtn}
+                  onPress={() => router.push('/portfolio/add-etf')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="trending-up-outline" size={16} color={Tokens.structural.attention} />
+                  <Text style={[styles.emptyCtaText, { color: Tokens.structural.attention }]}>
+                    Agregar ETF
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            /* Con activos */
+            <>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>Valor del portafolio</Text>
+                <Text style={styles.summaryTotal}>{formatCurrency(portfolioTotal, 'COP')}</Text>
+                <View style={styles.summaryBreakdown}>
+                  <View style={styles.summaryBreakdownItem}>
+                    <View style={[styles.summaryDot, { backgroundColor: Tokens.structural.positive }]} />
+                    <Text style={styles.summaryPart}>CDTs  {formatCurrency(cdtTotal, 'COP')}</Text>
+                  </View>
+                  <View style={styles.summaryBreakdownItem}>
+                    <View style={[styles.summaryDot, { backgroundColor: Tokens.structural.attention }]} />
+                    <Text style={styles.summaryPart}>ETFs  {formatCurrency(etfTotalCOP, 'COP')}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.projBanner}>
+                <Text style={styles.projLabel}>Proyección a 10 años</Text>
+                <Text style={styles.projRange}>
+                  ${abbreviateValue(projLow, 'COP')} – ${abbreviateValue(projHigh, 'COP')}
+                </Text>
+                <Text style={styles.projNote}>
+                  Pesimista (ETF +5% USD) · Optimista (ETF +11% USD) · CDT al neto actual
+                </Text>
+              </View>
+
+              <DistributionSection cdtPct={cdtPct} etfPct={etfPct} bands={bands} />
+              <ContextStrip />
+            </>
+          )}
+        </ScrollView>
+      )}
+
+      {/* ── Pestaña Detalle ── */}
+      {tab === 'detalle' && !isEmpty && (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {cdts.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionHeader}>Certificados de Depósito</Text>
@@ -195,11 +319,119 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
               ))}
             </View>
           )}
-        </>
+          {etfs.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionHeader}>ETFs Indexados</Text>
+              {etfs.map((etf) => (
+                <EtfCard
+                  key={etf.id}
+                  etf={etf}
+                  onPress={() => router.push({ pathname: '/portfolio/etf/[id]', params: { id: etf.id } })}
+                />
+              ))}
+            </View>
+          )}
+        </ScrollView>
       )}
-    </ScrollView>
+    </View>
   );
 }
+
+// ── Distribución vs bandas ────────────────────────────────────────────────
+
+function DistributionSection({
+  cdtPct, etfPct, bands,
+}: {
+  cdtPct: number;
+  etfPct: number;
+  bands:  AllocationBands;
+}) {
+  const cdtH = bandHealth(cdtPct, bands.cdt_min, bands.cdt_max);
+  const etfH = bandHealth(etfPct, bands.etf_min, bands.etf_max);
+  const overallH: BandHealth =
+    cdtH === 'fuera' || etfH === 'fuera' ? 'fuera' :
+    cdtH === 'cerca' || etfH === 'cerca' ? 'cerca' :
+    'dentro';
+  const hc = bandColor(overallH);
+  const statusLabel =
+    overallH === 'dentro' ? 'Dentro de bandas' :
+    overallH === 'cerca'  ? 'Cerca del límite' :
+    'Fuera de bandas';
+
+  return (
+    <View style={styles.distributionSection}>
+      <View style={styles.distributionHeader}>
+        <Text style={styles.sectionHeader}>Distribución</Text>
+        <View style={[styles.healthBadge, { backgroundColor: hc + '18', borderColor: hc + '50' }]}>
+          <Text style={[styles.healthLabel, { color: hc }]}>{statusLabel}</Text>
+        </View>
+      </View>
+      <DistributionBar label="CDTs" pct={cdtPct} min={bands.cdt_min} max={bands.cdt_max} />
+      <DistributionBar label="ETFs" pct={etfPct} min={bands.etf_min} max={bands.etf_max} />
+    </View>
+  );
+}
+
+function DistributionBar({
+  label, pct, min, max,
+}: {
+  label: string;
+  pct:   number;
+  min:   number;
+  max:   number;
+}) {
+  const h    = bandHealth(pct, min, max);
+  const hc   = bandColor(h);
+  const pctN = Math.round(pct * 100);
+  const minN = Math.round(min * 100);
+  const maxN = Math.round(max * 100);
+
+  return (
+    <View style={styles.barRow}>
+      <View style={styles.barLabelRow}>
+        <Text style={styles.barLabel}>{label}</Text>
+        <Text style={[styles.barPct, { color: hc }]}>{pctN}%</Text>
+        <Text style={styles.barBandText}>[{minN}–{maxN}%]</Text>
+        {h === 'dentro' && <Ionicons name="checkmark"             size={13} color={hc} />}
+        {h === 'cerca'  && <Ionicons name="alert-circle-outline"  size={13} color={hc} />}
+        {h === 'fuera'  && <Ionicons name="close-circle-outline"  size={13} color={hc} />}
+      </View>
+      <View style={styles.barTrack}>
+        <View style={[styles.barFill, { width: `${pctN}%`, backgroundColor: hc }]} />
+      </View>
+    </View>
+  );
+}
+
+// ── Contexto macro ────────────────────────────────────────────────────────
+
+function ContextStrip() {
+  return (
+    <View style={styles.contextStrip}>
+      <Text style={styles.contextTitle}>Contexto actual</Text>
+      <View style={styles.contextRow}>
+        <ContextItem label="Banrep"      value={`${BANREP_RATE}%`} />
+        <ContextItem label="CDT mercado" value={`${CDT_MKT_RATE}%`} />
+        <ContextItem label="Inflación"   value={`${INFLATION_COL}%`} />
+        <ContextItem label="TRM"         value={`$${TRM_COP.toLocaleString('es-CO')}`} />
+      </View>
+      <Text style={styles.contextNote}>
+        Datos de referencia · se actualizarán automáticamente en §8
+      </Text>
+    </View>
+  );
+}
+
+function ContextItem({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.contextItem}>
+      <Text style={styles.contextValue}>{value}</Text>
+      <Text style={styles.contextLabel}>{label}</Text>
+    </View>
+  );
+}
+
+// ── Tarjetas de activos ───────────────────────────────────────────────────
 
 function CdtCard({ cdt, onPress }: { cdt: CdtPosition; onPress: () => void }) {
   const days    = daysUntil(cdt.end_date);
@@ -210,17 +442,19 @@ function CdtCard({ cdt, onPress }: { cdt: CdtPosition; onPress: () => void }) {
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.cardRow}>
         <Text style={styles.cardTitle}>{cdt.bank}</Text>
-        <Text style={styles.cardRate}>{(cdt.rate * 100).toFixed(2)}% EA</Text>
+        <Text style={[styles.cardRate, { color: Tokens.structural.positive }]}>
+          {(cdt.rate * 100).toFixed(2)}% EA
+        </Text>
       </View>
       <Text style={styles.cardAmount}>{formatCurrency(cdt.amount, 'COP')}</Text>
       <View style={styles.cardRow}>
         <Text style={styles.cardMeta}>
           {expired ? 'Venció ' : 'Vence '}
           {fmtDate(cdt.end_date)}
-          {!expired ? `  ·  ${days} días` : ''}
+          {!expired && days <= 90 ? `  ·  ${days} días` : ''}
         </Text>
         <Text style={[styles.cardNet, { color: Tokens.structural.positive }]}>
-          Neto {formatCurrency(net, 'COP')}
+          +{abbreviateValue(net, 'COP')} neto
         </Text>
       </View>
     </TouchableOpacity>
@@ -269,6 +503,8 @@ function EtfCard({ etf, onPress }: { etf: EtfPosition; onPress: () => void }) {
   );
 }
 
+// ── Estilos ───────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safe: {
@@ -283,14 +519,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // FAB — vive dentro del rightGroup del PageHeader
+  // Fila perfil + botón Agregar
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   fab: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
     backgroundColor: Tokens.structural.positive,
-    paddingHorizontal: Spacing.two + Spacing.one,
-    paddingVertical: 6,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
     borderRadius: 100,
   },
   fabText: {
@@ -299,36 +540,76 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
+  // Contenedor del contenido del portafolio (chip + tab bar + scroll)
+  contentRoot: {
+    flex: 1,
+    gap: Spacing.two,
+  },
+
+  // Tab bar Resumen / Detalle
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F0EC',
+    borderRadius: Spacing.two,
+    padding: Spacing.half,
+    gap: Spacing.half,
+  },
+  tabItem: {
+    flex: 1,
+    paddingVertical: Spacing.two,
+    alignItems: 'center',
+    borderRadius: Spacing.one + Spacing.half,
+  },
+  tabItemActive: {
+    backgroundColor: Tokens.neutral.background,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  tabItemDisabled: {
+    opacity: 0.38,
+  },
+  tabLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Tokens.neutral.muted,
+  },
+  tabLabelActive: {
+    color: Tokens.neutral.text,
+    fontWeight: '600',
+  },
+  tabLabelDisabled: {
+    color: Tokens.neutral.muted,
+  },
+
   scroll: { flex: 1 },
   scrollContent: {
     gap: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.three,
   },
 
-  // Profile chip
+  // Chip de perfil
   profileChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    alignSelf: 'flex-start',
+    flex: 1,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: 100,
     borderWidth: 1,
     backgroundColor: '#F0F0EC',
   },
-  chipDot:   { width: 6, height: 6, borderRadius: 3 },
-  chipLabel: { fontSize: 13, fontWeight: '600' },
+  chipLine:  { fontSize: 12, flexShrink: 1 },
+  chipLabel: { fontSize: 12, fontWeight: '600' },
   chipBands: { fontSize: 12, color: Tokens.neutral.muted },
 
-  // Empty state
+  // Estado vacío
   emptyCard: {
-    minHeight: 260,
     backgroundColor: '#F0F0EC',
     borderRadius: Spacing.three,
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.five,
     gap: Spacing.two,
   },
   emptyTitle: {
@@ -344,8 +625,192 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  emptyCtas: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  emptyCtaBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.two + Spacing.one,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.two,
+    backgroundColor: Tokens.neutral.background,
+    borderWidth: 1,
+    borderColor: '#E0E0DC',
+  },
+  emptyCtaText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
 
-  // Positions
+  // Resumen
+  summaryCard: {
+    backgroundColor: '#F0F0EC',
+    borderRadius: Spacing.three,
+    padding: Spacing.four,
+    gap: Spacing.two,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Tokens.neutral.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryTotal: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: Tokens.neutral.text,
+    letterSpacing: -0.5,
+  },
+  summaryBreakdown: {
+    flexDirection: 'row',
+    gap: Spacing.four,
+    marginTop: Spacing.one,
+  },
+  summaryBreakdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + Spacing.half,
+  },
+  summaryDot: { width: 6, height: 6, borderRadius: 3 },
+  summaryPart: {
+    fontSize: 12,
+    color: Tokens.neutral.muted,
+  },
+
+  // Proyección
+  projBanner: {
+    backgroundColor: Tokens.structural.positive + '14',
+    borderRadius: Spacing.three,
+    padding: Spacing.four,
+    borderWidth: 1,
+    borderColor: Tokens.structural.positive + '30',
+    gap: Spacing.one,
+  },
+  projLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Tokens.structural.positive,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  projRange: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: Tokens.neutral.text,
+    letterSpacing: -0.5,
+  },
+  projNote: {
+    fontSize: 11,
+    color: Tokens.neutral.muted,
+    lineHeight: 16,
+    marginTop: Spacing.one,
+  },
+
+  // Distribución
+  distributionSection: {
+    backgroundColor: '#F0F0EC',
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  distributionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  healthBadge: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half + 2,
+    borderRadius: 100,
+    borderWidth: 1,
+  },
+  healthLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // Barra de distribución
+  barRow: {
+    gap: Spacing.one,
+  },
+  barLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  barLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Tokens.neutral.text,
+    width: 38,
+  },
+  barPct: {
+    fontSize: 13,
+    fontWeight: '700',
+    width: 36,
+  },
+  barBandText: {
+    fontSize: 11,
+    color: Tokens.neutral.muted,
+    flex: 1,
+  },
+  barTrack: {
+    height: 6,
+    backgroundColor: '#E0E0DC',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+
+  // Contexto macro
+  contextStrip: {
+    backgroundColor: '#F0F0EC',
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  contextTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Tokens.neutral.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  contextRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  contextItem: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  contextValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Tokens.neutral.text,
+  },
+  contextLabel: {
+    fontSize: 10,
+    color: Tokens.neutral.muted,
+    textAlign: 'center',
+  },
+  contextNote: {
+    fontSize: 10,
+    color: Tokens.neutral.muted,
+    fontStyle: 'italic',
+  },
+
+  // Listas de activos
   section: { gap: Spacing.two },
   sectionHeader: {
     fontSize: 12,
@@ -368,7 +833,7 @@ const styles = StyleSheet.create({
   cardTitle:    { fontSize: 15, fontWeight: '600', color: Tokens.neutral.text },
   cardSubtitle: { fontSize: 13, color: Tokens.neutral.muted },
   cardAmount:   { fontSize: 16, fontWeight: '700', color: Tokens.neutral.text },
-  cardRate:     { fontSize: 13, fontWeight: '600', color: Tokens.structural.positive },
+  cardRate:     { fontSize: 13, fontWeight: '600' },
   cardMeta:     { fontSize: 13, color: Tokens.neutral.muted },
   cardNet:      { fontSize: 13, fontWeight: '600' },
 });

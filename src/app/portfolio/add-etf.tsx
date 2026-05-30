@@ -143,7 +143,8 @@ export default function AddEtfScreen() {
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
+          keyboardVerticalOffset={Platform.select({ ios: 0, android: 20 })}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContent}

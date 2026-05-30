@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -171,12 +171,17 @@ export default function CdtVsEtfScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior="padding"
+          keyboardVerticalOffset={Platform.select({ ios: 0, android: 20 })}
+        >
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled">
 
           <ThemedView style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
@@ -272,6 +277,7 @@ export default function CdtVsEtfScreen() {
           )}
 
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
   );

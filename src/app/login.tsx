@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -87,19 +88,24 @@ export default function LoginScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior="padding"
+          keyboardVerticalOffset={Platform.select({ ios: 0, android: 20 })}
           style={styles.inner}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
 
-          <ThemedView style={styles.header}>
-            <ThemedText type="title" style={styles.title}>
-              Magic Invest
-            </ThemedText>
-            <ThemedText type="default" themeColor="textSecondary">
-              Herramienta personal de análisis financiero
-            </ThemedText>
-          </ThemedView>
+            <ThemedView style={styles.header}>
+              <ThemedText type="title" style={styles.title}>
+                Magic Invest
+              </ThemedText>
+              <ThemedText type="default" themeColor="textSecondary">
+                Herramienta personal de análisis financiero
+              </ThemedText>
+            </ThemedView>
 
-          <ThemedView style={styles.form}>
+            <ThemedView style={styles.form}>
             {/* Selector de modo */}
             <ThemedView type="backgroundElement" style={styles.modeSelector}>
               <TouchableOpacity
@@ -202,6 +208,7 @@ export default function LoginScreen() {
             No constituye asesoría de inversión.
           </ThemedText>
 
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
@@ -219,11 +226,12 @@ function translateError(msg: string): string {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safe: { flex: 1 },
-  inner: {
-    flex: 1,
+  inner: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: Spacing.four,
-    justifyContent: 'space-between',
     paddingVertical: Spacing.five,
+    justifyContent: 'space-between',
   },
   header: { gap: Spacing.two, paddingTop: Spacing.five },
   title: {},

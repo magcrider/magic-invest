@@ -11,7 +11,7 @@ import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type Currency, formatCurrency, formatPercent, abbreviateValue, parseNumber } from '@/utils/format';
+import { type Currency, formatCurrency, formatPercent, abbreviateValue, parseFormattedInput } from '@/utils/format';
 
 // ─── Lógica de cálculo ────────────────────────────────────────────────────────
 
@@ -117,20 +117,20 @@ export default function FeeDragScreen() {
 
   function isValid(): boolean {
     return (
-      parseNumber(capital) > 0 &&
-      parseNumber(rate) > 0 &&
-      parseNumber(ter) >= 0 &&
-      parseNumber(years) > 0
+      parseFormattedInput(capital) > 0 &&
+      parseFormattedInput(rate) > 0 &&
+      parseFormattedInput(ter) >= 0 &&
+      parseFormattedInput(years) > 0
     );
   }
 
   function handleCalculate() {
     if (!isValid()) return;
     setResult(calcFeeDrag(
-      parseNumber(capital),
-      parseNumber(rate),
-      parseNumber(ter),
-      parseNumber(years),
+      parseFormattedInput(capital),
+      parseFormattedInput(rate),
+      parseFormattedInput(ter),
+      parseFormattedInput(years),
     ));
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }
@@ -202,24 +202,30 @@ export default function FeeDragScreen() {
               label="Capital inicial"
               value={capital}
               onChangeText={(t) => { setCapital(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="10.000.000"
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Rendimiento bruto esperado (EA)"
               value={rate}
               onChangeText={(t) => { setRate(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="%"
               placeholder="10"
               hint="Rendimiento del índice antes de descontar comisiones. El S&P 500 ha promediado ~10% en USD."
+              inputType="percent"
             />
             <InputField
               label="TER anual del fondo"
               value={ter}
               onChangeText={(t) => { setTer(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="%"
               placeholder="0.20"
               hint="Total Expense Ratio. ETFs indexados baratos cobran 0.03%–0.20%. Los fondos activos suelen cobrar 1%–2%."
+              inputType="decimal"
             />
             <InputField
               label="Horizonte de inversión"
@@ -227,6 +233,8 @@ export default function FeeDragScreen() {
               onChangeText={(t) => { setYears(t); reset(); }}
               suffix="años"
               placeholder="20"
+              inputType="integer"
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             />
           </ThemedView>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -18,9 +18,9 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatCurrency, parseNumber } from '@/utils/format';
+import { formatCurrency, formatInput, parseFormattedInput } from '@/utils/format';
 import { createCdt } from '@/services/supabase-queries';
-import type { CdtCapitalization } from '@/db/schema';
+import type { CdtCapitalization } from '@/types/database';
 
 const BANKS = [
   'Bancolombia', 'Banco de Bogotá', 'Davivienda',
@@ -59,13 +59,16 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function parseCOP(raw: string): number {
-  return parseInt(raw.replace(/\D/g, ''), 10) || 0;
-}
+// Removed parseCOP — now using parseFormattedInput + formatInput
 
 export default function AddCdtScreen() {
   const router = useRouter();
   const theme  = useTheme();
+  const scrollRef = useRef<ScrollView>(null);
+  const customBankInputRef = useRef<View>(null);
+  const amountInputRef = useRef<View>(null);
+  const rateInputRef = useRef<View>(null);
+  const customTermInputRef = useRef<View>(null);
 
   const [bank,             setBank]             = useState('');
   const [customBank,       setCustomBank]       = useState('');
@@ -78,14 +81,28 @@ export default function AddCdtScreen() {
   const [cap,              setCap]              = useState<CdtCapitalization>('maturity');
   const [saving,           setSaving]           = useState(false);
 
+  function scrollToInput(inputRef: React.RefObject<View | null>) {
+    setTimeout(() => {
+      if (inputRef.current && scrollRef.current) {
+        inputRef.current.measureLayout(
+          scrollRef.current as any,
+          (x, y) => {
+            scrollRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true });
+          },
+          () => {}
+        );
+      }
+    }, 100);
+  }
+
   const bankFinal  = bank === 'Otro' ? customBank.trim() : bank;
   const termMonths = termPreset === 'custom'
     ? (parseInt(customTermMonths, 10) || 0)
     : (termPreset ?? 0);
   const isoEnd     = isoStart && termMonths > 0 ? addMonths(isoStart, termMonths) : null;
   const termDays   = isoStart && isoEnd ? daysBetween(isoStart, isoEnd) : 0;
-  const amountNum  = parseCOP(amount);
-  const rateNum    = parseNumber(rate) / 100;
+  const amountNum  = parseFormattedInput(amount);
+  const rateNum    = parseFormattedInput(rate) / 100;
 
   const grossYield = isoEnd ? amountNum * (Math.pow(1 + rateNum, termDays / 365) - 1) : 0;
   const retefuente = grossYield * 0.04;
@@ -122,6 +139,7 @@ export default function AddCdtScreen() {
           keyboardVerticalOffset={Platform.select({ ios: 0, android: 20 })}
         >
           <ScrollView
+            ref={scrollRef}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -149,27 +167,31 @@ export default function AddCdtScreen() {
                 ))}
               </View>
               {bank === 'Otro' && (
-                <TextInput
-                  style={[styles.inputRow, styles.textInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
-                  value={customBank}
-                  onChangeText={setCustomBank}
-                  placeholder="Nombre del banco"
-                  placeholderTextColor={theme.textSecondary}
-                  returnKeyType="done"
-                />
+                <View ref={customBankInputRef}>
+                  <TextInput
+                    style={[styles.inputRow, styles.textInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
+                    value={customBank}
+                    onChangeText={setCustomBank}
+                    onFocus={() => scrollToInput(customBankInputRef)}
+                    placeholder="ej: Banco Caja Social"
+                    placeholderTextColor={theme.textPlaceholder}
+                    returnKeyType="done"
+                  />
+                </View>
               )}
             </View>
 
             {/* Monto */}
-            <View style={styles.section}>
+            <View ref={amountInputRef} style={styles.section}>
               <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Monto</ThemedText>
               <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
                   value={amount}
-                  onChangeText={setAmount}
-                  placeholder="0"
-                  placeholderTextColor={theme.textSecondary}
+                  onChangeText={(raw) => setAmount(formatInput(raw, 'currency-cop', amount))}
+                  onFocus={() => scrollToInput(amountInputRef)}
+                  placeholder="ej: 5.000.000"
+                  placeholderTextColor={theme.textPlaceholder}
                   keyboardType="numeric"
                   returnKeyType="done"
                 />
@@ -178,15 +200,16 @@ export default function AddCdtScreen() {
             </View>
 
             {/* Tasa EA */}
-            <View style={styles.section}>
+            <View ref={rateInputRef} style={styles.section}>
               <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Tasa EA</ThemedText>
               <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
                   value={rate}
-                  onChangeText={setRate}
-                  placeholder="0.00"
-                  placeholderTextColor={theme.textSecondary}
+                  onChangeText={(raw) => setRate(formatInput(raw, 'percent', rate))}
+                  onFocus={() => scrollToInput(rateInputRef)}
+                  placeholder="ej: 12.50"
+                  placeholderTextColor={theme.textPlaceholder}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                 />
@@ -228,14 +251,15 @@ export default function AddCdtScreen() {
                 />
               </View>
               {termPreset === 'custom' && (
-                <View style={[styles.inputRow, { marginTop: Spacing.two, backgroundColor: theme.backgroundElement }]}>
+                <View ref={customTermInputRef} style={[styles.inputRow, { marginTop: Spacing.two, backgroundColor: theme.backgroundElement }]}>
                   <TextInput
                     style={[styles.input, { color: theme.text }]}
                     value={customTermMonths}
-                    onChangeText={setCustomTermMonths}
-                    placeholder="Número de meses"
-                    placeholderTextColor={theme.textSecondary}
-                    keyboardType="numeric"
+                    onChangeText={(raw) => setCustomTermMonths(formatInput(raw, 'integer', customTermMonths))}
+                    onFocus={() => scrollToInput(customTermInputRef)}
+                    placeholder="ej: 15"
+                    placeholderTextColor={theme.textPlaceholder}
+                    keyboardType="number-pad"
                     returnKeyType="done"
                   />
                   <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>meses</ThemedText>
@@ -409,6 +433,7 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 26,
     fontWeight: '700',
+    lineHeight: 34,
     marginBottom: Spacing.one,
   },
   screenSubtitle: {

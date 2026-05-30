@@ -11,7 +11,7 @@ import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type Currency, formatCurrency, abbreviateValue, parseNumber } from '@/utils/format';
+import { type Currency, formatCurrency, abbreviateValue, parseFormattedInput } from '@/utils/format';
 
 interface CdtResult {
   finalValueGross: number;
@@ -118,20 +118,20 @@ export default function CdtVsEtfScreen() {
 
   function isValid(): boolean {
     return (
-      parseNumber(capital) > 0 &&
-      parseNumber(months) > 0 &&
-      parseNumber(cdtRate) > 0 &&
-      parseNumber(etfRate) > 0
+      parseFormattedInput(capital) > 0 &&
+      parseFormattedInput(months) > 0 &&
+      parseFormattedInput(cdtRate) > 0 &&
+      parseFormattedInput(etfRate) > 0
     );
   }
 
   function handleCalculate() {
     if (!isValid()) return;
-    const c = parseNumber(capital);
-    const m = parseNumber(months);
+    const c = parseFormattedInput(capital);
+    const m = parseFormattedInput(months);
     setResult({
-      cdt: calcCDT(c, parseNumber(cdtRate), m),
-      etf: calcETF(c, parseNumber(etfRate), m),
+      cdt: calcCDT(c, parseFormattedInput(cdtRate), m),
+      etf: calcETF(c, parseFormattedInput(etfRate), m),
     });
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }
@@ -208,24 +208,30 @@ export default function CdtVsEtfScreen() {
               label="Capital a invertir"
               value={capital}
               onChangeText={(t) => { setCapital(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="10.000.000"
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Horizonte de inversión"
               value={months}
               onChangeText={(t) => { setMonths(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="meses"
               placeholder="12"
               hint="Ej: 12 → 1 año, 36 → 3 años, 60 → 5 años."
+              inputType="integer"
             />
             <InputField
               label="Tasa del CDT (EA)"
               value={cdtRate}
               onChangeText={(t) => { setCdtRate(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="%"
               placeholder="13.5"
               hint="Tasa efectiva anual que ofrece el banco. Los CDTs en Colombia suelen estar entre 10% y 16% EA."
+              inputType="percent"
             />
             <InputField
               label="Rendimiento esperado del ETF (EA)"
@@ -234,6 +240,8 @@ export default function CdtVsEtfScreen() {
               suffix="%"
               placeholder="10"
               hint="Promedio histórico del índice. El S&P 500 ha rendido ~10% anual en USD a largo plazo."
+              inputType="percent"
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             />
           </ThemedView>
 

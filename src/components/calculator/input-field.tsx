@@ -1,8 +1,10 @@
+import { useRef } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { formatInput, type InputType } from '@/utils/format';
 
 interface Props {
   label: string;
@@ -11,10 +13,35 @@ interface Props {
   suffix?: string;
   placeholder?: string;
   hint?: string;
+  inputType?: InputType;
+  onFocus?: () => void;
 }
 
-export function InputField({ label, value, onChangeText, suffix, placeholder = '0', hint }: Props) {
+export function InputField({
+  label,
+  value,
+  onChangeText,
+  suffix,
+  placeholder = '0',
+  hint,
+  inputType = 'decimal',
+  onFocus,
+}: Props) {
   const theme = useTheme();
+
+  function handleChange(raw: string) {
+    const formatted = formatInput(raw, inputType, value);
+    onChangeText(formatted);
+  }
+
+  // Determinar keyboardType según inputType
+  const keyboardType =
+    inputType === 'integer' ? 'number-pad' :
+    inputType === 'currency-cop' ? 'numeric' :
+    'decimal-pad';
+
+  // Agregar prefijo "ej: " si el placeholder parece un valor numérico
+  const displayPlaceholder = /^[0-9.,\s]+$/.test(placeholder) ? `ej: ${placeholder}` : placeholder;
 
   return (
     <View style={styles.container}>
@@ -23,10 +50,11 @@ export function InputField({ label, value, onChangeText, suffix, placeholder = '
         <TextInput
           style={[styles.input, { color: theme.text }]}
           value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={theme.textSecondary}
-          keyboardType="decimal-pad"
+          onChangeText={handleChange}
+          onFocus={onFocus}
+          placeholder={displayPlaceholder}
+          placeholderTextColor={theme.textPlaceholder}
+          keyboardType={keyboardType}
           returnKeyType="done"
         />
         {suffix ? (

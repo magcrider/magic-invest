@@ -16,7 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getEtfById, deleteEtf } from '@/services/supabase-queries';
-import type { EtfPosition } from '@/db/schema';
+import type { EtfPosition } from '@/types/database';
 import { INBOX_EVENTS } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
 
@@ -351,6 +351,7 @@ const styles = StyleSheet.create({
   tickerText: {
     fontSize: 32,
     fontWeight: '700',
+    lineHeight: 40,
     letterSpacing: 1,
     marginBottom: Spacing.one,
   },
@@ -378,8 +379,8 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   principalLabel:  { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  principalAmount: { fontSize: 28, fontWeight: '700' },
-  principalAmountMuted: { fontSize: 20, fontWeight: '500' },
+  principalAmount: { fontSize: 28, fontWeight: '700', lineHeight: 36 },
+  principalAmountMuted: { fontSize: 20, fontWeight: '500', lineHeight: 26 },
   principalSub: { fontSize: 13 },
   section:      { marginBottom: Spacing.four },
   sectionTitle: {

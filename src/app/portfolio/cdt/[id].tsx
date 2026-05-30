@@ -17,7 +17,7 @@ import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatCurrency } from '@/utils/format';
 import { getCdtById, deleteCdt } from '@/services/supabase-queries';
-import type { CdtCapitalization, CdtPosition } from '@/db/schema';
+import type { CdtCapitalization, CdtPosition } from '@/types/database';
 import { INBOX_EVENTS } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
 
@@ -334,6 +334,7 @@ const styles = StyleSheet.create({
   bankName: {
     fontSize: 28,
     fontWeight: '700',
+    lineHeight: 36,
     marginBottom: Spacing.two,
   },
   statusBadge: {
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   principalLabel:  { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  principalAmount: { fontSize: 32, fontWeight: '700' },
+  principalAmount: { fontSize: 32, fontWeight: '700', lineHeight: 40 },
   principalRate:   { fontSize: 15, fontWeight: '600' },
   section:      { marginBottom: Spacing.four },
   sectionTitle: {
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   maturityLabel:  { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  maturityAmount: { fontSize: 28, fontWeight: '700' },
+  maturityAmount: { fontSize: 28, fontWeight: '700', lineHeight: 36 },
   maturityNote:   { fontSize: 13 },
   deleteButton: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import type { AllocationBands } from '@/db/schema';
+import type { AllocationBands } from '@/types/database';
 
 export type RiskProfileLabel = 'conservador' | 'moderado' | 'arriesgado';
 

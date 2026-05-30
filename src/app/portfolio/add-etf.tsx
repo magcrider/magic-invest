@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +16,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { parseNumber } from '@/utils/format';
+import { formatInput, parseFormattedInput } from '@/utils/format';
 import { createEtf } from '@/services/supabase-queries';
 
 const ETF_CATALOG: Record<string, string> = {
@@ -43,18 +43,38 @@ const TER_PRESETS = ['0.03', '0.07', '0.20'];
 type EntryMode = 'COP' | 'USD';
 type CostMode  = 'total' | 'price';
 
-// Strips all non-digit characters — handles "2.000.000" and "2,000,000" as COP amounts
-function parseCOP(raw: string): number {
-  return parseInt(raw.replace(/\D/g, ''), 10) || 0;
-}
+// Removed parseCOP — now using parseFormattedInput + formatInput
 
 export default function AddEtfScreen() {
   const router = useRouter();
   const theme  = useTheme();
+  const scrollRef = useRef<ScrollView>(null);
+  const tickerInputRef = useRef<View>(null);
+  const nameInputRef = useRef<View>(null);
+  const totalCopInputRef = useRef<View>(null);
+  const trmInputRef = useRef<View>(null);
+  const totalUsdInputRef = useRef<View>(null);
+  const priceUsdInputRef = useRef<View>(null);
+  const sharesInputRef = useRef<View>(null);
+  const terInputRef = useRef<View>(null);
 
   // Identification
   const [ticker, setTicker] = useState('');
   const [name,   setName]   = useState('');
+
+  function scrollToInput(inputRef: React.RefObject<View | null>) {
+    setTimeout(() => {
+      if (inputRef.current && scrollRef.current) {
+        inputRef.current.measureLayout(
+          scrollRef.current as any,
+          (x, y) => {
+            scrollRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true });
+          },
+          () => {}
+        );
+      }
+    }, 100);
+  }
 
   // Cost of acquisition
   const [entryMode, setEntryMode] = useState<EntryMode>('COP');
@@ -80,12 +100,12 @@ export default function AddEtfScreen() {
   }
 
   // --- Derived values ---
-  const sharesNum   = parseNumber(shares);
-  const totalCopNum = parseCOP(totalCop);
-  const trmNum      = parseNumber(trm);
-  const totalUsdNum = parseNumber(totalUsd);
-  const priceUsdNum = parseNumber(priceUsd);
-  const terNum      = parseNumber(ter) / 100;
+  const sharesNum   = parseFormattedInput(shares);
+  const totalCopNum = parseFormattedInput(totalCop);
+  const trmNum      = parseFormattedInput(trm);
+  const totalUsdNum = parseFormattedInput(totalUsd);
+  const priceUsdNum = parseFormattedInput(priceUsd);
+  const terNum      = parseFormattedInput(ter) / 100;
 
   // USD equivalent of the total investment
   const totalUsdEquiv: number =
@@ -147,6 +167,7 @@ export default function AddEtfScreen() {
           keyboardVerticalOffset={Platform.select({ ios: 0, android: 20 })}
         >
           <ScrollView
+            ref={scrollRef}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -166,15 +187,16 @@ export default function AddEtfScreen() {
             </ThemedText>
 
             {/* ── Ticker ── */}
-            <View style={styles.section}>
+            <View ref={tickerInputRef} style={styles.section}>
               <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Ticker</ThemedText>
               <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                 <TextInput
                   style={[styles.input, styles.tickerInput, { color: theme.text }]}
                   value={ticker}
                   onChangeText={handleTickerChange}
-                  placeholder="VOO"
-                  placeholderTextColor={theme.textSecondary}
+                  onFocus={() => scrollToInput(tickerInputRef)}
+                  placeholder="ej: VOO"
+                  placeholderTextColor={theme.textPlaceholder}
                   autoCapitalize="characters"
                   autoCorrect={false}
                   returnKeyType="done"
@@ -194,15 +216,16 @@ export default function AddEtfScreen() {
             </View>
 
             {/* ── Nombre del fondo ── */}
-            <View style={styles.section}>
+            <View ref={nameInputRef} style={styles.section}>
               <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Nombre del fondo</ThemedText>
               <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
                   value={name}
                   onChangeText={setName}
-                  placeholder="Nombre completo del ETF"
-                  placeholderTextColor={theme.textSecondary}
+                  onFocus={() => scrollToInput(nameInputRef)}
+                  placeholder="ej: Vanguard S&P 500 ETF"
+                  placeholderTextColor={theme.textPlaceholder}
                   returnKeyType="done"
                 />
               </View>
@@ -232,14 +255,15 @@ export default function AddEtfScreen() {
               {entryMode === 'COP' ? (
                 <>
                   <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Total invertido</ThemedText>
-                  <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
+                  <View ref={totalCopInputRef} style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                     <ThemedText style={[styles.prefix, { color: theme.textSecondary }]}>$</ThemedText>
                     <TextInput
                       style={[styles.input, { color: theme.text }]}
                       value={totalCop}
-                      onChangeText={setTotalCop}
-                      placeholder="2 000 000"
-                      placeholderTextColor={theme.textSecondary}
+                      onChangeText={(raw) => setTotalCop(formatInput(raw, 'currency-cop', totalCop))}
+                      onFocus={() => scrollToInput(totalCopInputRef)}
+                      placeholder="ej: 2.000.000"
+                      placeholderTextColor={theme.textPlaceholder}
                       keyboardType="numeric"
                       returnKeyType="done"
                     />
@@ -249,14 +273,15 @@ export default function AddEtfScreen() {
                   <ThemedText style={[styles.inputLabel, { marginTop: Spacing.three, color: theme.textSecondary }]}>
                     TRM (tasa de cambio COP/USD)
                   </ThemedText>
-                  <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
+                  <View ref={trmInputRef} style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                     <TextInput
                       style={[styles.input, { color: theme.text }]}
                       value={trm}
-                      onChangeText={setTrm}
-                      placeholder="4200"
-                      placeholderTextColor={theme.textSecondary}
-                      keyboardType="decimal-pad"
+                      onChangeText={(raw) => setTrm(formatInput(raw, 'currency-cop', trm))}
+                      onFocus={() => scrollToInput(trmInputRef)}
+                      placeholder="ej: 4.200"
+                      placeholderTextColor={theme.textPlaceholder}
+                      keyboardType="numeric"
                       returnKeyType="done"
                     />
                     <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>COP / USD</ThemedText>
@@ -288,13 +313,14 @@ export default function AddEtfScreen() {
 
                   {costMode === 'total' ? (
                     <>
-                      <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
+                      <View ref={totalUsdInputRef} style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                         <TextInput
                           style={[styles.input, { color: theme.text }]}
                           value={totalUsd}
-                          onChangeText={setTotalUsd}
-                          placeholder="0.00"
-                          placeholderTextColor={theme.textSecondary}
+                          onChangeText={(raw) => setTotalUsd(formatInput(raw, 'currency-usd', totalUsd))}
+                          onFocus={() => scrollToInput(totalUsdInputRef)}
+                          placeholder="ej: 500.00"
+                          placeholderTextColor={theme.textPlaceholder}
                           keyboardType="decimal-pad"
                           returnKeyType="done"
                         />
@@ -308,13 +334,14 @@ export default function AddEtfScreen() {
                     </>
                   ) : (
                     <>
-                      <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
+                      <View ref={priceUsdInputRef} style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
                         <TextInput
                           style={[styles.input, { color: theme.text }]}
                           value={priceUsd}
-                          onChangeText={setPriceUsd}
-                          placeholder="0.00"
-                          placeholderTextColor={theme.textSecondary}
+                          onChangeText={(raw) => setPriceUsd(formatInput(raw, 'currency-usd', priceUsd))}
+                          onFocus={() => scrollToInput(priceUsdInputRef)}
+                          placeholder="ej: 425.50"
+                          placeholderTextColor={theme.textPlaceholder}
                           keyboardType="decimal-pad"
                           returnKeyType="done"
                         />
@@ -357,13 +384,14 @@ export default function AddEtfScreen() {
               <ThemedText style={[styles.fieldHint, { color: theme.textSecondary }]}>
                 Si no lo tienes a mano puedes omitirlo — el registro igual se guarda.
               </ThemedText>
-              <View style={[styles.inputRow, { marginTop: Spacing.two, backgroundColor: theme.backgroundElement }]}>
+              <View ref={sharesInputRef} style={[styles.inputRow, { marginTop: Spacing.two, backgroundColor: theme.backgroundElement }]}>
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
                   value={shares}
-                  onChangeText={setShares}
-                  placeholder="0"
-                  placeholderTextColor={theme.textSecondary}
+                  onChangeText={(raw) => setShares(formatInput(raw, 'decimal', shares))}
+                  onFocus={() => scrollToInput(sharesInputRef)}
+                  placeholder="ej: 5"
+                  placeholderTextColor={theme.textPlaceholder}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                 />
@@ -372,7 +400,7 @@ export default function AddEtfScreen() {
             </View>
 
             {/* ── TER (opcional) ── */}
-            <View style={styles.section}>
+            <View ref={terInputRef} style={styles.section}>
               <View style={styles.sectionTitleRow}>
                 <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
                   TER — gasto anual del fondo
@@ -403,9 +431,10 @@ export default function AddEtfScreen() {
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
                   value={ter}
-                  onChangeText={setTer}
-                  placeholder="0.03"
-                  placeholderTextColor={theme.textSecondary}
+                  onChangeText={(raw) => setTer(formatInput(raw, 'percent', ter))}
+                  onFocus={() => scrollToInput(terInputRef)}
+                  placeholder="ej: 0.03"
+                  placeholderTextColor={theme.textPlaceholder}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                 />
@@ -590,6 +619,7 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 26,
     fontWeight: '700',
+    lineHeight: 34,
     marginBottom: Spacing.one,
   },
   screenSubtitle: {
@@ -666,7 +696,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     padding: 0,
   },
-  tickerInput: { fontWeight: '700', fontSize: 18, letterSpacing: 1 },
+  tickerInput: { fontWeight: '700', fontSize: 18, lineHeight: 24, letterSpacing: 1 },
   prefix: { fontSize: 14, fontWeight: '600' },
   suffix: { fontSize: 13 },
   catalogHint: {

@@ -12,7 +12,7 @@ import { ResultCard, type ResultRow } from '@/components/calculator/result-card'
 import { GrowthChart } from '@/components/calculator/growth-chart';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type Currency, formatCurrency, formatPercent, parseNumber } from '@/utils/format';
+import { type Currency, formatCurrency, formatPercent, parseFormattedInput } from '@/utils/format';
 
 // ─── Lógica de cálculo ────────────────────────────────────────────────────────
 
@@ -47,18 +47,18 @@ export default function CagrScreen() {
 
   function isValid(): boolean {
     return (
-      parseNumber(initialValue) > 0 &&
-      parseNumber(finalValue) > 0 &&
-      parseNumber(years) > 0
+      parseFormattedInput(initialValue) > 0 &&
+      parseFormattedInput(finalValue) > 0 &&
+      parseFormattedInput(years) > 0
     );
   }
 
   function handleCalculate() {
     if (!isValid()) return;
     setResult(calcCagr(
-      parseNumber(initialValue),
-      parseNumber(finalValue),
-      parseNumber(years),
+      parseFormattedInput(initialValue),
+      parseFormattedInput(finalValue),
+      parseFormattedInput(years),
     ));
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }
@@ -69,12 +69,12 @@ export default function CagrScreen() {
     ? result.cagr >= 0 ? theme.positive : theme.risk
     : theme.positive;
 
-  const showChart = result !== null && result.cagr > 0 && parseNumber(years) >= 2;
+  const showChart = result !== null && result.cagr > 0 && parseFormattedInput(years) >= 2;
 
   const rows: ResultRow[] = result
     ? [
-        { label: 'Valor inicial', value: formatCurrency(parseNumber(initialValue), currency) },
-        { label: 'Valor final', value: formatCurrency(parseNumber(finalValue), currency) },
+        { label: 'Valor inicial', value: formatCurrency(parseFormattedInput(initialValue), currency) },
+        { label: 'Valor final', value: formatCurrency(parseFormattedInput(finalValue), currency) },
         {
           label: result.totalGain >= 0 ? 'Ganancia total' : 'Pérdida total',
           value: formatCurrency(Math.abs(result.totalGain), currency),
@@ -132,17 +132,21 @@ export default function CagrScreen() {
               label="Valor inicial"
               value={initialValue}
               onChangeText={(t) => { setInitialValue(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="10.000.000"
               hint="Cuánto valía la inversión (o cuánto pusiste) al inicio del período."
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Valor final"
               value={finalValue}
               onChangeText={(t) => { setFinalValue(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="18.500.000"
               hint="Cuánto vale hoy (o al final del período que quieres analizar)."
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Años transcurridos"
@@ -150,6 +154,8 @@ export default function CagrScreen() {
               onChangeText={(t) => { setYears(t); reset(); }}
               suffix="años"
               placeholder="5"
+              inputType="integer"
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             />
           </ThemedView>
 
@@ -179,10 +185,10 @@ export default function CagrScreen() {
 
               {showChart && (
                 <GrowthChart
-                  principal={parseNumber(initialValue)}
+                  principal={parseFormattedInput(initialValue)}
                   monthly={0}
                   annualRate={result.cagr}
-                  years={parseNumber(years)}
+                  years={parseFormattedInput(years)}
                   currency={currency}
                 />
               )}

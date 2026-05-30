@@ -10,7 +10,7 @@ import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { parseNumber } from '@/utils/format';
+import { parseFormattedInput } from '@/utils/format';
 
 // ─── Tipos y conversiones ─────────────────────────────────────────────────────
 
@@ -159,12 +159,12 @@ export default function RateConverterScreen() {
   }
 
   function isValid(): boolean {
-    return parseNumber(inputValue) > 0;
+    return parseFormattedInput(inputValue) > 0;
   }
 
   function handleConvert() {
     if (!isValid()) return;
-    setResult(convert(parseNumber(inputValue), activeTab));
+    setResult(convert(parseFormattedInput(inputValue), activeTab));
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }
 
@@ -240,6 +240,8 @@ export default function RateConverterScreen() {
               onChangeText={(t) => { setInputValue(t); setResult(null); }}
               suffix="%"
               placeholder={activeConfig.placeholder}
+              inputType="percent"
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             />
           </ThemedView>
 

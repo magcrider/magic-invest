@@ -12,7 +12,7 @@ import { ResultCard, type ResultRow } from '@/components/calculator/result-card'
 import { GrowthChart } from '@/components/calculator/growth-chart';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type Currency, formatCurrency, parseNumber } from '@/utils/format';
+import { type Currency, formatCurrency, parseFormattedInput } from '@/utils/format';
 
 function calcCompoundInterest(
   principal: number,
@@ -50,10 +50,10 @@ export default function CompoundInterestScreen() {
 
   function isValid(): boolean {
     return (
-      parseNumber(principal) > 0 &&
-      parseNumber(monthly) >= 0 &&
-      parseNumber(rate) > 0 &&
-      parseNumber(years) >= 1
+      parseFormattedInput(principal) > 0 &&
+      parseFormattedInput(monthly) >= 0 &&
+      parseFormattedInput(rate) > 0 &&
+      parseFormattedInput(years) >= 1
     );
   }
 
@@ -61,10 +61,10 @@ export default function CompoundInterestScreen() {
     if (!isValid()) return;
     setResult(
       calcCompoundInterest(
-        parseNumber(principal),
-        parseNumber(monthly),
-        parseNumber(rate),
-        parseNumber(years),
+        parseFormattedInput(principal),
+        parseFormattedInput(monthly),
+        parseFormattedInput(rate),
+        parseFormattedInput(years),
       ),
     );
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -130,31 +130,39 @@ export default function CompoundInterestScreen() {
               label="Capital inicial"
               value={principal}
               onChangeText={(t) => { setPrincipal(t); setResult(null); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="10.000.000"
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Aporte mensual"
               value={monthly}
               onChangeText={(t) => { setMonthly(t); setResult(null); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="500.000"
               hint="Puedes poner 0 si no harás aportes periódicos."
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Tasa anual esperada"
               value={rate}
               onChangeText={(t) => { setRate(t); setResult(null); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="%"
               placeholder="10"
               hint="Usa el promedio histórico del ETF o la tasa del CDT."
+              inputType="percent"
             />
             <InputField
               label="Horizonte de tiempo"
               value={years}
               onChangeText={(t) => { setYears(t); setResult(null); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="años"
               placeholder="20"
+              inputType="integer"
             />
           </ThemedView>
 
@@ -171,10 +179,10 @@ export default function CompoundInterestScreen() {
           {result ? (
             <ThemedView style={styles.resultSection}>
               <GrowthChart
-                principal={parseNumber(principal)}
-                monthly={parseNumber(monthly)}
-                annualRate={parseNumber(rate)}
-                years={parseNumber(years)}
+                principal={parseFormattedInput(principal)}
+                monthly={parseFormattedInput(monthly)}
+                annualRate={parseFormattedInput(rate)}
+                years={parseFormattedInput(years)}
                 currency={currency}
               />
               <ResultCard rows={rows} />

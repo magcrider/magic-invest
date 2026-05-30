@@ -21,7 +21,7 @@ import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs } from '@/servic
 import { profileEvents } from '@/utils/profile-events';
 import { formatCurrency, abbreviateValue } from '@/utils/format';
 import { useAuth } from '@/hooks/use-auth';
-import type { CdtPosition, EtfPosition, AllocationBands } from '@/db/schema';
+import type { CdtPosition, EtfPosition, AllocationBands } from '@/types/database';
 import { INBOX_EVENTS, type InboxEvent } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
 
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   metricRight:   { flex: 1, paddingLeft: Spacing.three, gap: Spacing.one },
   metricDivider: { width: 1, marginVertical: 2 },
   metricLabel:   { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  metricTotal:   { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  metricTotal:   { fontSize: 22, fontWeight: '700', letterSpacing: -0.5, lineHeight: 28 },
   metricRange:   { fontSize: 20, fontWeight: '700', letterSpacing: -0.3, lineHeight: 26 },
   metricBreakdown: { gap: 3, marginTop: Spacing.one },
   metricPart:    { fontSize: 11 },

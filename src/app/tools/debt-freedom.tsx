@@ -11,7 +11,7 @@ import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type Currency, formatCurrency, formatMonths, parseNumber } from '@/utils/format';
+import { type Currency, formatCurrency, formatMonths, parseFormattedInput } from '@/utils/format';
 
 interface PayoffResult {
   months: number;
@@ -117,18 +117,18 @@ export default function DebtFreedomScreen() {
   const [paymentTooLow, setPaymentTooLow] = useState(false);
 
   const currencyLabel = currency === 'COP' ? 'COP' : 'USD';
-  const hasExtra = parseNumber(extraPayment) > 0;
+  const hasExtra = parseFormattedInput(extraPayment) > 0;
 
   function isValid(): boolean {
-    return parseNumber(balance) > 0 && parseNumber(rate) > 0 && parseNumber(minPayment) > 0;
+    return parseFormattedInput(balance) > 0 && parseFormattedInput(rate) > 0 && parseFormattedInput(minPayment) > 0;
   }
 
   function handleCalculate() {
     if (!isValid()) return;
-    const b = parseNumber(balance);
-    const r = parseNumber(rate);
-    const min = parseNumber(minPayment);
-    const extra = parseNumber(extraPayment);
+    const b = parseFormattedInput(balance);
+    const r = parseFormattedInput(rate);
+    const min = parseFormattedInput(minPayment);
+    const extra = parseFormattedInput(extraPayment);
 
     const base = calcPayoff(b, r, min);
     if (!base) {
@@ -215,23 +215,29 @@ export default function DebtFreedomScreen() {
               label="Saldo actual de la deuda"
               value={balance}
               onChangeText={(t) => { setBalance(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="5.000.000"
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Tasa anual de interés"
               value={rate}
               onChangeText={(t) => { setRate(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="%"
               placeholder="24"
               hint="Las tarjetas de crédito en Colombia suelen estar entre 18% y 30%."
+              inputType="percent"
             />
             <InputField
               label="Pago mínimo mensual"
               value={minPayment}
               onChangeText={(t) => { setMinPayment(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="200.000"
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Pago extra mensual (opcional)"
@@ -240,6 +246,8 @@ export default function DebtFreedomScreen() {
               suffix={currencyLabel}
               placeholder="0"
               hint="¿Cuánto más puedes destinar cada mes? Incluso poco hace una gran diferencia."
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             />
           </ThemedView>
 

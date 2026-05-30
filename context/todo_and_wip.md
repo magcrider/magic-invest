@@ -6,12 +6,14 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1).** **Sistema de color dinámico (light/dark) + convenciones de identidad de activo: ✅ COMPLETO.** **Persistencia con Supabase: ✅ COMPLETO.**
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1).** **Sistema de color dinámico (light/dark) + convenciones de identidad de activo: ✅ COMPLETO.** **Persistencia con Supabase: ✅ COMPLETO.** **Sistema de validación y formateo de inputs: ✅ COMPLETO.**
 * **Última sesión (mayo 30, 2026):** 
-  * **Refactor arquitectónico mayor:** SQLite eliminado — Supabase Postgres como única fuente de verdad. Datos persisten correctamente entre dispositivos con RLS nativo.
-  * **Fix UX crítico:** Problema de teclado que cubría campos de texto en pantallas pequeñas (Galaxy S24 6.2"). Solución: `KeyboardAvoidingView` + `ScrollView` en login, formularios de portafolio (add-cdt, add-etf) y las 9 calculadoras. El campo activo ahora siempre queda visible sobre el teclado.
+  * **Sistema de formateo de inputs completo:** Validación estricta (bloquea letras, previene ceros a la izquierda), formato automático según tipo (currency-cop, currency-usd, integer, decimal, percent), implementado en 13 archivos (login, portafolio, calculadoras).
+  * **Placeholders mejorados:** Nuevo token `textPlaceholder` (color más tenue), prefijo "ej:" en valores numéricos, aplicado a nivel general en toda la app.
+  * **Scroll automático en TODOS los campos:** Sistema de scroll preciso (measureLayout + scrollTo) implementado en ~50 campos: login (3), add-cdt (4), add-etf (8), 9 calculadoras (32+). El campo activo se posiciona en la parte superior visible con 100px de margen.
+  * **Fix TRM:** Cambió a formato `currency-cop` (4.200) — la TRM es un precio en pesos, no un entero.
+  * **Fix lineHeight en títulos:** Todos los títulos con fontSize >= 18 ahora tienen lineHeight adecuado (30-35% mayor) para prevenir corte de letras con descendentes (g, p, q, y, j) y signos de puntuación (¿, ¡). Arreglados 11 archivos.
   * **Regla de workflow agregada:** NUNCA crear commits sin que Harvey pruebe y apruebe explícitamente (documentado en `CLAUDE.md`).
-  * **Configuración de entorno:** Dark mode arreglado (`userInterfaceStyle: "automatic"`), emulador Pixel 5 configurado, Node actualizado a 20.20.0 LTS.
   * **Próximo paso:** §8 Backend Supabase (Edge Functions Banrep + EOD).
 
 ---

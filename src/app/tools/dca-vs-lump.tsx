@@ -11,7 +11,7 @@ import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type Currency, formatCurrency, abbreviateValue, parseNumber } from '@/utils/format';
+import { type Currency, formatCurrency, abbreviateValue, parseFormattedInput } from '@/utils/format';
 
 function calcLumpSum(capital: number, annualRateEA: number, totalMonths: number): number {
   const r = Math.pow(1 + annualRateEA / 100, 1 / 12) - 1;
@@ -115,19 +115,19 @@ export default function DcaVsLumpScreen() {
 
   function isValid(): boolean {
     return (
-      parseNumber(capital) > 0 &&
-      parseNumber(totalMonths) > 0 &&
-      parseNumber(dcaMonths) > 0 &&
-      parseNumber(rate) >= 0
+      parseFormattedInput(capital) > 0 &&
+      parseFormattedInput(totalMonths) > 0 &&
+      parseFormattedInput(dcaMonths) > 0 &&
+      parseFormattedInput(rate) >= 0
     );
   }
 
   function handleCalculate() {
     if (!isValid()) return;
-    const c  = parseNumber(capital);
-    const tm = Math.round(parseNumber(totalMonths));
-    const dm = Math.round(parseNumber(dcaMonths));
-    const r  = parseNumber(rate);
+    const c  = parseFormattedInput(capital);
+    const tm = Math.round(parseFormattedInput(totalMonths));
+    const dm = Math.round(parseFormattedInput(dcaMonths));
+    const r  = parseFormattedInput(rate);
 
     if (dm > tm) {
       setDcaError(true);
@@ -153,7 +153,7 @@ export default function DcaVsLumpScreen() {
   const lumpRows: ResultRow[] = result
     ? [
         { label: 'Valor final proyectado', value: formatCurrency(result.lumpFV, currency), highlight: true },
-        { label: 'Ganancia total', value: formatCurrency(result.lumpFV - parseNumber(capital), currency), color: theme.positive },
+        { label: 'Ganancia total', value: formatCurrency(result.lumpFV - parseFormattedInput(capital), currency), color: theme.positive },
       ]
     : [];
 
@@ -161,7 +161,7 @@ export default function DcaVsLumpScreen() {
     ? [
         { label: 'Cuota mensual', value: formatCurrency(result.installment, currency) },
         { label: 'Valor final proyectado', value: formatCurrency(result.dcaFV, currency), highlight: true },
-        { label: 'Ganancia total', value: formatCurrency(result.dcaFV - parseNumber(capital), currency), color: theme.attention },
+        { label: 'Ganancia total', value: formatCurrency(result.dcaFV - parseFormattedInput(capital), currency), color: theme.attention },
       ]
     : [];
 
@@ -217,24 +217,30 @@ export default function DcaVsLumpScreen() {
               label="Capital total disponible"
               value={capital}
               onChangeText={(t) => { setCapital(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="10.000.000"
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Horizonte total"
               value={totalMonths}
               onChangeText={(t) => { setTotalMonths(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="meses"
               placeholder="60"
               hint="Cuánto tiempo planeas mantener la inversión en total."
+              inputType="integer"
             />
             <InputField
               label="Meses para distribuir (DCA)"
               value={dcaMonths}
               onChangeText={(t) => { setDcaMonths(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="meses"
               placeholder="12"
               hint="En cuántos meses repartirías el capital. Ej: 12 → una cuota mensual durante 1 año."
+              inputType="integer"
             />
             <InputField
               label="Rendimiento anual esperado (EA)"
@@ -243,6 +249,8 @@ export default function DcaVsLumpScreen() {
               suffix="%"
               placeholder="10"
               hint="Usa el promedio histórico del activo en el que invertirías."
+              inputType="percent"
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             />
           </ThemedView>
 
@@ -279,7 +287,7 @@ export default function DcaVsLumpScreen() {
               <ResultCard rows={lumpRows} />
 
               <ThemedText type="small" themeColor="textSecondary" style={styles.sectionLabel}>
-                MES A MES ({Math.round(parseNumber(dcaMonths))} cuotas)
+                MES A MES ({Math.round(parseFormattedInput(dcaMonths))} cuotas)
               </ThemedText>
               <ResultCard rows={dcaRows} />
 

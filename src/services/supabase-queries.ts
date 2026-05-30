@@ -17,7 +17,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import type { CdtPosition, EtfPosition, AllocationBands } from '@/db/schema';
+import type { CdtPosition, EtfPosition, AllocationBands } from '@/types/database';
 import type { RiskProfile } from '@/constants/risk-profile';
 import { PROFILE_BANDS } from '@/constants/risk-profile';
 

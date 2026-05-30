@@ -12,7 +12,7 @@ import { ResultCard, type ResultRow } from '@/components/calculator/result-card'
 import { GrowthChart } from '@/components/calculator/growth-chart';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type Currency, formatCurrency, parseNumber } from '@/utils/format';
+import { type Currency, formatCurrency, parseFormattedInput } from '@/utils/format';
 
 interface GoalResult {
   months: number;
@@ -88,11 +88,11 @@ export default function TimeToGoalScreen() {
 
   function isValid(): boolean {
     return (
-      parseNumber(target) > 0 &&
-      parseNumber(principal) >= 0 &&
-      parseNumber(monthly) >= 0 &&
-      parseNumber(rate) >= 0 &&
-      (parseNumber(principal) > 0 || parseNumber(monthly) > 0)
+      parseFormattedInput(target) > 0 &&
+      parseFormattedInput(principal) >= 0 &&
+      parseFormattedInput(monthly) >= 0 &&
+      parseFormattedInput(rate) >= 0 &&
+      (parseFormattedInput(principal) > 0 || parseFormattedInput(monthly) > 0)
     );
   }
 
@@ -100,10 +100,10 @@ export default function TimeToGoalScreen() {
     if (!isValid()) return;
     setResult(
       calcTimeToGoal(
-        parseNumber(principal),
-        parseNumber(monthly),
-        parseNumber(rate),
-        parseNumber(target),
+        parseFormattedInput(principal),
+        parseFormattedInput(monthly),
+        parseFormattedInput(rate),
+        parseFormattedInput(target),
       ),
     );
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -171,23 +171,29 @@ export default function TimeToGoalScreen() {
               label="¿Cuánto quieres acumular?"
               value={target}
               onChangeText={(t) => { setTarget(t); setResult(null); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="100.000.000"
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Capital inicial"
               value={principal}
               onChangeText={(t) => { setPrincipal(t); setResult(null); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="0"
               hint="Puedes poner 0 si empiezas desde cero."
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Aporte mensual"
               value={monthly}
               onChangeText={(t) => { setMonthly(t); setResult(null); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="500.000"
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Tasa anual esperada"
@@ -196,6 +202,8 @@ export default function TimeToGoalScreen() {
               suffix="%"
               placeholder="10"
               hint="Usa el promedio histórico del ETF o la tasa del CDT."
+              inputType="percent"
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             />
           </ThemedView>
 
@@ -232,9 +240,9 @@ export default function TimeToGoalScreen() {
               <ResultCard rows={rows} />
               {years >= 1 && (
                 <GrowthChart
-                  principal={parseNumber(principal)}
-                  monthly={parseNumber(monthly)}
-                  annualRate={parseNumber(rate)}
+                  principal={parseFormattedInput(principal)}
+                  monthly={parseFormattedInput(monthly)}
+                  annualRate={parseFormattedInput(rate)}
                   years={years}
                   currency={currency}
                 />

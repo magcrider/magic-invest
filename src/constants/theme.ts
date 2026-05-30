@@ -44,6 +44,7 @@ export const Colors = {
     backgroundElement:  '#F0F0EC',
     backgroundSelected: '#E8E8E4',
     textSecondary:      '#9CA3AF',
+    textPlaceholder:    '#B8BDC5',  // Más tenue que textSecondary para placeholders
     divider:            '#E0E0DC',
 
     // ── Semánticos — comunicación de severidad
@@ -78,6 +79,7 @@ export const Colors = {
     backgroundElement:  '#252522',
     backgroundSelected: '#2E2E2A',
     textSecondary:      '#6B7280',
+    textPlaceholder:    '#555861',  // Más tenue que textSecondary para placeholders
     divider:            '#353532',
 
     // ── Semánticos — comunicación de severidad (versiones +20-40% luminosidad)

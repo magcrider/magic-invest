@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -22,6 +22,11 @@ type Mode = 'signin' | 'signup';
 
 export default function LoginScreen() {
   const theme = useTheme();
+  const scrollRef = useRef<ScrollView>(null);
+  const nameInputRef = useRef<View>(null);
+  const emailInputRef = useRef<View>(null);
+  const passwordInputRef = useRef<View>(null);
+
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,6 +35,20 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  function scrollToInput(inputRef: React.RefObject<View | null>) {
+    setTimeout(() => {
+      if (inputRef.current && scrollRef.current) {
+        inputRef.current.measureLayout(
+          scrollRef.current as any,
+          (x, y) => {
+            scrollRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true });
+          },
+          () => {}
+        );
+      }
+    }, 100);
+  }
 
   async function handleSubmit() {
     if (!email.trim() || password.length < 6) return;
@@ -92,6 +111,7 @@ export default function LoginScreen() {
           keyboardVerticalOffset={Platform.select({ ios: 0, android: 20 })}
           style={styles.inner}>
           <ScrollView
+            ref={scrollRef}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
@@ -130,36 +150,43 @@ export default function LoginScreen() {
             </ThemedView>
 
             {mode === 'signup' && (
-              <TextInput
-                style={[styles.input, { borderColor: theme.divider, color: theme.text, backgroundColor: theme.backgroundElement }]}
-                placeholder="¿Cómo te llamamos?"
-                placeholderTextColor={theme.textSecondary}
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-                autoComplete="name"
-                returnKeyType="next"
-              />
+              <View ref={nameInputRef}>
+                <TextInput
+                  style={[styles.input, { borderColor: theme.divider, color: theme.text, backgroundColor: theme.backgroundElement }]}
+                  placeholder="ej: Juan"
+                  placeholderTextColor={theme.textPlaceholder}
+                  value={name}
+                  onChangeText={setName}
+                  onFocus={() => scrollToInput(nameInputRef)}
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  returnKeyType="next"
+                />
+              </View>
             )}
 
-            <TextInput
-              style={[styles.input, { borderColor: theme.divider, color: theme.text, backgroundColor: theme.backgroundElement }]}
-              placeholder="tu@email.com"
-              placeholderTextColor={theme.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+            <View ref={emailInputRef}>
+              <TextInput
+                style={[styles.input, { borderColor: theme.divider, color: theme.text, backgroundColor: theme.backgroundElement }]}
+                placeholder="ej: tu@email.com"
+                placeholderTextColor={theme.textPlaceholder}
+                value={email}
+                onChangeText={setEmail}
+                onFocus={() => scrollToInput(emailInputRef)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+            </View>
 
-            <View style={styles.passwordContainer}>
+            <View ref={passwordInputRef} style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput, { borderColor: theme.divider, color: theme.text, backgroundColor: theme.backgroundElement }]}
-                placeholder="Contraseña (mínimo 6 caracteres)"
-                placeholderTextColor={theme.textSecondary}
+                placeholder="Mínimo 6 caracteres"
+                placeholderTextColor={theme.textPlaceholder}
                 value={password}
                 onChangeText={setPassword}
+                onFocus={() => scrollToInput(passwordInputRef)}
                 secureTextEntry={!showPassword}
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 onSubmitEditing={handleSubmit}

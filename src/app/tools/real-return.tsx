@@ -11,7 +11,7 @@ import { InputField } from '@/components/calculator/input-field';
 import { ResultCard, type ResultRow } from '@/components/calculator/result-card';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type Currency, formatCurrency, formatPercent, parseNumber } from '@/utils/format';
+import { type Currency, formatCurrency, formatPercent, parseFormattedInput } from '@/utils/format';
 
 // ─── Lógica de cálculo ────────────────────────────────────────────────────────
 
@@ -122,10 +122,10 @@ export default function RealReturnScreen() {
 
   function isValid(): boolean {
     return (
-      parseNumber(capital) > 0 &&
-      parseNumber(nominal) > 0 &&
-      parseNumber(inflation) >= 0 &&
-      parseNumber(years) > 0
+      parseFormattedInput(capital) > 0 &&
+      parseFormattedInput(nominal) > 0 &&
+      parseFormattedInput(inflation) >= 0 &&
+      parseFormattedInput(years) > 0
     );
   }
 
@@ -133,10 +133,10 @@ export default function RealReturnScreen() {
     if (!isValid()) return;
     setResult(
       calcRealReturn(
-        parseNumber(capital),
-        parseNumber(nominal),
-        parseNumber(inflation),
-        parseNumber(years),
+        parseFormattedInput(capital),
+        parseFormattedInput(nominal),
+        parseFormattedInput(inflation),
+        parseFormattedInput(years),
       ),
     );
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -205,24 +205,30 @@ export default function RealReturnScreen() {
               label="Capital actual"
               value={capital}
               onChangeText={(t) => { setCapital(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix={currencyLabel}
               placeholder="10.000.000"
+              inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
             <InputField
               label="Rendimiento nominal (EA)"
               value={nominal}
               onChangeText={(t) => { setNominal(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="%"
               placeholder="13.5"
               hint="La tasa que te prometió el CDT o el promedio histórico del ETF."
+              inputType="percent"
             />
             <InputField
               label="Inflación esperada (IPC)"
               value={inflation}
               onChangeText={(t) => { setInflation(t); reset(); }}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
               suffix="%"
               placeholder="5"
               hint="Inflación proyectada en Colombia. La meta del Banrep es 3%. En 2024 fue ~5.2%."
+              inputType="percent"
             />
             <InputField
               label="Horizonte"
@@ -230,6 +236,8 @@ export default function RealReturnScreen() {
               onChangeText={(t) => { setYears(t); reset(); }}
               suffix="años"
               placeholder="10"
+              inputType="integer"
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             />
           </ThemedView>
 

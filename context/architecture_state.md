@@ -54,6 +54,8 @@ Dos flujos paralelos que nunca se mezclan:
 | Desarrollo diario | Android Studio Emulator + Expo Go | Siempre — hot reload, sin compilación nativa |
 | Prueba en dispositivo físico | EAS Build (cloud) → APK via ADB | Cuando se necesita validar en hardware real |
 
+**Emulador recomendado:** Pixel 5 (1080×2340, 440 dpi, Android 14/API 34) — dimensiones similares al Galaxy S24 6.2" que usa Harvey para pruebas físicas.
+
 **Por qué no `npx expo run:android` local:** el NDK 27 incluido con Expo SDK 56 cambió el ABI de libc++, y varios módulos nativos (reanimated, worklets, gesture-handler, screens, expo-modules-core) no declaraban `c++_shared` explícitamente en sus CMakeLists.txt. Esto produce errores de símbolo indefinido en el linker. EAS usa su propio entorno Linux con la configuración correcta y no tiene este problema.
 
 ### EAS Build — configuración
@@ -80,6 +82,7 @@ El preview actual pesa ~107 MB. Es normal para React Native con 4 ABIs (arm64-v8
 * **Iconografía:** `@expo/vector-icons` (Ionicons) instalado. Íconos monocromáticos conforme al sistema de diseño.
 * **Estado en cliente:** React Context + hooks. No introducir Redux/Zustand hasta que el scope lo justifique.
 * **Sistema de temas (light/dark):** `src/hooks/use-theme.ts` retorna `Colors.light` o `Colors.dark` según `useColorScheme()`. Todos los colores de UI se consumen vía `useTheme()` — `StyleSheet.create()` solo para geometría (dimensiones, padding, borderRadius). No existen colores hardcodeados en StyleSheet. Ver `design_system.md` §14 para las reglas de implementación y §13 para los tokens de identidad de activo (`assetCdt`, `assetEtf`).
+* **Manejo de teclado en formularios:** Todas las pantallas con campos de texto (`TextInput`) están envueltas en `KeyboardAvoidingView` con `behavior="padding"` y `keyboardVerticalOffset={Platform.select({ ios: 0, android: 20 })}` + `ScrollView` con `keyboardShouldPersistTaps="handled"`. Esto evita que el teclado cubra los campos activos en dispositivos con pantalla pequeña (como Galaxy S24 6.2"). Implementado en: login, add-cdt, add-etf y las 9 calculadoras.
 
 ## 6. Componentes de Shell Implementados
 

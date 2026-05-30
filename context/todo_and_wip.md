@@ -7,7 +7,12 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
 * **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1).** **Sistema de color dinámico (light/dark) + convenciones de identidad de activo: ✅ COMPLETO.** **Persistencia con Supabase: ✅ COMPLETO.**
-* **Última sesión (mayo 30, 2026):** Refactor arquitectónico mayor — eliminación de SQLite. (1) SQLite removido completamente del proyecto. (2) Todas las queries ahora van directo a Supabase (`src/services/supabase-queries.ts`). (3) Sincronización funciona correctamente — datos persisten entre dispositivos. (4) Dark mode arreglado (`userInterfaceStyle: "automatic"`). (5) Emulador Android funcionando correctamente con Expo Go. (6) Node actualizado a 20.20.0 LTS. Próximo paso: §8 Backend Supabase (Edge Functions Banrep + EOD).
+* **Última sesión (mayo 30, 2026):** 
+  * **Refactor arquitectónico mayor:** SQLite eliminado — Supabase Postgres como única fuente de verdad. Datos persisten correctamente entre dispositivos con RLS nativo.
+  * **Fix UX crítico:** Problema de teclado que cubría campos de texto en pantallas pequeñas (Galaxy S24 6.2"). Solución: `KeyboardAvoidingView` + `ScrollView` en login, formularios de portafolio (add-cdt, add-etf) y las 9 calculadoras. El campo activo ahora siempre queda visible sobre el teclado.
+  * **Regla de workflow agregada:** NUNCA crear commits sin que Harvey pruebe y apruebe explícitamente (documentado en `CLAUDE.md`).
+  * **Configuración de entorno:** Dark mode arreglado (`userInterfaceStyle: "automatic"`), emulador Pixel 5 configurado, Node actualizado a 20.20.0 LTS.
+  * **Próximo paso:** §8 Backend Supabase (Edge Functions Banrep + EOD).
 
 ---
 
@@ -28,6 +33,7 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * Campo "¿Cómo te llamamos?" en registro → almacenado en `user_metadata.full_name` (Supabase Auth)
 * Toggle de visibilidad de contraseña con ícono `eye-outline` / `eye-off-outline`
 * Deep linking `magicinvest://auth/callback`: `useAuth` intercepta la URL en cold start (`Linking.getInitialURL`) y warm start (`Linking.addEventListener`), extrae el PKCE code y llama `exchangeCodeForSession` — `onAuthStateChange` propaga la sesión automáticamente
+* **Fix UX:** `KeyboardAvoidingView` + `ScrollView` en login para que el teclado no cubra los campos de texto en pantallas pequeñas
 * **Pendiente (manual, una vez):** En Supabase → Authentication → URL Configuration: agregar `magicinvest://auth/callback` en Redirect URLs
 
 ### Navegación y shell
@@ -79,6 +85,7 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
   * Modelo: `FV_neto = capital × (1 + r − TER)^años` vs `FV_bruto = capital × (1 + r)^años`.
   * Caja con costo total en púrpura. Barras comparativas: sin TER (teal) vs con TER (ámbar).
   * ResultCard: FV sin comisión, FV con TER (highlighted), capital perdido, % de ganancia perdida.
+* **Fix UX en calculadoras:** `KeyboardAvoidingView` + `ScrollView` en las 9 calculadoras para que el teclado no cubra los campos de texto en pantallas pequeñas.
 
 ### Módulo Buzón (mock data)
 * Routing: solo `inbox/` folder — NO existe `inbox.tsx` en raíz (causa duplicate screen en NativeTabs).
@@ -106,6 +113,7 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * **Estado vacío:** chip de perfil con label y rangos de bandas, card vacía con ícono + mensaje, botones CTA "Agregar CDT" / "Agregar ETF" (placeholder — formularios pendientes).
 * **`src/utils/profile-events.ts`** (nuevo): pub/sub mínimo `emitReset` / `subscribe` — mismo patrón que `inbox-state.ts`. Permite que el DrawerMenu notifique al PortfolioScreen en tiempo real.
 * **DrawerMenu** actualizado: botón "Reevaluar perfil de riesgo" en sección Configuración con `Alert` de confirmación. Al confirmar: llama `resetRiskProfile()` en Supabase + emite `profileEvents.emitReset()` + cierra drawer.
+* **Fix UX en formularios:** `KeyboardAvoidingView` + `ScrollView` en add-cdt y add-etf para que el teclado no cubra los campos de texto en pantallas pequeñas.
 
 ### Aislamiento de datos por usuario
 * **Resuelto arquitecturalmente:** con queries directas a Supabase + Row Level Security, cada usuario solo ve sus propios datos. No hay riesgo de contaminación entre usuarios.

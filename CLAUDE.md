@@ -21,6 +21,7 @@ context/
 
 ## Reglas no negociables
 
+* **NUNCA crear commits sin aprobación de Harvey.** Después de implementar cambios, Harvey debe probar y aprobar explícitamente antes de crear cualquier commit. Decir "Los cambios están listos, pruébalos y avísame para commitear". Solo crear commits cuando Harvey diga "listo", "funcionó", "commitea esto" o equivalente explícito.
 * **Sin features comerciales.** Nada de notificaciones push, badges en íconos de app, animaciones celebratorias, integración con redes sociales, ni gamificación por capital.
 * **TypeScript estricto.** `strict: true` en `tsconfig.json`. Sin `any` salvo en boundaries justificados y documentados.
 * **Local-first.** Toda lectura de UI golpea SQLite. Nunca la red directamente desde un componente.

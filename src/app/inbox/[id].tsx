@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
@@ -11,8 +10,7 @@ import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { INBOX_EVENTS, EVENT_TYPE_CONFIG, type ConsequenceRow } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
-import { getAllCdts } from '@/db/queries/cdt';
-import { getEtfByTicker } from '@/db/queries/etf';
+import { getAllCdts, getEtfByTicker } from '@/services/supabase-queries';
 
 function RelatedAssetBox({
   relatedAsset,
@@ -77,7 +75,6 @@ const detailStyles = StyleSheet.create({
 export default function InboxDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const db     = useSQLiteContext();
   const theme  = useTheme();
 
   const event  = INBOX_EVENTS.find((e) => e.id === id);
@@ -108,16 +105,16 @@ export default function InboxDetailScreen() {
     async function resolve() {
       if (label.startsWith('CDT ')) {
         const bankName = label.slice(4);
-        const cdts = await getAllCdts(db);
+        const cdts = await getAllCdts();
         const found = cdts.find((c) => c.bank.toLowerCase() === bankName.toLowerCase());
         if (found) setAssetRoute(`/portfolio/cdt/${found.id}`);
       } else {
-        const etf = await getEtfByTicker(db, label);
+        const etf = await getEtfByTicker(label);
         if (etf) setAssetRoute(`/portfolio/etf/${etf.id}`);
       }
     }
     resolve();
-  }, [db, event?.relatedAsset]);
+  }, [event?.relatedAsset]);
 
   if (!event || !config) {
     return (

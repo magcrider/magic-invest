@@ -7,7 +7,6 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -18,10 +17,8 @@ import { RiskProfileFlow } from '@/components/risk-profile-flow';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PROFILE_CONFIG, PROFILE_BANDS, type RiskProfile } from '@/constants/risk-profile';
-import { getRiskProfile, setRiskProfile } from '@/db/queries/config';
+import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs } from '@/services/supabase-queries';
 import { profileEvents } from '@/utils/profile-events';
-import { getAllCdts } from '@/db/queries/cdt';
-import { getAllEtfs } from '@/db/queries/etf';
 import { formatCurrency, abbreviateValue } from '@/utils/format';
 import { useAuth } from '@/hooks/use-auth';
 import type { CdtPosition, EtfPosition, AllocationBands } from '@/db/schema';
@@ -109,7 +106,6 @@ function hasEtfUnread(etf: EtfPosition): boolean {
 
 export default function PortfolioScreen() {
   const { displayName }       = useAuth();
-  const db                    = useSQLiteContext();
   const router                = useRouter();
   const theme                 = useTheme();
   const [state, setState]     = useState<ScreenState>('loading');
@@ -124,7 +120,7 @@ export default function PortfolioScreen() {
         setState('loading');
         isFirstFocus.current = false;
       }
-      Promise.all([getRiskProfile(db), getAllCdts(db), getAllEtfs(db)]).then(
+      Promise.all([getRiskProfile(), getAllCdts(), getAllEtfs()]).then(
         ([p, cdtList, etfList]) => {
           setProfile(p);
           setCdts(cdtList);
@@ -132,7 +128,7 @@ export default function PortfolioScreen() {
           setState(p ? 'portfolio' : 'risk_profile');
         }
       );
-    }, [db])
+    }, [])
   );
 
   useEffect(() => {
@@ -145,7 +141,7 @@ export default function PortfolioScreen() {
   }, []);
 
   async function handleProfileComplete(p: RiskProfile) {
-    await setRiskProfile(db, p);
+    await setRiskProfile(p);
     setProfile(p);
     setState('portfolio');
   }

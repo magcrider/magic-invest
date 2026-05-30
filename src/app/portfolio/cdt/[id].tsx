@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/themed-view';
@@ -17,7 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatCurrency } from '@/utils/format';
-import { getCdtById, deleteCdt } from '@/db/queries/cdt';
+import { getCdtById, deleteCdt } from '@/services/supabase-queries';
 import type { CdtCapitalization, CdtPosition } from '@/db/schema';
 import { INBOX_EVENTS } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
@@ -51,7 +50,6 @@ function cdtYields(cdt: CdtPosition) {
 export default function CdtDetailScreen() {
   const { id }    = useLocalSearchParams<{ id: string }>();
   const router    = useRouter();
-  const db        = useSQLiteContext();
   const theme     = useTheme();
   const [cdt, setCdt]           = useState<CdtPosition | null | undefined>(undefined);
   const [deleting, setDeleting] = useState(false);
@@ -68,7 +66,7 @@ export default function CdtDetailScreen() {
           onPress: async () => {
             setDeleting(true);
             try {
-              await deleteCdt(db, Number(id));
+              await deleteCdt(Number(id));
               router.navigate('/portfolio');
             } finally {
               setDeleting(false);
@@ -80,8 +78,8 @@ export default function CdtDetailScreen() {
   }
 
   useEffect(() => {
-    getCdtById(db, Number(id)).then(setCdt);
-  }, [db, id]);
+    getCdtById(Number(id)).then(setCdt);
+  }, [id]);
 
   if (cdt === undefined) {
     return (

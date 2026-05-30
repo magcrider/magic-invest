@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/themed-view';
@@ -18,7 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { parseNumber } from '@/utils/format';
-import { createEtf } from '@/db/queries/etf';
+import { createEtf } from '@/services/supabase-queries';
 
 const ETF_CATALOG: Record<string, string> = {
   VOO:  'Vanguard S&P 500 ETF',
@@ -51,7 +50,6 @@ function parseCOP(raw: string): number {
 
 export default function AddEtfScreen() {
   const router = useRouter();
-  const db     = useSQLiteContext();
   const theme  = useTheme();
 
   // Identification
@@ -123,7 +121,7 @@ export default function AddEtfScreen() {
     if (!isValid) return;
     setSaving(true);
     try {
-      await createEtf(db, {
+      await createEtf({
         ticker,
         name: name.trim(),
         shares: sharesNum,

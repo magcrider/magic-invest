@@ -68,16 +68,19 @@ CREATE TABLE IF NOT EXISTS public.cdt_positions (
 );
 
 CREATE TABLE IF NOT EXISTS public.etf_positions (
-  id               BIGSERIAL PRIMARY KEY,
-  user_id          UUID    NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  ticker           TEXT    NOT NULL,
-  name             TEXT    NOT NULL,
-  shares           NUMERIC NOT NULL,
-  average_cost_usd NUMERIC NOT NULL,
-  ter              NUMERIC NOT NULL DEFAULT 0,
-  currency         TEXT    NOT NULL DEFAULT 'USD',
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                  BIGSERIAL PRIMARY KEY,
+  user_id             UUID    NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  ticker              TEXT    NOT NULL,
+  name                TEXT    NOT NULL,
+  shares              NUMERIC NOT NULL,
+  average_cost_usd    NUMERIC NOT NULL,
+  ter                 NUMERIC NOT NULL DEFAULT 0,
+  currency            TEXT    NOT NULL DEFAULT 'USD',
+  total_invested_cop  NUMERIC,
+  trm_at_purchase     NUMERIC,
+  total_invested_usd  NUMERIC,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS public.inbox_events (

@@ -6,8 +6,8 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 
 ## Estado General
 * **Fase conceptual:** ✅ Completa. Todos los documentos de contexto están al día.
-* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1 local).** **Sistema de color dinámico (light/dark) + convenciones de identidad de activo: ✅ COMPLETO.**
-* **Última sesión (mayo 2026):** Sistema de color completo. (1) Migración total de `Tokens.*` estáticos a `useTheme()` dinámico en toda la app — `StyleSheet` solo geometría, colores siempre inline. (2) Convención de doble familia cromática establecida e implementada: tokens de identidad de activo (`assetCdt` azul / `assetEtf` verde) para identificar el tipo de activo; tokens semánticos (`positive`/`attention`/`risk`) para urgencia e información. (3) Barra de distribución en portafolio rediseñada: una sola barra apilada CDT+ETF en lugar de dos barras separadas. (4) Buzón: doble color en tarjetas — ícono usa identidad del activo, pill y punto de no leído usan semántico. (5) Encabezados de sección en Portafolio Detalle y valores acento en tarjetas de activos ahora usan sus tokens de identidad. Próximo paso: §8 Backend Supabase (Edge Functions Banrep + EOD).
+* **Fase de implementación:** 🟡 En progreso. Infraestructura base, autenticación y shell completos. **Módulo Herramientas: ✅ COMPLETO.** **Módulo Buzón: ✅ COMPLETO (mock data).** **Módulo Portafolio: ✅ COMPLETO (Fase 1).** **Sistema de color dinámico (light/dark) + convenciones de identidad de activo: ✅ COMPLETO.** **Persistencia con Supabase: ✅ COMPLETO.**
+* **Última sesión (mayo 30, 2026):** Refactor arquitectónico mayor — eliminación de SQLite. (1) SQLite removido completamente del proyecto. (2) Todas las queries ahora van directo a Supabase (`src/services/supabase-queries.ts`). (3) Sincronización funciona correctamente — datos persisten entre dispositivos. (4) Dark mode arreglado (`userInterfaceStyle: "automatic"`). (5) Emulador Android funcionando correctamente con Expo Go. (6) Node actualizado a 20.20.0 LTS. Próximo paso: §8 Backend Supabase (Edge Functions Banrep + EOD).
 
 ---
 
@@ -16,11 +16,12 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 ### Infraestructura base
 * Estructura del proyecto: Expo SDK 56, React 19, TypeScript strict, Expo Router, NativeTabs
 * Tokens de diseño en `src/constants/theme.ts` (cromático, espaciado, safe area)
-* Schema SQLite local: 7 tablas + índices + sistema de migraciones versionadas (`src/db/`)
 * Cliente Supabase en `src/lib/supabase.ts` con AsyncStorage y PKCE
 * Schema PostgreSQL en Supabase con RLS (tablas de mercado + tablas de usuario)
+* Queries directas a Supabase en `src/services/supabase-queries.ts` — CDTs, ETFs, config de usuario
 * `@expo/vector-icons` instalado (Ionicons)
 * `src/utils/format.ts`: formateo de moneda (COP/USD), porcentajes, abreviación de valores (K/M/B), parseNumber
+* **Decisión arquitectónica:** SQLite eliminado — Supabase Postgres como única fuente de verdad (ver `architecture_state.md` §5)
 
 ### Autenticación
 * Login email/password: `useAuth` hook, flujo signin/signup con validación
@@ -84,7 +85,7 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
 * 5 eventos mock en `src/constants/inbox-mock.ts`: tipos `drawdown_context`, `cdt_maturity`, `market_trigger`, `rebalance`, `educational`. Cada evento tiene `body[]`, `consequences[]` y `disclaimer`.
 * Lista (`inbox/index.tsx`): swipe izquierdo → eliminar (rojo), swipe derecho → marcar como no leído (teal, solo en mensajes leídos). Contraste visual: título charcoal bold (no leído) vs stone-gray regular (leído).
 * Detalle (`inbox/[id].tsx`): marca como leído via `useEffect` al montar. Secciones: tipo + fecha + asset relacionado, título, cuerpo, escenarios posibles, disclaimer con borde de color.
-* Estado reactivo (`src/utils/inbox-state.ts`): store mínimo con `readIds`, `unreadIds`, `deletedIds` y patrón subscribe/notify. La lista se suscribe y re-renderiza automáticamente cuando el detalle marca como leído. Reemplazado por SQLite en producción.
+* Estado reactivo (`src/utils/inbox-state.ts`): store mínimo con `readIds`, `unreadIds`, `deletedIds` y patrón subscribe/notify. La lista se suscribe y re-renderiza automáticamente cuando el detalle marca como leído. Se usará con datos mock hasta implementar el backend de generación de eventos.
 * `GestureHandlerRootView` agregado al root layout (`src/app/_layout.tsx`) — requerido por `Swipeable`.
 * `ThemedText` extendido con tipo `'defaultBold'` (fontWeight 700, fontSize 16) — mismo patrón que `small`/`smallBold`.
 * **Pendiente futuro:** vincular con Portafolio (campo `relatedAsset`), alimentar con datos reales del backend.
@@ -99,18 +100,17 @@ Este documento es el registro vivo del estado del proyecto. Se actualiza en cada
   5. Emoción ante caída del 30% — 3 opciones *(solo almacenada, no scored)*
 * **Scoring:** Q1+Q2+Q3 (rango 3–9). ≤4 → `conservador`, ≤7 → `moderado`, ≥8 → `arriesgado`.
 * **Bandas por perfil:** conservador CDTs 65–80%/ETFs 20–35%, moderado 50–65%/35–50%, arriesgado 30–50%/50–70%.
-* **`src/db/queries/config.ts`**: añadidos `getRiskProfile`, `setRiskProfile` (también persiste bandas derivadas), `resetRiskProfile` (borra `risk_profile` y `allocation_bands` de SQLite).
+* **`src/services/supabase-queries.ts`**: queries directas a Supabase — `getRiskProfile`, `setRiskProfile` (también persiste bandas derivadas), `resetRiskProfile`, `getAllCdts`, `getAllEtfs`, `createCdt`, `createEtf`, `deleteCdt`, `deleteEtf`.
 * **`src/components/risk-profile-flow.tsx`** (nuevo): wizard de 5 pasos con barra de progreso, auto-avance a 180ms tras selección, pantalla de resultado con badge de perfil + bandas + botón "Comenzar".
 * **`src/app/index.tsx`** (reescrito): estados `loading → risk_profile → empty`. Usa `useFocusEffect` para re-chequear al volver al tab. Se suscribe a `profileEvents` para responder inmediatamente si el reset ocurre estando en el tab.
 * **Estado vacío:** chip de perfil con label y rangos de bandas, card vacía con ícono + mensaje, botones CTA "Agregar CDT" / "Agregar ETF" (placeholder — formularios pendientes).
 * **`src/utils/profile-events.ts`** (nuevo): pub/sub mínimo `emitReset` / `subscribe` — mismo patrón que `inbox-state.ts`. Permite que el DrawerMenu notifique al PortfolioScreen en tiempo real.
-* **DrawerMenu** actualizado: botón "Reevaluar perfil de riesgo" en sección Configuración con `Alert` de confirmación. Al confirmar: borra SQLite + emite `profileEvents.emitReset()` + cierra drawer.
+* **DrawerMenu** actualizado: botón "Reevaluar perfil de riesgo" en sección Configuración con `Alert` de confirmación. Al confirmar: llama `resetRiskProfile()` en Supabase + emite `profileEvents.emitReset()` + cierra drawer.
 
-### Corrección crítica: aislamiento de datos por usuario
-* **Bug:** al hacer logout, la base de datos SQLite local persistía con los datos del usuario anterior. El nuevo usuario veía las posiciones ajenas.
-* **Fix:** `clearUserData(db)` en `src/db/queries/config.ts` — borra `cdt_positions`, `etf_positions`, `user_config`, `inbox_events` en una transacción atómica antes de `supabase.auth.signOut()`.
-* **UX:** `src/utils/sign-out-state.ts` — flag global que `_layout.tsx` observa para mostrar pantalla "Cerrando sesión..." durante la limpieza. Evita el flash del cuestionario de perfil mientras se procesan los datos.
-* **Flujo:** drawer cierra → `signOutState.begin()` → `clearUserData()` → `supabase.auth.signOut()` → session null → login screen.
+### Aislamiento de datos por usuario
+* **Resuelto arquitecturalmente:** con queries directas a Supabase + Row Level Security, cada usuario solo ve sus propios datos. No hay riesgo de contaminación entre usuarios.
+* **UX:** `src/utils/sign-out-state.ts` — flag global que `_layout.tsx` observa para mostrar pantalla "Cerrando sesión..." durante el logout.
+* **Flujo:** drawer cierra → `signOutState.begin()` → `supabase.auth.signOut()` → session null → login screen.
 
 ### Infraestructura de distribución (EAS Build)
 * **Expo Go + Android Studio:** flujo de desarrollo diario. Sin compilación nativa, hot reload, sin NDK.
@@ -256,7 +256,7 @@ CDT: proyección al vencimiento, retefuente, fechas. ETF: fracciones, precio pro
 
 #### 7.7 Vinculación con el Buzón ✅ COMPLETO
 
-**Buzón → Portafolio:** chip `relatedAsset` en `inbox/[id].tsx` resuelve el activo en SQLite al montar:
+**Buzón → Portafolio:** chip `relatedAsset` en `inbox/[id].tsx` resuelve el activo desde Supabase al montar:
 - Si `relatedAsset` empieza con `'CDT '`: busca en `getAllCdts` por banco, navega a `/portfolio/cdt/{id}`
 - Si no: `getEtfByTicker`, navega a `/portfolio/etf/{id}`
 - Chip muestra `→` cuando el activo existe; permanece estático si no está registrado
@@ -271,7 +271,7 @@ CDT: proyección al vencimiento, retefuente, fechas. ETF: fracciones, precio pro
 ### 8. Backend Supabase — Edge Functions
 * Edge Function con cron para consulta periódica a API Banrep (tasa política + CDT promedio)
 * Edge Function para sincronización de datos EOD de ETFs
-* Capa de sincronización Supabase → SQLite local
+* Motor de generación de eventos del Buzón basado en triggers y datos de mercado
 
 ### 9. Sistema de Rebalanceo
 * Evaluación trimestral automática contra bandas configuradas
@@ -281,7 +281,7 @@ CDT: proyección al vencimiento, retefuente, fechas. ETF: fracciones, precio pro
 ### 10. Flujo de Onboarding (al final, pre-publicación)
 * Pantalla que presenta la filosofía básica en lenguaje accesible (sin tecnicismos)
 * Configuración de bandas de asignación CDT/ETF con slider (default: calculadas desde el perfil de riesgo)
-* Solo se muestra la primera vez (verificar con `isOnboardingComplete()` en SQLite)
+* Solo se muestra la primera vez (verificar con `getConfig('onboarding_completed')` en Supabase)
 * **Nota:** Se implementa cuando todas las funcionalidades estén terminadas y probadas, para poder describir y mostrar con precisión qué hace la app.
 
 ### 11. Cumplimiento legal (prerrequisito para lanzar a terceros — no aplica para uso personal de Harvey)
@@ -298,7 +298,7 @@ CDT: proyección al vencimiento, retefuente, fechas. ETF: fracciones, precio pro
 * **Automatización de tasas CDT por banco individual:** si Banrep solo da promedios, las tasas por banco (Bancolombia, Bogotá, Davivienda) requerirán scraping o entrada manual en Phase 1.
 * **Implicaciones fiscales interactivas:** la educación fiscal está en tooltips y pantallas de detalle, pero un calculador de impacto tributario real queda para Phase 2.
 * **Asistente IA:** chat con acceso contextual al portafolio. El Buzón educativo de Phase 1 es su precursor.
-* **Multi-dispositivo:** la arquitectura SQLite + Supabase lo habilita, pero no se implementa en Phase 1.
+* **Multi-dispositivo:** funciona nativamente — todos los dispositivos leen/escriben directo a Supabase con RLS.
 * **Algoritmo de matching ETFs:** selección automática según perfil de Harvey. Phase 1 usa watchlist manual.
 
 ---

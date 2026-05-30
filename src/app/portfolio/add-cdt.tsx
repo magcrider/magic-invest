@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 
@@ -20,7 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatCurrency, parseNumber } from '@/utils/format';
-import { createCdt } from '@/db/queries/cdt';
+import { createCdt } from '@/services/supabase-queries';
 import type { CdtCapitalization } from '@/db/schema';
 
 const BANKS = [
@@ -66,7 +65,6 @@ function parseCOP(raw: string): number {
 
 export default function AddCdtScreen() {
   const router = useRouter();
-  const db     = useSQLiteContext();
   const theme  = useTheme();
 
   const [bank,             setBank]             = useState('');
@@ -99,7 +97,7 @@ export default function AddCdtScreen() {
     if (!isValid || !isoStart || !isoEnd) return;
     setSaving(true);
     try {
-      await createCdt(db, {
+      await createCdt({
         bank: bankFinal,
         amount: amountNum,
         rate: rateNum,

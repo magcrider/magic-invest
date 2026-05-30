@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
-import { useSQLiteContext } from 'expo-sqlite';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -21,7 +20,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { supabase } from '@/lib/supabase';
-import { resetRiskProfile, clearUserData } from '@/db/queries/config';
+import { resetRiskProfile } from '@/services/supabase-queries';
 import { profileEvents } from '@/utils/profile-events';
 import { signOutState } from '@/utils/sign-out-state';
 
@@ -35,7 +34,6 @@ interface Props {
 
 export function DrawerMenu({ visible, onClose }: Props) {
   const { displayName, session } = useAuth();
-  const db      = useSQLiteContext();
   const theme   = useTheme();
   const email   = session?.user?.email ?? '';
   const initial = (displayName || email)[0]?.toUpperCase() ?? '?';
@@ -68,7 +66,6 @@ export function DrawerMenu({ visible, onClose }: Props) {
   async function handleSignOut() {
     onClose();
     signOutState.begin();
-    await clearUserData(db);
     await supabase.auth.signOut();
   }
 
@@ -82,7 +79,7 @@ export function DrawerMenu({ visible, onClose }: Props) {
           text: 'Reevaluar',
           style: 'destructive',
           onPress: async () => {
-            await resetRiskProfile(db);
+            await resetRiskProfile();
             profileEvents.emitReset();
             onClose();
           },

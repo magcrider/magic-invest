@@ -9,14 +9,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getEtfById, deleteEtf } from '@/db/queries/etf';
+import { getEtfById, deleteEtf } from '@/services/supabase-queries';
 import type { EtfPosition } from '@/db/schema';
 import { INBOX_EVENTS } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
@@ -39,7 +38,6 @@ function fmtCop(n: number): string {
 export default function EtfDetailScreen() {
   const { id }    = useLocalSearchParams<{ id: string }>();
   const router    = useRouter();
-  const db        = useSQLiteContext();
   const theme     = useTheme();
   const [etf, setEtf]           = useState<EtfPosition | null | undefined>(undefined);
   const [deleting, setDeleting] = useState(false);
@@ -56,7 +54,7 @@ export default function EtfDetailScreen() {
           onPress: async () => {
             setDeleting(true);
             try {
-              await deleteEtf(db, Number(id));
+              await deleteEtf(Number(id));
               router.navigate('/portfolio');
             } finally {
               setDeleting(false);
@@ -68,8 +66,8 @@ export default function EtfDetailScreen() {
   }
 
   useEffect(() => {
-    getEtfById(db, Number(id)).then(setEtf);
-  }, [db, id]);
+    getEtfById(Number(id)).then(setEtf);
+  }, [id]);
 
   if (etf === undefined) {
     return (

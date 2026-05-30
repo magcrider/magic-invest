@@ -1,5 +1,4 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { SQLiteProvider } from 'expo-sqlite';
 import { ActivityIndicator, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -7,7 +6,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppTabs from '@/components/app-tabs';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { migrateDbIfNeeded } from '@/db';
 import { useAuth } from '@/hooks/use-auth';
 import { signOutState } from '@/utils/sign-out-state';
 import LoginScreen from './login';
@@ -52,9 +50,7 @@ function AppContent() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
-      <SQLiteProvider databaseName="magic-invest.db" onInit={migrateDbIfNeeded}>
-        <AppContent />
-      </SQLiteProvider>
+      <AppContent />
     </GestureHandlerRootView>
   );
 }

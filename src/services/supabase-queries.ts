@@ -17,6 +17,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { withRetry } from '@/lib/supabase-retry';
 import type { CdtPosition, EtfPosition, AllocationBands } from '@/types/database';
 import type { RiskProfile } from '@/constants/risk-profile';
 import { PROFILE_BANDS } from '@/constants/risk-profile';
@@ -29,11 +30,14 @@ export async function getAllCdts(): Promise<CdtPosition[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
-    .from('cdt_positions')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('end_date', { ascending: true });
+  const { data, error } = await withRetry(async () => {
+    const result = await supabase
+      .from('cdt_positions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('end_date', { ascending: true });
+    return result;
+  });
 
   if (error) {
     console.error('[Supabase] Error getting CDTs:', error);
@@ -47,12 +51,15 @@ export async function getCdtById(id: number): Promise<CdtPosition | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from('cdt_positions')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('id', id)
-    .single();
+  const { data, error } = await withRetry(async () => {
+    const result = await supabase
+      .from('cdt_positions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('id', id)
+      .single();
+    return result;
+  });
 
   if (error) {
     console.error('[Supabase] Error getting CDT by id:', error);
@@ -127,11 +134,14 @@ export async function getAllEtfs(): Promise<EtfPosition[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
-    .from('etf_positions')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('ticker', { ascending: true });
+  const { data, error } = await withRetry(async () => {
+    const result = await supabase
+      .from('etf_positions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('ticker', { ascending: true });
+    return result;
+  });
 
   if (error) {
     console.error('[Supabase] Error getting ETFs:', error);
@@ -145,12 +155,15 @@ export async function getEtfById(id: number): Promise<EtfPosition | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from('etf_positions')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('id', id)
-    .single();
+  const { data, error } = await withRetry(async () => {
+    const result = await supabase
+      .from('etf_positions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('id', id)
+      .single();
+    return result;
+  });
 
   if (error) {
     console.error('[Supabase] Error getting ETF by id:', error);
@@ -164,12 +177,15 @@ export async function getEtfByTicker(ticker: string): Promise<EtfPosition | null
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from('etf_positions')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('ticker', ticker.toUpperCase())
-    .single();
+  const { data, error } = await withRetry(async () => {
+    const result = await supabase
+      .from('etf_positions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('ticker', ticker.toUpperCase())
+      .single();
+    return result;
+  });
 
   if (error) {
     // Not found es esperado, no logueamos
@@ -244,12 +260,15 @@ async function getConfig(key: string): Promise<any | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from('user_config')
-    .select('value')
-    .eq('user_id', user.id)
-    .eq('key', key)
-    .single();
+  const { data, error } = await withRetry(async () => {
+    const result = await supabase
+      .from('user_config')
+      .select('value')
+      .eq('user_id', user.id)
+      .eq('key', key)
+      .single();
+    return result;
+  });
 
   if (error) {
     // Not found es esperado cuando no hay config
@@ -292,7 +311,8 @@ export async function setRiskProfile(profile: RiskProfile): Promise<void> {
 }
 
 export async function getAllocationBands(): Promise<AllocationBands | null> {
-  return await getConfig('allocation_bands');
+  const value = await getConfig('allocation_bands');
+  return value as AllocationBands | null;
 }
 
 export async function resetRiskProfile(): Promise<void> {

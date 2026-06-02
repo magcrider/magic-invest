@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/page-header';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { RiskProfileFlow } from '@/components/risk-profile-flow';
+import { InfoModal } from '@/components/info-modal';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PROFILE_CONFIG, PROFILE_BANDS, type RiskProfile } from '@/constants/risk-profile';
@@ -112,6 +113,8 @@ export default function PortfolioScreen() {
   const [profile, setProfile] = useState<RiskProfile | null>(null);
   const [cdts, setCdts]       = useState<CdtPosition[]>([]);
   const [etfs, setEtfs]       = useState<EtfPosition[]>([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showProjectionModal, setShowProjectionModal] = useState(false);
   const isFirstFocus          = useRef(true);
 
   useFocusEffect(
@@ -164,7 +167,15 @@ export default function PortfolioScreen() {
         )}
 
         {state === 'portfolio' && profile && (
-          <PortfolioContent profile={profile} cdts={cdts} etfs={etfs} />
+          <PortfolioContent
+            profile={profile}
+            cdts={cdts}
+            etfs={etfs}
+            showProfileModal={showProfileModal}
+            setShowProfileModal={setShowProfileModal}
+            showProjectionModal={showProjectionModal}
+            setShowProjectionModal={setShowProjectionModal}
+          />
         )}
       </SafeAreaView>
     </ThemedView>
@@ -179,9 +190,21 @@ interface PortfolioContentProps {
   profile: RiskProfile;
   cdts:    CdtPosition[];
   etfs:    EtfPosition[];
+  showProfileModal: boolean;
+  setShowProfileModal: (show: boolean) => void;
+  showProjectionModal: boolean;
+  setShowProjectionModal: (show: boolean) => void;
 }
 
-function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
+function PortfolioContent({
+  profile,
+  cdts,
+  etfs,
+  showProfileModal,
+  setShowProfileModal,
+  showProjectionModal,
+  setShowProjectionModal,
+}: PortfolioContentProps) {
   const router  = useRouter();
   const theme   = useTheme();
   const config  = PROFILE_CONFIG[profile.label];
@@ -212,23 +235,31 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
   const blendedHigh = cdtPct * avgCdtRateNet + etfPct * ETF_CAGR_HIGH;
   const projLow     = portfolioTotal * Math.pow(1 + blendedLow,  10);
   const projHigh    = portfolioTotal * Math.pow(1 + blendedHigh, 10);
+  const proj2Low    = portfolioTotal * Math.pow(1 + blendedLow,  2);
+  const proj2High   = portfolioTotal * Math.pow(1 + blendedHigh, 2);
+  const proj5Low    = portfolioTotal * Math.pow(1 + blendedLow,  5);
+  const proj5High   = portfolioTotal * Math.pow(1 + blendedHigh, 5);
   const unreadCount = relatedUnreadCount(cdts, etfs);
 
   return (
     <View style={styles.contentRoot}>
       {/* Fila superior: chip de perfil + botón Agregar */}
       <View style={styles.profileRow}>
-        <View style={[styles.profileChip, {
-          borderColor: config.color + '60',
-          backgroundColor: theme.backgroundElement,
-        }]}>
+        <TouchableOpacity
+          style={[styles.profileChip, {
+            borderColor: config.color + '60',
+            backgroundColor: theme.backgroundElement,
+          }]}
+          onPress={() => setShowProfileModal(true)}
+          activeOpacity={0.7}
+        >
           <ThemedText style={styles.chipLine} numberOfLines={1}>
             <ThemedText style={[styles.chipLabel, { color: config.color }]}>{config.title}</ThemedText>
             <ThemedText style={[styles.chipBands, { color: theme.textSecondary }]}>
               {`: CDT ${Math.round(bands.cdt_min * 100)}–${Math.round(bands.cdt_max * 100)}% / ETF ${Math.round(bands.etf_min * 100)}–${Math.round(bands.etf_max * 100)}%`}
             </ThemedText>
           </ThemedText>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.fab, { backgroundColor: theme.positive }]}
           onPress={() => router.push('/portfolio/add')}
@@ -347,14 +378,41 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
                   </View>
                 </View>
                 <View style={[styles.metricDivider, { backgroundColor: theme.divider }]} />
-                <View style={styles.metricRight}>
+                <TouchableOpacity
+                  style={styles.metricRight}
+                  onPress={() => setShowProjectionModal(true)}
+                  activeOpacity={0.7}
+                >
                   <ThemedText style={[styles.metricLabel, { color: theme.positive }]}>
-                    Proyección 10A
+                    Proyección
                   </ThemedText>
-                  <ThemedText style={[styles.metricRange, { color: theme.text }]} numberOfLines={2} adjustsFontSizeToFit>
-                    ${abbreviateValue(projLow, 'COP')} –{'\n'}${abbreviateValue(projHigh, 'COP')}
-                  </ThemedText>
-                </View>
+                  <View style={styles.projectionLines}>
+                    <View style={styles.projectionRow}>
+                      <ThemedText style={[styles.projectionYear, { color: theme.textSecondary }]}>
+                        2A @ {new Date().getFullYear() + 2}{' '}
+                      </ThemedText>
+                      <ThemedText style={[styles.projectionValue, { color: theme.text }]}>
+                        ${abbreviateValue(proj2Low, 'COP')} – ${abbreviateValue(proj2High, 'COP')}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.projectionRow}>
+                      <ThemedText style={[styles.projectionYear, { color: theme.textSecondary }]}>
+                        5A @ {new Date().getFullYear() + 5}{' '}
+                      </ThemedText>
+                      <ThemedText style={[styles.projectionValue, { color: theme.text }]}>
+                        ${abbreviateValue(proj5Low, 'COP')} – ${abbreviateValue(proj5High, 'COP')}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.projectionRow}>
+                      <ThemedText style={[styles.projectionYear, { color: theme.textSecondary }]}>
+                        10A @ {new Date().getFullYear() + 10}{' '}
+                      </ThemedText>
+                      <ThemedText style={[styles.projectionValue, { color: theme.text }]}>
+                        ${abbreviateValue(projLow, 'COP')} – ${abbreviateValue(projHigh, 'COP')}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </TouchableOpacity>
               </View>
 
               <DistributionSection cdtPct={cdtPct} etfPct={etfPct} bands={bands} />
@@ -403,6 +461,160 @@ function PortfolioContent({ profile, cdts, etfs }: PortfolioContentProps) {
           )}
         </ScrollView>
       )}
+
+      {/* Modal: Perfil de Inversión */}
+      <InfoModal
+        visible={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        title="Tu Perfil de Inversión"
+      >
+        <View style={styles.modalSection}>
+          <View style={[styles.modalBadge, {
+            borderColor: config.color + '60',
+            backgroundColor: theme.background,
+          }]}>
+            <ThemedText style={[styles.modalBadgeLabel, { color: config.color }]}>
+              {config.title}
+            </ThemedText>
+            <ThemedText style={[styles.modalBadgeBands, { color: theme.text }]}>
+              CDT {Math.round(bands.cdt_min * 100)}–{Math.round(bands.cdt_max * 100)}% / ETF {Math.round(bands.etf_min * 100)}–{Math.round(bands.etf_max * 100)}%
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Qué significa esto?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Tu perfil sugiere una mezcla equilibrada: CDTs para estabilidad, ETFs para crecimiento a largo plazo.
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Cómo se calculó?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Basado en tus respuestas al cuestionario inicial:
+          </ThemedText>
+          <View style={styles.modalList}>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • Horizonte temporal
+            </ThemedText>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • Reacción ante caídas del mercado
+            </ThemedText>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • Objetivo de inversión
+            </ThemedText>
+          </View>
+        </View>
+      </InfoModal>
+
+      {/* Modal: Proyección */}
+      <InfoModal
+        visible={showProjectionModal}
+        onClose={() => setShowProjectionModal(false)}
+        title="Proyección de tu portafolio"
+      >
+        <View style={styles.modalSectionCompact}>
+          <View style={styles.projectionModalLines}>
+            <View style={styles.projectionModalRow}>
+              <ThemedText style={[styles.projectionModalYear, { color: theme.textSecondary }]}>
+                2A @ {new Date().getFullYear() + 2}
+              </ThemedText>
+              <ThemedText style={[styles.projectionModalValue, { color: theme.text }]}>
+                ${abbreviateValue(proj2Low, 'COP')} – ${abbreviateValue(proj2High, 'COP')}
+              </ThemedText>
+            </View>
+            <View style={styles.projectionModalRow}>
+              <ThemedText style={[styles.projectionModalYear, { color: theme.textSecondary }]}>
+                5A @ {new Date().getFullYear() + 5}
+              </ThemedText>
+              <ThemedText style={[styles.projectionModalValue, { color: theme.text }]}>
+                ${abbreviateValue(proj5Low, 'COP')} – ${abbreviateValue(proj5High, 'COP')}
+              </ThemedText>
+            </View>
+            <View style={styles.projectionModalRow}>
+              <ThemedText style={[styles.projectionModalYear, { color: theme.textSecondary }]}>
+                10A @ {new Date().getFullYear() + 10}
+              </ThemedText>
+              <ThemedText style={[styles.projectionModalValue, { color: theme.text }]}>
+                ${abbreviateValue(projLow, 'COP')} – ${abbreviateValue(projHigh, 'COP')}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.modalSectionCompact}>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary, marginBottom: Spacing.two }]}>
+            El rango muestra dos escenarios:
+          </ThemedText>
+          <View style={[styles.modalTable, { borderColor: theme.divider }]}>
+            <View style={[styles.modalTableRow, { borderBottomColor: theme.divider }]}>
+              <ThemedText style={[styles.modalTableLabel, { color: theme.text }]}>
+                Pesimista
+              </ThemedText>
+              <ThemedText style={[styles.modalTableValue, { color: theme.textSecondary }]}>
+                CDTs {(avgCdtRateNet * 100).toFixed(1)}% · ETFs 5%
+              </ThemedText>
+            </View>
+            <View style={[styles.modalTableRow, { borderBottomWidth: 0 }]}>
+              <ThemedText style={[styles.modalTableLabel, { color: theme.text }]}>
+                Optimista
+              </ThemedText>
+              <ThemedText style={[styles.modalTableValue, { color: theme.textSecondary }]}>
+                CDTs {(avgCdtRateNet * 100).toFixed(1)}% · ETFs 11%
+              </ThemedText>
+            </View>
+          </View>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary, marginTop: Spacing.two }]}>
+            Tu portafolio real estará probablemente dentro de este rango, pero puede salirse en años de alta volatilidad.
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSectionCompact}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            Supuestos
+          </ThemedText>
+          <View style={[styles.modalTable, { borderColor: theme.divider }]}>
+            <View style={[styles.modalTableRow, { borderBottomColor: theme.divider }]}>
+              <ThemedText style={[styles.modalTableLabel, { color: theme.text }]}>
+                CDTs
+              </ThemedText>
+              <ThemedText style={[styles.modalTableValue, { color: theme.textSecondary }]}>
+                Tasa neta promedio (retefuente 4%)
+              </ThemedText>
+            </View>
+            <View style={[styles.modalTableRow, { borderBottomColor: theme.divider }]}>
+              <ThemedText style={[styles.modalTableLabel, { color: theme.text }]}>
+                ETFs
+              </ThemedText>
+              <ThemedText style={[styles.modalTableValue, { color: theme.textSecondary }]}>
+                5-11% CAGR (rango histórico)
+              </ThemedText>
+            </View>
+            <View style={[styles.modalTableRow, { borderBottomWidth: 0 }]}>
+              <ThemedText style={[styles.modalTableLabel, { color: theme.text }]}>
+                Aportes
+              </ThemedText>
+              <ThemedText style={[styles.modalTableValue, { color: theme.textSecondary }]}>
+                Sin aportes adicionales
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.modalDisclaimer, {
+          backgroundColor: theme.background,
+          borderLeftColor: theme.attention,
+        }]}>
+          <ThemedText style={[styles.modalDisclaimerText, { color: theme.textSecondary }]}>
+            Esta proyección es educativa. No es una garantía ni una promesa de rendimiento futuro.
+          </ThemedText>
+        </View>
+      </InfoModal>
     </View>
   );
 }
@@ -731,12 +943,17 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     padding: Spacing.three,
   },
-  metricLeft:    { flex: 1, gap: Spacing.one },
-  metricRight:   { flex: 1, paddingLeft: Spacing.three, gap: Spacing.one },
+  metricLeft:    { flex: 0.33, gap: Spacing.one },
+  metricRight:   { flex: 0.67, paddingLeft: Spacing.three, gap: Spacing.one },
   metricDivider: { width: 1, marginVertical: 2 },
   metricLabel:   { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   metricTotal:   { fontSize: 22, fontWeight: '700', letterSpacing: -0.5, lineHeight: 28 },
   metricRange:   { fontSize: 20, fontWeight: '700', letterSpacing: -0.3, lineHeight: 26 },
+  projectionLines: { gap: Spacing.one },
+  projectionRow:   { flexDirection: 'row', alignItems: 'baseline' },
+  projectionYear:  { fontSize: 12, fontWeight: '500', letterSpacing: -0.1, minWidth: 70 },
+  projectionSeparator: { fontSize: 12 },
+  projectionValue: { fontSize: 16, fontWeight: '700', letterSpacing: -0.3 },
   metricBreakdown: { gap: 3, marginTop: Spacing.one },
   metricPart:    { fontSize: 11 },
   summaryBreakdownItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half },
@@ -802,4 +1019,106 @@ const styles = StyleSheet.create({
   cardRate:    { fontSize: 13, fontWeight: '600' },
   cardMeta:    { fontSize: 13 },
   cardNet:     { fontSize: 13, fontWeight: '600' },
+
+  // Modal styles
+  modalSection: {
+    marginBottom: Spacing.four,
+  },
+  modalSectionCompact: {
+    marginBottom: Spacing.three,
+  },
+  modalBadge: {
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
+  modalBadgeLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  modalBadgeBands: {
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+  },
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    lineHeight: 21,
+    marginBottom: Spacing.two,
+  },
+  modalSectionText: {
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: -0.1,
+  },
+  modalList: {
+    gap: Spacing.one + Spacing.half,
+    marginTop: Spacing.two,
+  },
+  modalListCompact: {
+    gap: Spacing.one,
+    marginTop: Spacing.one + Spacing.half,
+  },
+  modalListItem: {
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: -0.1,
+  },
+  modalTable: {
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    overflow: 'hidden',
+  },
+  modalTableRow: {
+    flexDirection: 'row',
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two + Spacing.half,
+    borderBottomWidth: 1,
+  },
+  modalTableLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    width: 90,
+    flexShrink: 0,
+  },
+  modalTableValue: {
+    fontSize: 14,
+    lineHeight: 18,
+    letterSpacing: -0.1,
+    flex: 1,
+  },
+  projectionModalLines: {
+    gap: Spacing.two,
+  },
+  projectionModalRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  projectionModalYear: {
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+  },
+  projectionModalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    textAlign: 'right',
+  },
+  modalDisclaimer: {
+    padding: Spacing.three,
+    borderRadius: Spacing.two,
+    borderLeftWidth: 4,
+  },
+  modalDisclaimerText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
 });

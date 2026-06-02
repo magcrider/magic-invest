@@ -18,7 +18,7 @@ import { InfoModal } from '@/components/info-modal';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PROFILE_CONFIG, PROFILE_BANDS, type RiskProfile } from '@/constants/risk-profile';
-import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs } from '@/services/supabase-queries';
+import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs, getMacroContext, getCdtMarketRates, type MacroContext, type CdtMarketRate } from '@/services/supabase-queries';
 import { profileEvents } from '@/utils/profile-events';
 import { formatCurrency, abbreviateValue } from '@/utils/format';
 import { useAuth } from '@/hooks/use-auth';
@@ -26,11 +26,8 @@ import type { CdtPosition, EtfPosition, AllocationBands } from '@/types/database
 import { INBOX_EVENTS, type InboxEvent } from '@/constants/inbox-mock';
 import { inboxState } from '@/utils/inbox-state';
 
-// ── Macro context hardcodeado — vendrá del backend §8 ────────────────────
-const TRM_COP       = 4_200;
-const BANREP_RATE   = 9.25;
-const CDT_MKT_RATE  = 11.2;
-const INFLATION_COL = 5.3;
+// ── Tasas hardcodeadas mientras implementamos backend completo ──────────
+const CDT_MKT_RATE  = 11.2;  // TODO: vendrá de cdt_rates cuando implementemos API CDT
 const ETF_CAGR_LOW  = 0.05;
 const ETF_CAGR_HIGH = 0.11;
 // ─────────────────────────────────────────────────────────────────────────
@@ -57,10 +54,10 @@ function cdtNetYield(cdt: CdtPosition): number {
   return gross * (1 - cdt.withholding_rate);
 }
 
-function etfValueCOP(etf: EtfPosition): number {
+function etfValueCOP(etf: EtfPosition, trm: number): number {
   if (etf.currency === 'COP' && etf.total_invested_cop != null) return etf.total_invested_cop;
-  if (etf.total_invested_usd != null) return etf.total_invested_usd * TRM_COP;
-  if (etf.shares > 0 && etf.average_cost_usd > 0) return etf.shares * etf.average_cost_usd * TRM_COP;
+  if (etf.total_invested_usd != null) return etf.total_invested_usd * trm;
+  if (etf.shares > 0 && etf.average_cost_usd > 0) return etf.shares * etf.average_cost_usd * trm;
   return 0;
 }
 
@@ -113,6 +110,8 @@ export default function PortfolioScreen() {
   const [profile, setProfile] = useState<RiskProfile | null>(null);
   const [cdts, setCdts]       = useState<CdtPosition[]>([]);
   const [etfs, setEtfs]       = useState<EtfPosition[]>([]);
+  const [macroContext, setMacroContext] = useState<MacroContext | null>(null);
+  const [cdtRate360, setCdtRate360] = useState<number | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showProjectionModal, setShowProjectionModal] = useState(false);
   const isFirstFocus          = useRef(true);
@@ -123,11 +122,25 @@ export default function PortfolioScreen() {
         setState('loading');
         isFirstFocus.current = false;
       }
-      Promise.all([getRiskProfile(), getAllCdts(), getAllEtfs()]).then(
-        ([p, cdtList, etfList]) => {
+      Promise.all([
+        getRiskProfile(),
+        getAllCdts(),
+        getAllEtfs(),
+        getMacroContext().catch(() => ({
+          trm: 4200,
+          policyRate: 9.25,
+          inflationCOP: 5.3,
+          inflationUSD: 3.2,
+          date: new Date().toISOString().split('T')[0],
+        })),
+        getCdtMarketRates(360).then(rates => rates[0]?.rate ?? null).catch(() => null)
+      ]).then(
+        ([p, cdtList, etfList, macro, cdtRate]) => {
           setProfile(p);
           setCdts(cdtList);
           setEtfs(etfList);
+          setMacroContext(macro);
+          setCdtRate360(cdtRate);
           setState(p ? 'portfolio' : 'risk_profile');
         }
       );
@@ -171,6 +184,8 @@ export default function PortfolioScreen() {
             profile={profile}
             cdts={cdts}
             etfs={etfs}
+            macroContext={macroContext}
+            cdtRate360={cdtRate360}
             showProfileModal={showProfileModal}
             setShowProfileModal={setShowProfileModal}
             showProjectionModal={showProjectionModal}
@@ -190,6 +205,8 @@ interface PortfolioContentProps {
   profile: RiskProfile;
   cdts:    CdtPosition[];
   etfs:    EtfPosition[];
+  macroContext: MacroContext | null;
+  cdtRate360: number | null;
   showProfileModal: boolean;
   setShowProfileModal: (show: boolean) => void;
   showProjectionModal: boolean;
@@ -200,6 +217,8 @@ function PortfolioContent({
   profile,
   cdts,
   etfs,
+  macroContext,
+  cdtRate360,
   showProfileModal,
   setShowProfileModal,
   showProjectionModal,
@@ -211,6 +230,7 @@ function PortfolioContent({
   const bands   = PROFILE_BANDS[profile.label];
   const isEmpty = cdts.length === 0 && etfs.length === 0;
   const [tab, setTab] = useState<PortfolioTab>('resumen');
+  const [contextModal, setContextModal] = useState<'banrep' | 'cdt' | 'inflation' | 'trm' | null>(null);
 
   useEffect(() => {
     if (isEmpty) setTab('resumen');
@@ -222,7 +242,7 @@ function PortfolioContent({
   }, []);
 
   const cdtTotal       = cdts.reduce((s, c) => s + c.amount, 0);
-  const etfTotalCOP    = etfs.reduce((s, e) => s + etfValueCOP(e), 0);
+  const etfTotalCOP    = etfs.reduce((s, e) => s + etfValueCOP(e, macroContext?.trm ?? 4200), 0);
   const portfolioTotal = cdtTotal + etfTotalCOP;
   const cdtPct = portfolioTotal > 0 ? cdtTotal / portfolioTotal : 0;
   const etfPct = portfolioTotal > 0 ? etfTotalCOP / portfolioTotal : 0;
@@ -416,7 +436,7 @@ function PortfolioContent({
               </View>
 
               <DistributionSection cdtPct={cdtPct} etfPct={etfPct} bands={bands} />
-              <ContextStrip />
+              <ContextStrip macroContext={macroContext} cdtRate360={cdtRate360} onOpenModal={setContextModal} />
             </>
           )}
         </ScrollView>
@@ -615,6 +635,164 @@ function PortfolioContent({
           </ThemedText>
         </View>
       </InfoModal>
+
+      {/* Modales educativos: Contexto Actual */}
+      <InfoModal
+        visible={contextModal === 'banrep'}
+        onClose={() => setContextModal(null)}
+        title="Tasa Banrep"
+      >
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Qué es?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Es la <ThemedText style={{ fontWeight: '600' }}>tasa de política monetaria</ThemedText> del Banco de la República (banco central de Colombia). Es la tasa a la que el Banrep presta dinero a los bancos comerciales.
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Para qué sirve?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Es el <ThemedText style={{ fontWeight: '600' }}>piso de rentabilidad</ThemedText> de la economía colombiana. Las tasas de CDT y otros productos de renta fija se calculan a partir de esta tasa base.
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Cómo me afecta?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Cuando la tasa sube:
+          </ThemedText>
+          <View style={styles.modalList}>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • Los CDT pagan más intereses
+            </ThemedText>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • Los créditos se vuelven más caros
+            </ThemedText>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • La inflación tiende a bajar
+            </ThemedText>
+          </View>
+        </View>
+      </InfoModal>
+
+      <InfoModal
+        visible={contextModal === 'cdt'}
+        onClose={() => setContextModal(null)}
+        title="CDT Mercado"
+      >
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Qué es?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Es el <ThemedText style={{ fontWeight: '600' }}>promedio ponderado</ThemedText> de las tasas que ofrecen todos los bancos colombianos para CDTs a <ThemedText style={{ fontWeight: '600' }}>360 días</ThemedText>.
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Para qué sirve?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Es una <ThemedText style={{ fontWeight: '600' }}>referencia de mercado</ThemedText> para saber si la tasa que te ofrece tu banco es competitiva o no.
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿De dónde viene este dato?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Calculado con datos oficiales del Banco de la República, publicados en datos.gov.co. Se actualiza diariamente con información del día anterior.
+          </ThemedText>
+        </View>
+      </InfoModal>
+
+      <InfoModal
+        visible={contextModal === 'inflation'}
+        onClose={() => setContextModal(null)}
+        title="Inflación COP"
+      >
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Qué es?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Es el <ThemedText style={{ fontWeight: '600' }}>aumento anual del costo de vida</ThemedText> en Colombia, medido por el índice de precios al consumidor (IPC).
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Para qué sirve?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Mide cuánto <ThemedText style={{ fontWeight: '600' }}>poder adquisitivo pierden tus pesos</ThemedText> cada año. Si tu inversión renta menos que la inflación, estás perdiendo dinero en términos reales.
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            Ejemplo práctico
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Si guardas $100,000 bajo el colchón y la inflación es 5.3%, al cabo de un año necesitarás $105,300 para comprar lo mismo que hoy compras con $100,000.
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary, marginTop: 8 }]}>
+            Por eso tu rentabilidad <ThemedText style={{ fontWeight: '600' }}>real</ThemedText> = rentabilidad nominal - inflación.
+          </ThemedText>
+        </View>
+      </InfoModal>
+
+      <InfoModal
+        visible={contextModal === 'trm'}
+        onClose={() => setContextModal(null)}
+        title="TRM (Tasa Representativa del Mercado)"
+      >
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Qué es?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Es el <ThemedText style={{ fontWeight: '600' }}>precio oficial del dólar en Colombia</ThemedText>, calculado diariamente por el Banco de la República con base en las transacciones del día anterior.
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Para qué sirve en Magic Invest?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            La usamos para convertir tus ETFs (cotizados en dólares) a pesos colombianos y calcular:
+          </ThemedText>
+          <View style={styles.modalList}>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • Valor actual de tu portafolio
+            </ThemedText>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • Ganancia/pérdida en pesos
+            </ThemedText>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • Distribución CDT vs ETF
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Cuándo se actualiza?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Todos los días hábiles (lunes a viernes, excepto festivos) a las 12:30 AM (hora Colombia). Magic Invest sincroniza automáticamente esta información.
+          </ThemedText>
+        </View>
+      </InfoModal>
     </View>
   );
 }
@@ -689,31 +867,40 @@ function DistributionSection({
 
 // ── Contexto macro ────────────────────────────────────────────────────────
 
-function ContextStrip() {
+function ContextStrip({
+  macroContext,
+  cdtRate360,
+  onOpenModal
+}: {
+  macroContext: MacroContext | null;
+  cdtRate360: number | null;
+  onOpenModal: (type: 'banrep' | 'cdt' | 'inflation' | 'trm') => void;
+}) {
   const theme = useTheme();
   return (
     <View style={[styles.contextStrip, { backgroundColor: theme.backgroundElement }]}>
       <ThemedText style={[styles.contextTitle, { color: theme.textSecondary }]}>Contexto actual</ThemedText>
       <View style={styles.contextRow}>
-        <ContextItem label="Banrep"      value={`${BANREP_RATE}%`} />
-        <ContextItem label="CDT mercado" value={`${CDT_MKT_RATE}%`} />
-        <ContextItem label="Inflación"   value={`${INFLATION_COL}%`} />
-        <ContextItem label="TRM"         value={`$${TRM_COP.toLocaleString('es-CO')}`} />
+        <ContextItem label="Banrep"      value={`${macroContext?.policyRate ?? 9.25}%`} onPress={() => onOpenModal('banrep')} />
+        <ContextItem label="CDT mercado" value={`${(cdtRate360 ?? CDT_MKT_RATE).toFixed(1)}%`} onPress={() => onOpenModal('cdt')} />
+        <ContextItem label="Inflación"   value={`${macroContext?.inflationCOP ?? 5.3}%`} onPress={() => onOpenModal('inflation')} />
+        <ContextItem label="TRM"         value={`$${(macroContext?.trm ?? 4200).toLocaleString('es-CO')}`} onPress={() => onOpenModal('trm')} />
       </View>
       <ThemedText style={[styles.contextNote, { color: theme.textSecondary }]}>
-        Datos de referencia · se actualizarán automáticamente en §8
+        TRM actualizada {macroContext?.date ? `(${fmtDate(macroContext.date)})` : 'diariamente'}
       </ThemedText>
     </View>
   );
 }
 
-function ContextItem({ label, value }: { label: string; value: string }) {
+function ContextItem({ label, value, onPress }: { label: string; value: string; onPress: () => void }) {
   const theme = useTheme();
   return (
-    <View style={styles.contextItem}>
+    <TouchableOpacity style={styles.contextItem} onPress={onPress} activeOpacity={0.7}>
+      <Ionicons name="information-circle-outline" size={14} color={theme.textSecondary} style={styles.contextInfoIcon} />
       <ThemedText style={[styles.contextValue, { color: theme.text }]}>{value}</ThemedText>
       <ThemedText style={[styles.contextLabel, { color: theme.textSecondary }]}>{label}</ThemedText>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -988,9 +1175,10 @@ const styles = StyleSheet.create({
   },
   contextTitle: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   contextRow:   { flexDirection: 'row', justifyContent: 'space-between' },
-  contextItem:  { alignItems: 'center', gap: 2 },
+  contextItem:  { alignItems: 'center', gap: 2, minHeight: 50, position: 'relative', paddingTop: 16, paddingHorizontal: 4 },
   contextValue: { fontSize: 14, fontWeight: '600' },
   contextLabel: { fontSize: 10, textAlign: 'center' },
+  contextInfoIcon: { position: 'absolute', top: 0, right: -2, opacity: 0.5 },
   contextNote:  { fontSize: 10, fontStyle: 'italic' },
   section:      { gap: Spacing.two },
   sectionHeader: {

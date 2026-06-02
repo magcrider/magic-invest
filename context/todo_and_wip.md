@@ -21,23 +21,24 @@ Registro vivo del estado del proyecto. Actualizado en cada sesión. Winston pued
   * Sistema validación/formateo inputs: ✅ COMPLETO
   * Modals educativos: ✅ COMPLETO
 
-* **Última sesión:** junio 1, 2026
-  * Auto-retry JWT transparente (PGRST303)
-  * Proyección rediseñada (3 horizontes: 2A, 5A, 10A)
-  * Modals educativos (Perfil + Proyección)
-  * Fix parsing monedas (detecta formato español/inglés)
-  * Consistencia símbolos monetarios (COP/USD explícito)
+* **Última sesión:** junio 2, 2026
+  * ✅ Backend Supabase — API Banrep + World Bank implementado
+  * ✅ Edge Functions: fetch-banrep-data (diaria) + backfill-historical-data (única vez)
+  * ✅ Tablas: macro_rates (TRM, inflación, policy rate) + cdt_rates (tasas por plazo)
+  * ✅ Histórico poblado: TRM 10 años, CDT 8 años, Inflación 15 años
+  * ✅ Cron job configurado (00:30 AM Colombia diario)
+  * ✅ Portafolio ContextStrip con datos reales (TRM, Banrep, Inflación, CDT 360d)
+  * ✅ Modals educativos para los 4 indicadores del ContextStrip
 
-* **Próximo paso:** §8 Backend Supabase (Edge Functions Banrep + EOD)
+* **Próximo paso:** Motor de eventos Buzón + Fuente EOD para ETFs
 
 ---
 
 ## 🔲 Investigación Técnica Pendiente
 
-### 1. API Banco de la República
-* **Qué:** Endpoints para (a) tasa política, (b) tasas CDT promedio por plazo, (c) TRM histórica
-* **Por qué:** Fuente Hurdle Rate, trigger Buzón, tasas CDT base
-* **Decisión pendiente:** ¿Complementar con DANE (inflación)?
+### 1. ~~API Banco de la República~~ ✅ COMPLETADO
+* **Implementado:** TRM + CDT vía datos.gov.co, Inflación vía World Bank API
+* **Ver:** `architecture_state.md` §7.B para detalles completos
 
 ### 2. Fuente datos EOD para ETFs
 * **Candidatos:** Alpha Vantage, EOD Historical Data, Yahoo Finance, Polygon.io
@@ -61,9 +62,9 @@ Registro vivo del estado del proyecto. Actualizado en cada sesión. Winston pued
 * Implementar después de módulos principales
 
 ### 6. Backend Supabase — Edge Functions
-* Edge Function + cron: API Banrep (tasa política + CDT promedio)
-* Edge Function: sincronización EOD para ETFs
-* Motor generación eventos Buzón (triggers + datos mercado)
+* ~~Edge Function + cron: API Banrep (TRM + CDT + Inflación)~~ ✅ COMPLETADO (Junio 2/2026)
+* Edge Function: sincronización EOD para ETFs (pendiente)
+* Motor generación eventos Buzón (triggers + datos mercado) (pendiente)
 
 ### 7. Sistema de Rebalanceo
 * Evaluación trimestral automática vs bandas configuradas

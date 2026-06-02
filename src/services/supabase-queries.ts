@@ -330,3 +330,147 @@ export async function resetRiskProfile(): Promise<void> {
     throw error;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MACRO CONTEXT (TRM, tasas Banrep, inflación)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface MacroContext {
+  trm: number
+  policyRate: number
+  inflationCOP: number | null
+  inflationUSD: number | null
+  date: string
+}
+
+/**
+ * Obtiene el contexto macroeconómico más reciente
+ */
+export async function getMacroContext(): Promise<MacroContext> {
+  return withRetry(async () => {
+    // 1. TRM más reciente
+    const { data: trmData, error: trmError } = await supabase
+      .from('macro_rates')
+      .select('value, effective_date')
+      .eq('type', 'trm')
+      .order('effective_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (trmError) throw trmError;
+
+    // 2. Tasa de política (manual, puede no existir)
+    const { data: policyData } = await supabase
+      .from('macro_rates')
+      .select('value')
+      .eq('type', 'banrep_policy_rate')
+      .order('effective_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // 3. Inflación COP (opcional)
+    const { data: inflationCOPData } = await supabase
+      .from('macro_rates')
+      .select('value')
+      .eq('type', 'inflation_cop_annual')
+      .order('effective_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // 4. Inflación USD (opcional)
+    const { data: inflationUSDData } = await supabase
+      .from('macro_rates')
+      .select('value')
+      .eq('type', 'inflation_usd_annual')
+      .order('effective_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return {
+      trm: trmData.value,
+      policyRate: policyData?.value ?? 11.25, // fallback a valor conocido
+      inflationCOP: inflationCOPData?.value ?? null,
+      inflationUSD: inflationUSDData?.value ?? null,
+      date: trmData.effective_date,
+    };
+  });
+}
+
+/**
+ * Obtiene TRM de una fecha específica
+ * Si la fecha es fin de semana/festivo, retorna el último día hábil anterior
+ */
+export async function getTrmOnDate(date: string): Promise<number> {
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('macro_rates')
+      .select('value')
+      .eq('type', 'trm')
+      .lte('effective_date', date)
+      .order('effective_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) throw error;
+    return data.value;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CDT RATES (tasas promedio de mercado)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CdtMarketRate {
+  termDays: number
+  rate: number
+  effectiveDate: string
+}
+
+/**
+ * Obtiene las tasas CDT de mercado más recientes
+ * @param termDays - Plazo específico (30, 60, 90, 120, 180, 360) o undefined para todos
+ * @returns Array de tasas por plazo
+ */
+export async function getCdtMarketRates(termDays?: number): Promise<CdtMarketRate[]> {
+  return withRetry(async () => {
+    let query = supabase
+      .from('cdt_rates')
+      .select('term_days, rate, effective_date')
+      .is('bank', null)  // solo promedios de mercado
+      .order('effective_date', { ascending: false });
+
+    if (termDays) {
+      // Tasa más reciente para un plazo específico
+      query = query.eq('term_days', termDays).limit(1);
+    } else {
+      // Última tasa de cada plazo (agrupa por term_days)
+      // Limitamos a 10 por si hay múltiples fechas recientes
+      query = query.limit(10);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Si no especificaron plazo, deduplicar por term_days (mantener más reciente)
+    if (!termDays && data) {
+      const seen = new Set<number>();
+      const filtered = data.filter(row => {
+        if (seen.has(row.term_days)) return false;
+        seen.add(row.term_days);
+        return true;
+      });
+      return filtered.map(row => ({
+        termDays: row.term_days,
+        rate: row.rate,
+        effectiveDate: row.effective_date,
+      }));
+    }
+
+    return (data || []).map(row => ({
+      termDays: row.term_days,
+      rate: row.rate,
+      effectiveDate: row.effective_date,
+    }));
+  });
+}

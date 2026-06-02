@@ -120,16 +120,30 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
 * **Criterios:** Rate limits, cobertura de ETFs internacionales, datos históricos 5-10 años, costo tier gratuito/básico, facilidad de integración.
 * **Proceso:** Harvey y Claude explorarán durante implementación del módulo Portafolio.
 
-### B. Fuente de tasas CDT y tasa de política monetaria
-* **Estado:** Parcialmente resuelta. El **Banco de la República** publica vía API pública tanto la tasa de política monetaria como las tasas de captación CDT promedio por plazo. Esto podría resolver con una sola fuente los parámetros del Hurdle Rate (tasa libre de riesgo local) y el trigger macroeconómico del Buzón.
-* **Arquitectura decidida:** Supabase Edge Function con cron → consulta API Banrep → almacena histórico en Postgres → app sincroniza.
-* **Pendiente:** Investigar y validar los endpoints específicos de la API de Banrep antes de implementar. Tarea técnica pendiente registrada.
-* **Bancos individuales:** Si la API de Banrep cubre tasas promedio por plazo, los bancos individuales (Bancolombia, Bogotá, Davivienda) podrían ser un refinamiento posterior o entrada manual.
+### B. Fuente de tasas CDT, TRM y datos macroeconómicos
+* **Estado:** ✅ **IMPLEMENTADO** (Junio 2026)
+* **Fuentes de datos:**
+  - **TRM (Tasa Representativa del Mercado COP/USD):** API pública datos.gov.co (Banco de la República). Datos diarios desde 1991. Endpoint: `32sa-8pi3.json`
+  - **Tasas CDT promedio por plazo:** API pública datos.gov.co (Banco de la República). Datos granulares por banco y plazo (30, 60, 90, 120, 180, 360 días) desde 2018. Endpoint: `axk9-g2nh.json`. La Edge Function calcula promedio ponderado por monto para obtener tasa de mercado.
+  - **Inflación COP anual:** World Bank API. Datos consolidados anuales desde 2010. Endpoint: `FP.CPI.TOTL.ZG` para Colombia. Gratis, sin autenticación, confiable.
+  - **Tasa de política monetaria Banrep:** Fallback manual (11.25% vigente). No hay API pública disponible. Actualización manual 4-8 veces/año cuando JDBR anuncie cambios.
 
-### C. Parámetros macroeconómicos (Hurdle Rate)
-* **Devaluación COP/USD:** Fuente por definir. Candidatos: TRM histórica del Banco de la República, IMF.
-* **Inflación local:** Fuente por definir. Candidatos: DANE mensual, proyecciones anuales.
-* **Proceso:** Winston puede asistir en análisis de fuentes. Si la API de Banrep cubre TRM, puede ser la misma fuente.
+* **Arquitectura implementada:**
+  - **Supabase Edge Functions:**
+    - `fetch-banrep-data`: Sincronización diaria (cron 00:30 AM Colombia = 05:30 UTC). Trae TRM (últimos 7 días), CDT (últimas 2 semanas), Inflación (últimos 10 años).
+    - `backfill-historical-data`: Poblado inicial de histórico (TRM 10 años, CDT 8 años, Inflación 15 años). Optimizado para detectar datos existentes y solo insertar faltantes.
+  - **Tablas PostgreSQL:**
+    - `macro_rates`: Almacena TRM, inflación y tasa política. Columnas: `type`, `value`, `effective_date`, `source`. Unique constraint en `(type, effective_date)`.
+    - `cdt_rates`: Almacena tasas CDT por plazo. Columnas: `bank` (NULL para promedio de mercado), `term_days`, `rate`, `effective_date`, `source`. Unique constraint en `(bank, term_days, effective_date)`.
+  - **Queries en app:** `src/services/supabase-queries.ts` expone `getMacroContext()` (TRM, policy rate, inflación más recientes) y `getCdtMarketRates(termDays?)` (tasas CDT por plazo).
+  - **Cron job:** Configurado en Supabase Integrations → Cron. Ejecuta `fetch-banrep-data` diariamente. pg_cron + pg_net habilitados.
+
+* **Estado de datos actuales (Junio 2026):**
+  - TRM: 2,468 registros (2016-01-05 → 2026-06-02)
+  - CDT: 6,138 promedios de mercado (2018-01-31 → 2026-05-29)
+  - Inflación: 15 años (2010-2024, World Bank consolida retrospectivamente)
+
+* **Portafolio integrado:** El ContextStrip en `portfolio/index.tsx` muestra TRM, tasa Banrep, inflación y tasa CDT mercado (360 días) con datos reales traídos desde Supabase. Fallbacks a valores conocidos si falla query. Modales educativos implementados para cada indicador explicando qué es, para qué sirve y de dónde vienen los datos.
 
 ### D. Watchlist inicial de ETFs
 * **Estado:** Vacía. Harvey no tiene lista predefinida.

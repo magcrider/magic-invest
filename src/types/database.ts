@@ -48,6 +48,21 @@ export interface Etf {
   created_at: string;
 }
 
+export interface EodPrice {
+  id: string;
+  ticker: string;
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  adjusted_close: number;
+  volume: number;
+  currency: string;
+  source: string;
+  created_at: string;
+}
+
 export interface AllocationBands {
   cdt_min: number;
   cdt_max: number;

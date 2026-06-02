@@ -29,8 +29,15 @@ Registro vivo del estado del proyecto. Actualizado en cada sesión. Winston pued
   * ✅ Cron job configurado (00:30 AM Colombia diario)
   * ✅ Portafolio ContextStrip con datos reales (TRM, Banrep, Inflación, CDT 360d)
   * ✅ Modals educativos para los 4 indicadores del ContextStrip
+  * ✅ **Integración EOD completa (EODHD.com)** — Precios reales de ETFs
+  * ✅ Edge Functions: fetch-etf-prices (diaria) + backfill-etf-historical
+  * ✅ Tabla: eod_prices con OHLCV + adjusted_close
+  * ✅ Tarjetas ETF rediseñadas: Invertido | Actual | Ganancia + proyecciones 2/5/10 años
+  * ✅ Colores semánticos: verde para ganancias, naranja para pérdidas
+  * ✅ Formulario ETF mejorado: TRM automática por fecha, date picker integrado
+  * ✅ Paquete nuevo: `eodhd` (SDK oficial TypeScript)
 
-* **Próximo paso:** Motor de eventos Buzón + Fuente EOD para ETFs
+* **Próximo paso:** Motor de eventos Buzón
 
 ---
 
@@ -40,9 +47,9 @@ Registro vivo del estado del proyecto. Actualizado en cada sesión. Winston pued
 * **Implementado:** TRM + CDT vía datos.gov.co, Inflación vía World Bank API
 * **Ver:** `architecture_state.md` §7.B para detalles completos
 
-### 2. Fuente datos EOD para ETFs
-* **Candidatos:** Alpha Vantage, EOD Historical Data, Yahoo Finance, Polygon.io
-* **Criterios:** Rate limits, cobertura ETFs internacionales, histórico 5-10 años, tier gratuito, integración Edge Function
+### 2. ~~Fuente datos EOD para ETFs~~ ✅ COMPLETADO
+* **Implementado:** EODHD.com (tier free: 20 req/día, tier pagado: $19.99/mes)
+* **Ver:** `architecture_state.md` §7.A para detalles completos
 
 ### 3. Watchlist inicial ETFs
 * **Estado:** Vacía
@@ -63,7 +70,7 @@ Registro vivo del estado del proyecto. Actualizado en cada sesión. Winston pued
 
 ### 6. Backend Supabase — Edge Functions
 * ~~Edge Function + cron: API Banrep (TRM + CDT + Inflación)~~ ✅ COMPLETADO (Junio 2/2026)
-* Edge Function: sincronización EOD para ETFs (pendiente)
+* ~~Edge Function: sincronización EOD para ETFs~~ ✅ COMPLETADO (Junio 2/2026)
 * Motor generación eventos Buzón (triggers + datos mercado) (pendiente)
 
 ### 7. Sistema de Rebalanceo

@@ -116,9 +116,45 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
 ## 7. Decisiones de Integración
 
 ### A. Fuente de datos EOD para ETFs
-* **Estado:** No definida. Candidatos: Alpha Vantage, EOD Historical Data, Yahoo Finance, Polygon.io.
-* **Criterios:** Rate limits, cobertura de ETFs internacionales, datos históricos 5-10 años, costo tier gratuito/básico, facilidad de integración.
-* **Proceso:** Harvey y Claude explorarán durante implementación del módulo Portafolio.
+* **Estado:** ✅ **IMPLEMENTADO** (Junio 2026)
+* **Proveedor seleccionado:** EODHD (eodhd.com)
+* **Razones:**
+  - Tier gratuito: 20 requests/día + bonus 500 calls al registrarse (suficiente para uso personal)
+  - Tier pagado accesible: $19.99/mes para histórico completo (30+ años) + 100,000 requests/día
+  - SDK TypeScript oficial con zero dependencies, compatible con Deno/Supabase Edge Functions
+  - 20,000+ ETFs soportados (NYSE, NASDAQ confirmados: VOO, VTI, VXUS, QQQ)
+  - Datos ajustados por splits y dividendos incluidos (`adjusted_close`)
+  - API simple (REST + JSON), sin necesidad de SDK complejo
+
+* **Alternativas descartadas:**
+  - **Alpha Vantage:** Tier gratuito muy limitado (25 req/día), tier premium caro ($49.99/mes mínimo)
+  - **Polygon.io (Massive):** Pricing opaco, SDK incompatible con Deno
+  - **Yahoo Finance:** API no oficial (zona gris legal), rate limiting agresivo, sin SLA
+  - **Investing.com:** Cloudflare bloquea Edge Functions, requiere Puppeteer (incompatible)
+
+* **Arquitectura implementada:**
+  - **Supabase Edge Functions:**
+    - `fetch-etf-prices`: Sincronización diaria (cron 00:30 AM Colombia). Trae precios EOD de los últimos 7 días para todos los tickers en `etf_positions`. Upsert en `eod_prices` por `(ticker, date)`.
+    - `backfill-etf-historical`: Poblado inicial de histórico (10 años o desde inception del ETF). Verifica datos existentes antes de fetch para evitar reprocessing.
+  - **Tabla PostgreSQL:**
+    - `eod_prices`: Almacena precios OHLCV. Columnas: `ticker`, `date`, `open`, `high`, `low`, `close`, `adjusted_close`, `volume`, `currency`, `source`. Unique constraint en `(ticker, date)`.
+  - **Queries en app:** `src/services/supabase-queries.ts` expone `getLatestEodPrice(ticker)`, `getEodPriceRange(ticker, from, to)`, `getEodPriceOnDate(ticker, date)`, `getLatestEodPrices(tickers[])`.
+  - **Cron job:** Configurado en Supabase Integrations → Cron. Ejecuta `fetch-etf-prices` diariamente a las 00:30 AM Colombia.
+  - **Secret configurado:** `EODHD_API_KEY` en Supabase Secrets.
+
+* **Estado de datos actuales (Junio 2026):**
+  - 753 registros históricos insertados (backfill inicial)
+  - 3 ETFs activos: VTI (251 días), VOO (251 días), QQQ (251 días)
+  - Aproximadamente 1 año de histórico con tier free
+
+* **Portafolio integrado:** Las tarjetas de ETF en `portfolio/index.tsx` muestran:
+  - Valor invertido original
+  - Valor actual (calculado con `adjusted_close` × shares × TRM)
+  - Ganancia en porcentaje (color verde si positivo, naranja si negativo)
+  - Proyecciones a 2, 5 y 10 años (CAGR 8% promedio)
+  - Layout transpuesto: 3 columnas × 2 filas para mejor uso del espacio
+
+* **Formulario ETF mejorado:** `add-etf.tsx` carga TRM automáticamente según fecha de compra seleccionada. Date picker integrado (react-native-calendars), fechas futuras bloqueadas, TRM informativa no editable.
 
 ### B. Fuente de tasas CDT, TRM y datos macroeconómicos
 * **Estado:** ✅ **IMPLEMENTADO** (Junio 2026)

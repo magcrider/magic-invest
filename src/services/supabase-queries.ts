@@ -474,3 +474,132 @@ export async function getCdtMarketRates(termDays?: number): Promise<CdtMarketRat
     }));
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EOD PRICES (ETF Market Data)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface EodPrice {
+  ticker: string;
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  adjustedClose: number;
+  volume: number;
+  currency: string;
+}
+
+/**
+ * Obtiene el precio más reciente de un ETF
+ */
+export async function getLatestEodPrice(ticker: string): Promise<EodPrice | null> {
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('eod_prices')
+      .select('*')
+      .eq('ticker', ticker)
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return {
+      ticker: data.ticker,
+      date: data.date,
+      open: data.open,
+      high: data.high,
+      low: data.low,
+      close: data.close,
+      adjustedClose: data.adjusted_close,
+      volume: data.volume,
+      currency: data.currency,
+    };
+  });
+}
+
+/**
+ * Obtiene precios de un ETF en un rango de fechas
+ */
+export async function getEodPriceRange(
+  ticker: string,
+  fromDate: string,
+  toDate: string
+): Promise<EodPrice[]> {
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('eod_prices')
+      .select('*')
+      .eq('ticker', ticker)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map(row => ({
+      ticker: row.ticker,
+      date: row.date,
+      open: row.open,
+      high: row.high,
+      low: row.low,
+      close: row.close,
+      adjustedClose: row.adjusted_close,
+      volume: row.volume,
+      currency: row.currency,
+    }));
+  });
+}
+
+/**
+ * Obtiene precio de un ETF en una fecha específica
+ * Si la fecha es fin de semana/festivo, retorna el último día hábil anterior
+ */
+export async function getEodPriceOnDate(ticker: string, date: string): Promise<EodPrice | null> {
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('eod_prices')
+      .select('*')
+      .eq('ticker', ticker)
+      .lte('date', date)
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return {
+      ticker: data.ticker,
+      date: data.date,
+      open: data.open,
+      high: data.high,
+      low: data.low,
+      close: data.close,
+      adjustedClose: data.adjusted_close,
+      volume: data.volume,
+      currency: data.currency,
+    };
+  });
+}
+
+/**
+ * Obtiene precios más recientes de múltiples tickers
+ */
+export async function getLatestEodPrices(tickers: string[]): Promise<Map<string, EodPrice>> {
+  const pricesMap = new Map<string, EodPrice>();
+
+  await Promise.all(
+    tickers.map(async (ticker) => {
+      const price = await getLatestEodPrice(ticker);
+      if (price) {
+        pricesMap.set(ticker, price);
+      }
+    })
+  );
+
+  return pricesMap;
+}

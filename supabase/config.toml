@@ -5,3 +5,9 @@ verify_jwt = false  # cron job, no requiere autenticación
 
 [functions.backfill-historical-data]
 verify_jwt = false  # invocación manual, no requiere autenticación
+
+[functions.fetch-etf-prices]
+verify_jwt = false  # cron job, no requiere autenticación
+
+[functions.backfill-etf-historical]
+verify_jwt = false  # invocación manual, no requiere autenticación

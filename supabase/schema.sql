@@ -29,12 +29,18 @@ CREATE TABLE IF NOT EXISTS public.cdt_rates (
 );
 
 CREATE TABLE IF NOT EXISTS public.eod_prices (
-  id          BIGSERIAL PRIMARY KEY,
-  ticker      TEXT    NOT NULL,
-  date        DATE    NOT NULL,
-  close_price NUMERIC NOT NULL,
-  currency    TEXT    NOT NULL DEFAULT 'USD',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  id             BIGSERIAL PRIMARY KEY,
+  ticker         TEXT    NOT NULL,
+  date           DATE    NOT NULL,
+  open           NUMERIC NOT NULL,
+  high           NUMERIC NOT NULL,
+  low            NUMERIC NOT NULL,
+  close          NUMERIC NOT NULL,
+  adjusted_close NUMERIC NOT NULL, -- ajustado por splits/dividendos
+  volume         BIGINT  NOT NULL,
+  currency       TEXT    NOT NULL DEFAULT 'USD',
+  source         TEXT    NOT NULL DEFAULT 'eodhd',
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(ticker, date)
 );
 

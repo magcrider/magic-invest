@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -7,17 +7,20 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+
+import { Calendar } from 'react-native-calendars';
 
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatInput, parseFormattedInput } from '@/utils/format';
-import { createEtf } from '@/services/supabase-queries';
+import { createEtf, getMacroContext, getTrmOnDate } from '@/services/supabase-queries';
 
 const ETF_CATALOG: Record<string, string> = {
   VOO:  'Vanguard S&P 500 ETF',
@@ -62,6 +65,14 @@ export default function AddEtfScreen() {
   const [ticker, setTicker] = useState('');
   const [name,   setName]   = useState('');
 
+  // Purchase date
+  const [purchaseDate, setPurchaseDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // YYYY-MM-DD
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [trmLoading, setTrmLoading] = useState(false);
+
   function scrollToInput(inputRef: React.RefObject<View | null>) {
     setTimeout(() => {
       if (inputRef.current && scrollRef.current) {
@@ -91,6 +102,7 @@ export default function AddEtfScreen() {
   // TER (optional)
   const [ter,         setTer]         = useState('');
   const [showTerInfo, setShowTerInfo] = useState(false);
+  const [showDateInfo, setShowDateInfo] = useState(false);
   const [saving,      setSaving]      = useState(false);
 
   function handleTickerChange(raw: string) {
@@ -98,6 +110,33 @@ export default function AddEtfScreen() {
     setTicker(upper);
     if (ETF_CATALOG[upper]) setName(ETF_CATALOG[upper]);
   }
+
+  // Load TRM automatically when component mounts or purchase date changes
+  useEffect(() => {
+    if (entryMode === 'COP') {
+      setTrmLoading(true);
+      getTrmOnDate(purchaseDate)
+        .then(trmValue => {
+          // Store as plain number string, format only for display
+          setTrm(trmValue.toFixed(2));
+          setTrmLoading(false);
+        })
+        .catch(err => {
+          console.error('[AddETF] Error loading TRM:', err);
+          // Fallback to latest TRM
+          getMacroContext()
+            .then(macro => {
+              setTrm(macro.trm.toFixed(2));
+              setTrmLoading(false);
+            })
+            .catch(() => {
+              // Ultimate fallback
+              setTrm('4200.00');
+              setTrmLoading(false);
+            });
+        });
+    }
+  }, [purchaseDate, entryMode]);
 
   // --- Derived values ---
   const sharesNum   = parseFormattedInput(shares);
@@ -231,15 +270,50 @@ export default function AddEtfScreen() {
               </View>
             </View>
 
-            {/* ── Costo de adquisición ── */}
+            {/* ── Datos de adquisición ── */}
             <View style={styles.section}>
-              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Costo de adquisición</ThemedText>
-              <ThemedText style={[styles.fieldHint, { color: theme.textSecondary }]}>
-                Necesitamos esto para calcular tu ganancia o pérdida cuando conectemos precios de mercado.
-              </ThemedText>
+              <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Datos de adquisición</ThemedText>
+
+              {/* Date and TRM Row */}
+              <View style={styles.dateAndTrmRow}>
+                {/* Fecha de compra */}
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={[styles.inputLabel, { color: theme.textSecondary, marginBottom: Spacing.one }]}>
+                    Fecha de compra
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={[styles.dateDisplayBox, { backgroundColor: theme.backgroundElement }]}
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="calendar-outline" size={18} color={theme.assetEtf} />
+                    <ThemedText style={[styles.dateDisplayText, { color: theme.text }]}>
+                      {new Date(purchaseDate + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+
+                {/* TRM */}
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={[styles.inputLabel, { color: theme.textSecondary, marginBottom: Spacing.one }]}>
+                    TRM (COP/USD)
+                  </ThemedText>
+                  <View style={[styles.trmDisplayBox, { backgroundColor: theme.backgroundElement }]}>
+                    {trmLoading ? (
+                      <ThemedText style={[styles.trmDisplayText, { color: theme.textSecondary }]}>
+                        Cargando...
+                      </ThemedText>
+                    ) : (
+                      <ThemedText style={[styles.trmDisplayText, { color: theme.text }]}>
+                        $ {parseFloat(trm || '0').toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </ThemedText>
+                    )}
+                  </View>
+                </View>
+              </View>
 
               {/* Currency selector */}
-              <View style={[styles.chipGrid, { marginTop: Spacing.two, marginBottom: Spacing.three }]}>
+              <View style={[styles.chipGrid, { marginTop: Spacing.three, marginBottom: Spacing.three }]}>
                 <Chip
                   label="Pagué en COP"
                   selected={entryMode === 'COP'}
@@ -269,27 +343,6 @@ export default function AddEtfScreen() {
                     />
                     <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>COP</ThemedText>
                   </View>
-
-                  <ThemedText style={[styles.inputLabel, { marginTop: Spacing.three, color: theme.textSecondary }]}>
-                    TRM (tasa de cambio COP/USD)
-                  </ThemedText>
-                  <View ref={trmInputRef} style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
-                    <ThemedText style={[styles.prefix, { color: theme.textSecondary }]}>$</ThemedText>
-                    <TextInput
-                      style={[styles.input, { color: theme.text }]}
-                      value={trm}
-                      onChangeText={(raw) => setTrm(formatInput(raw, 'currency-cop', trm))}
-                      onFocus={() => scrollToInput(trmInputRef)}
-                      placeholder="ej: 4.200"
-                      placeholderTextColor={theme.textPlaceholder}
-                      keyboardType="numeric"
-                      returnKeyType="done"
-                    />
-                    <ThemedText style={[styles.suffix, { color: theme.textSecondary }]}>COP / USD</ThemedText>
-                  </View>
-                  <ThemedText style={[styles.fieldHint, { color: theme.textSecondary }]}>
-                    Busca "TRM Colombia hoy" en Google para obtener el valor actual. Próximamente la consultaremos automáticamente.
-                  </ThemedText>
                   {totalCopNum > 0 && trmNum > 0 && (
                     <ThemedText style={[styles.computedHint, { color: theme.assetEtf }]}>
                       → Equivalente: USD {(totalCopNum / trmNum).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -557,6 +610,63 @@ export default function AddEtfScreen() {
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* Calendar Modal */}
+        <Modal
+          visible={showDatePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowDatePicker(false)}
+          >
+            <TouchableOpacity activeOpacity={1} style={styles.calendarCard}>
+              <View style={styles.calendarHeader}>
+                <ThemedText style={[styles.calendarTitle, { color: '#1F2024' }]}>
+                  Fecha de compra
+                </ThemedText>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)} hitSlop={8}>
+                  <Ionicons name="close" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+              <Calendar
+                current={purchaseDate}
+                maxDate={new Date().toISOString().split('T')[0]}
+                onDayPress={(day) => {
+                  setPurchaseDate(day.dateString);
+                  setShowDatePicker(false);
+                }}
+                markedDates={{
+                  [purchaseDate]: { selected: true, selectedColor: theme.assetEtf }
+                }}
+                theme={{
+                  backgroundColor: '#FFFFFF',
+                  calendarBackground: '#FFFFFF',
+                  selectedDayBackgroundColor: theme.assetEtf,
+                  selectedDayTextColor: '#FFFFFF',
+                  todayTextColor: theme.assetEtf,
+                  dayTextColor: '#1F2024',
+                  textDisabledColor: '#9CA3AF',
+                  monthTextColor: '#1F2024',
+                  arrowColor: theme.assetEtf,
+                  textMonthFontWeight: '600',
+                  textDayFontSize: 14,
+                  textMonthFontSize: 15,
+                }}
+              />
+              <View style={styles.calendarInfo}>
+                <ThemedText style={[styles.calendarInfoText, { color: '#6B7280' }]}>
+                  La fecha de compra determina la TRM (tasa de cambio) que usaremos para calcular tu inversión en dólares.{'\n\n'}
+                  La TRM se actualiza automáticamente según la fecha que selecciones. Solo puedes elegir fechas pasadas porque no conocemos la TRM futura.{'\n\n'}
+                  💡 Si pagaste en varias transacciones, usa la fecha promedio o crea múltiples posiciones.
+                </ThemedText>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
       </SafeAreaView>
     </ThemedView>
   );
@@ -744,4 +854,66 @@ const styles = StyleSheet.create({
   },
   saveButtonDisabled: { opacity: 0.4 },
   saveText: { fontSize: 16, fontWeight: '600' },
+  dateAndTrmRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    marginTop: Spacing.two,
+  },
+  dateDisplayBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 14,
+    borderRadius: Spacing.two,
+  },
+  dateDisplayText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  trmDisplayBox: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 14,
+    borderRadius: Spacing.two,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trmDisplayText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.four,
+  },
+  calendarCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Spacing.three,
+    overflow: 'hidden',
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
+  },
+  calendarTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  calendarInfo: {
+    padding: Spacing.three,
+    backgroundColor: '#F9FAFB',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  calendarInfoText: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
 });

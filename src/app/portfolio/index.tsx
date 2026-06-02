@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -18,7 +19,7 @@ import { InfoModal } from '@/components/info-modal';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PROFILE_CONFIG, PROFILE_BANDS, type RiskProfile } from '@/constants/risk-profile';
-import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs, getMacroContext, getCdtMarketRates, type MacroContext, type CdtMarketRate } from '@/services/supabase-queries';
+import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs, getMacroContext, getCdtMarketRates, getLatestEodPrices, type MacroContext, type CdtMarketRate, type EodPrice } from '@/services/supabase-queries';
 import { profileEvents } from '@/utils/profile-events';
 import { formatCurrency, abbreviateValue } from '@/utils/format';
 import { useAuth } from '@/hooks/use-auth';
@@ -54,11 +55,18 @@ function cdtNetYield(cdt: CdtPosition): number {
   return gross * (1 - cdt.withholding_rate);
 }
 
-function etfValueCOP(etf: EtfPosition, trm: number): number {
+function etfInvestedCOP(etf: EtfPosition, trm: number): number {
   if (etf.currency === 'COP' && etf.total_invested_cop != null) return etf.total_invested_cop;
   if (etf.total_invested_usd != null) return etf.total_invested_usd * trm;
   if (etf.shares > 0 && etf.average_cost_usd > 0) return etf.shares * etf.average_cost_usd * trm;
   return 0;
+}
+
+function etfCurrentValueCOP(etf: EtfPosition, trm: number, currentPrice?: number): number {
+  if (!currentPrice || etf.shares <= 0) {
+    return etfInvestedCOP(etf, trm);
+  }
+  return etf.shares * currentPrice * trm;
 }
 
 function bandHealth(pct: number, min: number, max: number): BandHealth {
@@ -112,6 +120,7 @@ export default function PortfolioScreen() {
   const [etfs, setEtfs]       = useState<EtfPosition[]>([]);
   const [macroContext, setMacroContext] = useState<MacroContext | null>(null);
   const [cdtRate360, setCdtRate360] = useState<number | null>(null);
+  const [eodPrices, setEodPrices] = useState<Map<string, EodPrice>>(new Map());
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showProjectionModal, setShowProjectionModal] = useState(false);
   const isFirstFocus          = useRef(true);
@@ -135,12 +144,20 @@ export default function PortfolioScreen() {
         })),
         getCdtMarketRates(360).then(rates => rates[0]?.rate ?? null).catch(() => null)
       ]).then(
-        ([p, cdtList, etfList, macro, cdtRate]) => {
+        async ([p, cdtList, etfList, macro, cdtRate]) => {
           setProfile(p);
           setCdts(cdtList);
           setEtfs(etfList);
           setMacroContext(macro);
           setCdtRate360(cdtRate);
+
+          // Cargar precios EOD de todos los ETFs
+          if (etfList.length > 0) {
+            const tickers = etfList.map(e => e.ticker);
+            const prices = await getLatestEodPrices(tickers).catch(() => new Map());
+            setEodPrices(prices);
+          }
+
           setState(p ? 'portfolio' : 'risk_profile');
         }
       );
@@ -186,6 +203,7 @@ export default function PortfolioScreen() {
             etfs={etfs}
             macroContext={macroContext}
             cdtRate360={cdtRate360}
+            eodPrices={eodPrices}
             showProfileModal={showProfileModal}
             setShowProfileModal={setShowProfileModal}
             showProjectionModal={showProjectionModal}
@@ -207,6 +225,7 @@ interface PortfolioContentProps {
   etfs:    EtfPosition[];
   macroContext: MacroContext | null;
   cdtRate360: number | null;
+  eodPrices: Map<string, EodPrice>;
   showProfileModal: boolean;
   setShowProfileModal: (show: boolean) => void;
   showProjectionModal: boolean;
@@ -219,6 +238,7 @@ function PortfolioContent({
   etfs,
   macroContext,
   cdtRate360,
+  eodPrices,
   showProfileModal,
   setShowProfileModal,
   showProjectionModal,
@@ -242,10 +262,14 @@ function PortfolioContent({
   }, []);
 
   const cdtTotal       = cdts.reduce((s, c) => s + c.amount, 0);
-  const etfTotalCOP    = etfs.reduce((s, e) => s + etfValueCOP(e, macroContext?.trm ?? 4200), 0);
-  const portfolioTotal = cdtTotal + etfTotalCOP;
+  const etfTotalInvestedCOP = etfs.reduce((s, e) => s + etfInvestedCOP(e, macroContext?.trm ?? 4200), 0);
+  const etfTotalCurrentCOP = etfs.reduce((s, e) => {
+    const price = eodPrices.get(e.ticker);
+    return s + etfCurrentValueCOP(e, macroContext?.trm ?? 4200, price?.adjustedClose);
+  }, 0);
+  const portfolioTotal = cdtTotal + etfTotalCurrentCOP;
   const cdtPct = portfolioTotal > 0 ? cdtTotal / portfolioTotal : 0;
-  const etfPct = portfolioTotal > 0 ? etfTotalCOP / portfolioTotal : 0;
+  const etfPct = portfolioTotal > 0 ? etfTotalCurrentCOP / portfolioTotal : 0;
 
   const avgCdtRateNet = cdtTotal > 0
     ? cdts.reduce((s, c) => s + c.rate * (1 - c.withholding_rate) * c.amount, 0) / cdtTotal
@@ -392,7 +416,7 @@ function PortfolioContent({
                     <View style={styles.summaryBreakdownItem}>
                       <View style={[styles.summaryDot, { backgroundColor: theme.assetEtf }]} />
                       <ThemedText style={[styles.metricPart, { color: theme.textSecondary }]}>
-                        ETF  ${abbreviateValue(etfTotalCOP, 'COP')}
+                        ETF  ${abbreviateValue(etfTotalCurrentCOP, 'COP')}
                       </ThemedText>
                     </View>
                   </View>
@@ -474,6 +498,8 @@ function PortfolioContent({
                   key={etf.id}
                   etf={etf}
                   hasUnread={hasEtfUnread(etf)}
+                  eodPrice={eodPrices.get(etf.ticker)}
+                  trm={macroContext?.trm ?? 4200}
                   onPress={() => router.push({ pathname: '/portfolio/etf/[id]', params: { id: etf.id } })}
                 />
               ))}
@@ -942,19 +968,37 @@ function CdtCard({ cdt, onPress, hasUnread }: { cdt: CdtPosition; onPress: () =>
   );
 }
 
-function EtfCard({ etf, onPress, hasUnread }: { etf: EtfPosition; onPress: () => void; hasUnread: boolean }) {
+function EtfCard({
+  etf,
+  onPress,
+  hasUnread,
+  eodPrice,
+  trm
+}: {
+  etf: EtfPosition;
+  onPress: () => void;
+  hasUnread: boolean;
+  eodPrice?: EodPrice;
+  trm: number;
+}) {
   const theme     = useTheme();
   const isCop     = etf.currency === 'COP';
   const hasShares = etf.shares > 0;
 
+  // Calcular valor invertido original
+  const investedUSD = etf.total_invested_usd ?? (hasShares && etf.average_cost_usd > 0 ? etf.shares * etf.average_cost_usd : 0);
+
+  // Calcular valor actual con precio EOD
+  const currentUSD = eodPrice && hasShares ? etf.shares * eodPrice.adjustedClose : investedUSD;
+
+  // Calcular rentabilidad
+  const gainUSD = currentUSD - investedUSD;
+  const gainPct = investedUSD > 0 ? (gainUSD / investedUSD) * 100 : 0;
+
   const totalDisplay =
     isCop && etf.total_invested_cop != null
       ? formatCurrency(etf.total_invested_cop, 'COP')
-      : etf.total_invested_usd != null
-      ? `USD ${etf.total_invested_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : hasShares && etf.average_cost_usd > 0
-      ? `USD ${(etf.shares * etf.average_cost_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : '—';
+      : `USD ${currentUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const sharesDisplay = hasShares
     ? `${etf.shares % 1 === 0 ? etf.shares.toFixed(0) : etf.shares.toFixed(4)} acc`
@@ -964,6 +1008,18 @@ function EtfCard({ etf, onPress, hasUnread }: { etf: EtfPosition; onPress: () =>
     ? `USD ${etf.average_cost_usd.toFixed(2)} avg`
     : null;
 
+  const gainDisplay = eodPrice && Math.abs(gainUSD) > 0.01
+    ? `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}%`
+    : null;
+
+  // Calcular proyecciones simples (CAGR histórico ETFs: bajo 5%, alto 11%)
+  const cagr = 0.08; // 8% promedio
+  const invested = investedUSD * trm;
+  const current = currentUSD * trm;
+  const proj2y = current * Math.pow(1 + cagr, 2);
+  const proj5y = current * Math.pow(1 + cagr, 5);
+  const proj10y = current * Math.pow(1 + cagr, 10);
+
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: theme.backgroundElement }]}
@@ -971,22 +1027,58 @@ function EtfCard({ etf, onPress, hasUnread }: { etf: EtfPosition; onPress: () =>
       activeOpacity={0.7}
     >
       {hasUnread && <View style={[styles.cardInboxDot, { backgroundColor: theme.attention }]} />}
+
+      {/* Header: Ticker + Nombre */}
+      <ThemedText style={[styles.cardTitle, { color: theme.text, marginBottom: 10 }]}>
+        {etf.ticker} · {etf.name}
+      </ThemedText>
+
+      {/* Fila 1: Invertido | Actual | Ganancia */}
       <View style={styles.cardRow}>
-        <ThemedText style={[styles.cardTitle, { color: theme.text }]}>{etf.ticker}</ThemedText>
-        {etf.ter > 0 && (
-          <ThemedText style={[styles.cardMeta, { color: theme.textSecondary }]}>
-            TER {(etf.ter * 100).toFixed(2)}%
+        <View style={{ flex: 1 }}>
+          <ThemedText style={[styles.cardLabel, { color: theme.textSecondary }]}>Invertido</ThemedText>
+          <ThemedText style={[styles.cardValue, { color: theme.text }]}>
+            $ {abbreviateValue(invested, 'COP')}
           </ThemedText>
-        )}
+        </View>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <ThemedText style={[styles.cardLabel, { color: theme.textSecondary }]}>Actual</ThemedText>
+          <ThemedText style={[styles.cardValue, { color: theme.text, fontWeight: '600' }]}>
+            $ {abbreviateValue(current, 'COP')}
+          </ThemedText>
+        </View>
+        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <ThemedText style={[styles.cardLabel, { color: theme.textSecondary }]}>Ganancia</ThemedText>
+          <Text style={{
+            fontSize: 15,
+            fontWeight: '600',
+            color: gainPct >= 0 ? theme.positive : theme.attention
+          }}>
+            {gainDisplay || '—'}
+          </Text>
+        </View>
       </View>
-      <ThemedText style={[styles.cardSubtitle, { color: theme.textSecondary }]}>{etf.name}</ThemedText>
-      <View style={styles.cardRow}>
-        <ThemedText style={[styles.cardMeta, { color: theme.textSecondary }]}>
-          {sharesDisplay}{costDisplay ? ` · ${costDisplay}` : ''}
-        </ThemedText>
-        <ThemedText style={[styles.cardNet, { color: theme.assetEtf }]}>
-          {totalDisplay}
-        </ThemedText>
+
+      {/* Fila 2: en 2 años | en 5 años | en 10 años */}
+      <View style={[styles.cardRow, { marginTop: 8 }]}>
+        <View style={{ flex: 1 }}>
+          <ThemedText style={[styles.cardLabelSmall, { color: theme.textSecondary }]}>en 2 años</ThemedText>
+          <ThemedText style={[styles.cardValueSmall, { color: theme.text }]}>
+            $ {abbreviateValue(proj2y, 'COP')}
+          </ThemedText>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <ThemedText style={[styles.cardLabelSmall, { color: theme.textSecondary }]}>en 5 años</ThemedText>
+          <ThemedText style={[styles.cardValueSmall, { color: theme.text }]}>
+            $ {abbreviateValue(proj5y, 'COP')}
+          </ThemedText>
+        </View>
+        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <ThemedText style={[styles.cardLabelSmall, { color: theme.textSecondary }]}>en 10 años</ThemedText>
+          <ThemedText style={[styles.cardValueSmall, { color: theme.text }]}>
+            $ {abbreviateValue(proj10y, 'COP')}
+          </ThemedText>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -1207,6 +1299,11 @@ const styles = StyleSheet.create({
   cardRate:    { fontSize: 13, fontWeight: '600' },
   cardMeta:    { fontSize: 13 },
   cardNet:     { fontSize: 13, fontWeight: '600' },
+  cardLabel:   { fontSize: 13, marginBottom: 2 },
+  cardValue:   { fontSize: 15, fontWeight: '500' },
+  cardLabelSmall: { fontSize: 12, marginBottom: 2 },
+  cardValueSmall: { fontSize: 14 },
+  cardDivider: { height: 1 },
 
   // Modal styles
   modalSection: {

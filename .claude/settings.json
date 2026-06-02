@@ -12,7 +12,9 @@
       "Bash(npm run*)",
       "Bash(npx expo*)",
       "Bash(npx create-expo-app*)",
-      "Bash(node*)"
+      "Bash(node*)",
+      "Bash(curl -s \"https://massive.com/api/pricing\")",
+      "Bash(curl -s \"https://eodhd.com/api/eod/VOO.US?api_token=demo&period=d&fmt=json\")"
     ]
   }
 }

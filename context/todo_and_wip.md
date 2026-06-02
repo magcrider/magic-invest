@@ -36,6 +36,11 @@ Registro vivo del estado del proyecto. Actualizado en cada sesión. Winston pued
   * ✅ Colores semánticos: verde para ganancias, naranja para pérdidas
   * ✅ Formulario ETF mejorado: TRM automática por fecha, date picker integrado
   * ✅ Paquete nuevo: `eodhd` (SDK oficial TypeScript)
+  * ✅ **Mejoras UX Portafolio:**
+    - Acordeones colapsables por tipo de activo (CDT, ETF)
+    - Cerrados por defecto, scroll más manejable
+    - Preparado para futuros tipos: Acciones, Fondos, Cripto
+    - Fix: Inflación redondeada a 2 decimales máximo
 
 * **Próximo paso:** Motor de eventos Buzón
 

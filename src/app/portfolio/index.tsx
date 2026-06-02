@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -251,6 +251,7 @@ function PortfolioContent({
   const isEmpty = cdts.length === 0 && etfs.length === 0;
   const [tab, setTab] = useState<PortfolioTab>('resumen');
   const [contextModal, setContextModal] = useState<'banrep' | 'cdt' | 'inflation' | 'trm' | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isEmpty) setTab('resumen');
@@ -284,6 +285,18 @@ function PortfolioContent({
   const proj5Low    = portfolioTotal * Math.pow(1 + blendedLow,  5);
   const proj5High   = portfolioTotal * Math.pow(1 + blendedHigh, 5);
   const unreadCount = relatedUnreadCount(cdts, etfs);
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
+  };
 
   return (
     <View style={styles.contentRoot}>
@@ -474,10 +487,13 @@ function PortfolioContent({
           showsVerticalScrollIndicator={false}
         >
           {cdts.length > 0 && (
-            <View style={styles.section}>
-              <ThemedText style={[styles.sectionHeader, { color: theme.assetCdt }]}>
-                Certificados de Depósito
-              </ThemedText>
+            <AssetAccordion
+              title="Certificados de Depósito"
+              count={cdts.length}
+              color={theme.assetCdt}
+              isExpanded={expandedSections.has('cdt')}
+              onToggle={() => toggleSection('cdt')}
+            >
               {cdts.map((cdt) => (
                 <CdtCard
                   key={cdt.id}
@@ -486,13 +502,16 @@ function PortfolioContent({
                   onPress={() => router.push({ pathname: '/portfolio/cdt/[id]', params: { id: cdt.id } })}
                 />
               ))}
-            </View>
+            </AssetAccordion>
           )}
           {etfs.length > 0 && (
-            <View style={styles.section}>
-              <ThemedText style={[styles.sectionHeader, { color: theme.assetEtf }]}>
-                ETFs Indexados
-              </ThemedText>
+            <AssetAccordion
+              title="ETFs Indexados"
+              count={etfs.length}
+              color={theme.assetEtf}
+              isExpanded={expandedSections.has('etf')}
+              onToggle={() => toggleSection('etf')}
+            >
               {etfs.map((etf) => (
                 <EtfCard
                   key={etf.id}
@@ -503,7 +522,7 @@ function PortfolioContent({
                   onPress={() => router.push({ pathname: '/portfolio/etf/[id]', params: { id: etf.id } })}
                 />
               ))}
-            </View>
+            </AssetAccordion>
           )}
         </ScrollView>
       )}
@@ -823,6 +842,52 @@ function PortfolioContent({
   );
 }
 
+// ── Acordeón de activos ───────────────────────────────────────────────────
+
+interface AssetAccordionProps {
+  title: string;
+  count: number;
+  color: string;
+  isExpanded: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}
+
+function AssetAccordion({ title, count, color, isExpanded, onToggle, children }: AssetAccordionProps) {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.accordionContainer}>
+      <TouchableOpacity
+        style={[styles.accordionHeader, { backgroundColor: theme.backgroundElement }]}
+        onPress={onToggle}
+        activeOpacity={0.7}
+      >
+        <View style={styles.accordionHeaderLeft}>
+          <ThemedText style={[styles.accordionTitle, { color }]}>
+            {title}
+          </ThemedText>
+          <View style={[styles.accordionBadge, { backgroundColor: color + '18', borderColor: color + '40' }]}>
+            <ThemedText style={[styles.accordionCount, { color }]}>
+              {count}
+            </ThemedText>
+          </View>
+        </View>
+        <Ionicons
+          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          size={20}
+          color={theme.textSecondary}
+        />
+      </TouchableOpacity>
+      {isExpanded && (
+        <View style={styles.accordionContent}>
+          {children}
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ── Distribución vs bandas ────────────────────────────────────────────────
 
 function DistributionSection({
@@ -909,7 +974,7 @@ function ContextStrip({
       <View style={styles.contextRow}>
         <ContextItem label="Banrep"      value={`${macroContext?.policyRate ?? 9.25}%`} onPress={() => onOpenModal('banrep')} />
         <ContextItem label="CDT mercado" value={`${(cdtRate360 ?? CDT_MKT_RATE).toFixed(1)}%`} onPress={() => onOpenModal('cdt')} />
-        <ContextItem label="Inflación"   value={`${macroContext?.inflationCOP ?? 5.3}%`} onPress={() => onOpenModal('inflation')} />
+        <ContextItem label="Inflación"   value={`${(macroContext?.inflationCOP ?? 5.3).toFixed(2)}%`} onPress={() => onOpenModal('inflation')} />
         <ContextItem label="TRM"         value={`$${(macroContext?.trm ?? 4200).toLocaleString('es-CO')}`} onPress={() => onOpenModal('trm')} />
       </View>
       <ThemedText style={[styles.contextNote, { color: theme.textSecondary }]}>
@@ -1147,7 +1212,7 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   scrollContent: {
-    gap: Spacing.three,
+    gap: Spacing.one,
     paddingBottom: BottomTabInset + Spacing.three,
   },
   profileChip: {
@@ -1272,6 +1337,42 @@ const styles = StyleSheet.create({
   contextLabel: { fontSize: 10, textAlign: 'center' },
   contextInfoIcon: { position: 'absolute', top: 0, right: -2, opacity: 0.5 },
   contextNote:  { fontSize: 10, fontStyle: 'italic' },
+  accordionContainer: {
+    marginBottom: Spacing.one,
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two + Spacing.one,
+    borderRadius: Spacing.two,
+  },
+  accordionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  accordionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  accordionBadge: {
+    paddingHorizontal: Spacing.one + 4,
+    paddingVertical: 2,
+    borderRadius: Spacing.one,
+    borderWidth: 1,
+  },
+  accordionCount: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  accordionContent: {
+    gap: Spacing.two,
+    paddingTop: Spacing.one,
+  },
   section:      { gap: Spacing.two },
   sectionHeader: {
     fontSize: 12,

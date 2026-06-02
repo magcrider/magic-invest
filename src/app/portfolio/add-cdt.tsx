@@ -185,6 +185,7 @@ export default function AddCdtScreen() {
             <View ref={amountInputRef} style={styles.section}>
               <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>Monto</ThemedText>
               <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
+                <ThemedText style={[styles.prefix, { color: theme.textSecondary }]}>$</ThemedText>
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
                   value={amount}
@@ -484,6 +485,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     padding: 0,
   },
+  prefix:    { fontSize: 14, fontWeight: '600' },
   suffix:    { fontSize: 14 },
   textInput: { fontSize: 16, marginTop: Spacing.two },
   previewCard: {

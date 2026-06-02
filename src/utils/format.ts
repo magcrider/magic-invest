@@ -152,9 +152,44 @@ function formatDecimalInput(raw: string): string {
 /**
  * Extrae el valor numérico de un input formateado.
  * Remueve separadores de miles y convierte a número.
+ *
+ * Detecta automáticamente el formato:
+ * - Español (COP): "6.500.000" → 6500000 (puntos son separadores de miles)
+ * - Inglés (USD): "6,500.50" → 6500.50 (comas son separadores, punto es decimal)
  */
 export function parseFormattedInput(formatted: string): number {
-  const cleaned = formatted.replace(/[^0-9.]/g, '');
-  const parsed = parseFloat(cleaned);
+  if (!formatted) return 0;
+
+  // Si tiene comas, asumimos formato inglés (USD): "6,500.50"
+  if (formatted.includes(',')) {
+    const cleaned = formatted.replace(/,/g, ''); // Remover separadores de miles
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  // Si tiene múltiples puntos, es formato español (COP): "6.500.000"
+  const dotCount = (formatted.match(/\./g) || []).length;
+  if (dotCount > 1) {
+    const cleaned = formatted.replace(/\./g, ''); // Remover separadores de miles
+    const parsed = parseInt(cleaned, 10);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  // Un solo punto: puede ser decimal en cualquier formato
+  // "3.900" (COP con separador) vs "3900.5" (USD con decimal)
+  // Heurística: si no tiene comas y tiene un punto con <=3 dígitos después, es separador de miles COP
+  if (dotCount === 1) {
+    const parts = formatted.split('.');
+    if (parts[1] && parts[1].length === 3 && !formatted.includes(',')) {
+      // "3.900" → 3900 (separador de miles COP)
+      const cleaned = formatted.replace(/\./g, '');
+      return parseInt(cleaned, 10);
+    }
+    // De lo contrario, es decimal: "3900.5" o "0.07"
+    return parseFloat(formatted);
+  }
+
+  // Sin puntos ni comas: número simple
+  const parsed = parseFloat(formatted);
   return isNaN(parsed) ? 0 : parsed;
 }

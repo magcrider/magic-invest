@@ -274,6 +274,7 @@ export default function AddEtfScreen() {
                     TRM (tasa de cambio COP/USD)
                   </ThemedText>
                   <View ref={trmInputRef} style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
+                    <ThemedText style={[styles.prefix, { color: theme.textSecondary }]}>$</ThemedText>
                     <TextInput
                       style={[styles.input, { color: theme.text }]}
                       value={trm}
@@ -403,7 +404,7 @@ export default function AddEtfScreen() {
             <View ref={terInputRef} style={styles.section}>
               <View style={styles.sectionTitleRow}>
                 <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-                  TER — gasto anual del fondo
+                  TER — Costo anual del ETF
                 </ThemedText>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.one }}>
                   <ThemedText style={[styles.optionalLabel, { color: theme.textSecondary }]}>opcional</ThemedText>
@@ -420,7 +421,7 @@ export default function AddEtfScreen() {
               {showTerInfo && (
                 <View style={[styles.infoCard, { backgroundColor: theme.attentionSubtle, borderLeftColor: theme.attention }]}>
                   <ThemedText style={[styles.infoText, { color: theme.text }]}>
-                    El TER (Total Expense Ratio) es el costo anual del fondo. Lo descuenta el fondo automáticamente — nunca lo pagas de tu bolsillo, pero reduce tu rentabilidad compuesta.{'\n\n'}
+                    El TER (Total Expense Ratio) es el costo anual que cobra el ETF por su gestión. Lo descuenta el ETF automáticamente — nunca lo pagas de tu bolsillo, pero reduce tu rentabilidad compuesta.{'\n\n'}
                     Cómo encontrarlo: busca "{ticker || 'TICKER'} expense ratio" en Google, o consulta la ficha técnica en la web del emisor.{'\n\n'}
                     Ejemplos: VOO → 0.03% · VTI → 0.03% · IWDA → 0.20% · EIMI → 0.18%
                   </ThemedText>
@@ -473,15 +474,15 @@ export default function AddEtfScreen() {
                   <>
                     <PreviewRow
                       label="Total invertido"
-                      value={`$ ${totalCopNum.toLocaleString('es-CO')} COP`}
+                      value={`$ ${totalCopNum.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} COP`}
                     />
                     <PreviewRow
-                      label="TRM aplicado"
-                      value={trmNum.toLocaleString('es-CO')}
+                      label="TRM"
+                      value={`$ ${trmNum.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} COP/USD`}
                     />
                     <View style={[styles.previewDivider, { backgroundColor: theme.divider }]} />
                     <PreviewRow
-                      label="Equivalente USD"
+                      label="Total en USD"
                       value={`USD ${(totalCopNum / trmNum).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       highlight
                     />
@@ -516,13 +517,16 @@ export default function AddEtfScreen() {
                   <>
                     <View style={[styles.previewDivider, { backgroundColor: theme.divider }]} />
                     <PreviewRow
-                      label="Fracciones"
-                      value={sharesNum % 1 === 0 ? sharesNum.toFixed(0) : sharesNum.toFixed(4)}
+                      label="Acciones"
+                      value={sharesNum % 1 === 0
+                        ? sharesNum.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                        : sharesNum.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 6 }).replace(/,?0+$/, '')
+                      }
                     />
                     {averageCostUsd > 0 && (
                       <PreviewRow
                         label="Precio promedio"
-                        value={`USD ${averageCostUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / acc`}
+                        value={`USD ${averageCostUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / acción`}
                       />
                     )}
                   </>
@@ -530,7 +534,7 @@ export default function AddEtfScreen() {
 
                 {sharesNum === 0 && (
                   <ThemedText style={[styles.previewNote, { color: theme.textSecondary }]}>
-                    Sin fracciones registradas — podrás agregarlas después.
+                    Sin acciones registradas — podrás agregarlas después.
                   </ThemedText>
                 )}
               </View>

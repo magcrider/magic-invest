@@ -1,113 +1,119 @@
 # TODO & Work in Progress - Magic Invest
 
-Registro vivo del estado del proyecto. Actualizado en cada sesión. Winston puede revisar, agregar o re-priorizar ítems.
-
-**Historial completo de tareas completadas:** ver `todo_archive.md`
+Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive.md`
 
 ---
 
 ## Estado General
 
-* **Fase conceptual:** ✅ Completa
-* **Fase de implementación:** 🟡 En progreso
-  * Infraestructura base: ✅ COMPLETO
-  * Autenticación: ✅ COMPLETO
-  * Shell y navegación: ✅ COMPLETO
-  * Módulo Herramientas (10 calculadoras): ✅ COMPLETO
-  * Módulo Buzón (mock data): ✅ COMPLETO
-  * Módulo Portafolio Fase 1: ✅ COMPLETO
-  * Sistema color dinámico (light/dark): ✅ COMPLETO
-  * Persistencia Supabase: ✅ COMPLETO
-  * Sistema validación/formateo inputs: ✅ COMPLETO
-  * Modals educativos: ✅ COMPLETO
-
+* **Fase:** 🟡 Implementación en progreso
 * **Última sesión:** junio 3, 2026
-  * ✅ **Calculadora #10: Cuota de crédito** — Sistema francés de amortización
-    - Inputs: Monto, tasa EA, plazo en meses
-    - Outputs: Cuota fija, total a pagar, total intereses, primera/última cuota (capital e intereses)
-    - Modals educativos para tasa y plazo con info contextual
-    - Validación y formateo consistente con resto de calculadoras
-  * ✅ **Rediseño UX Herramientas:**
-    - Cuadrícula 3 columnas (antes: lista vertical)
-    - Nombres cortos optimizados (ej: "Interés compuesto", "CDT vs ETF", "CAGR")
-    - Tarjetas cuadradas con ícono + título centrado
-    - Calculadora de crédito en 4ta posición
-  * ✅ Mejoras UX calculadoras:
-    - Espaciados optimizados (labels más cerca de inputs)
-    - Scroll automático a resultados sin tapar contenido
-    - Altura consistente en todos los campos de input
-
-* **Próximo paso:** Motor de eventos Buzón
+* **Completados:**
+  - Infraestructura + Autenticación + Shell
+  - Módulo Herramientas (10 calculadoras)
+  - Módulo Buzón (mock data)
+  - Módulo Portafolio Fase 1 (CRUD completo)
+  - Backend Supabase (TRM, CDT rates, EOD prices)
+  - Sistema color dinámico (light/dark)
+  - Sistema validación/formateo inputs
+  - Modals educativos
+  - **Hurdle Rate completamente integrado** (Portfolio + Calculadora CDT vs ETF)
 
 ---
 
-## 🔲 Investigación Técnica Pendiente
+## 🎯 Próximos Pasos Inmediatos
 
-### 1. ~~API Banco de la República~~ ✅ COMPLETADO
-* **Implementado:** TRM + CDT vía datos.gov.co, Inflación vía World Bank API
-* **Ver:** `architecture_state.md` §7.B para detalles completos
+### 1. ⚠️ PRIORIDAD ALTA: Inflación dinámica (eliminar hardcoded)
+**Estado:** Crítico — actualmente hardcodeada, afecta precisión del Hurdle Rate
 
-### 2. ~~Fuente datos EOD para ETFs~~ ✅ COMPLETADO
-* **Implementado:** EODHD.com (tier free: 20 req/día, tier pagado: $19.99/mes)
-* **Ver:** `architecture_state.md` §7.A para detalles completos
+**Problema actual:**
+```typescript
+inflationCOP: hardcodeada o manual (desactualizada)
+inflationUSD: 3.0% fijo (no refleja realidad)
+```
 
-### 3. Watchlist inicial ETFs
-* **Estado:** Vacía
-* **Acción:** Claude sugerirá tickers representativos (VOO, VTI, VXUS) como semilla
+**Tareas:**
+- [ ] Investigar fuentes de datos para inflación COP (DANE vía datos.gov.co o Banrep)
+- [ ] Investigar fuentes de datos para inflación USD (FRED API o World Bank)
+- [ ] Crear Edge Function para fetch inflación mensual/anual
+- [ ] Actualizar tabla macro_rates con datos históricos de inflación
+- [ ] Reemplazar valores hardcodeados en cálculo de Hurdle Rate
+- [ ] Validar que Hurdle Rate se actualiza correctamente con datos reales
 
----
-
-## 🔲 Implementación — Por Orden de Prioridad
-
-### 4. Perfil de usuario completo (post-signup)
-* Formulario desde `DrawerMenu` con campos opcionales: tipo documento (CC, CE, Pasaporte, NIT — constante TypeScript), número, ciudad
-* No requiere tabla DB (constante)
-
-### 5. Autenticación biométrica
-* `expo-local-authentication` — capa local que desbloquea sesión AsyncStorage
-* Switch visible en `DrawerMenu` (actualmente deshabilitado)
-* Implementar después de módulos principales
-
-### 6. Backend Supabase — Edge Functions
-* ~~Edge Function + cron: API Banrep (TRM + CDT + Inflación)~~ ✅ COMPLETADO (Junio 2/2026)
-* ~~Edge Function: sincronización EOD para ETFs~~ ✅ COMPLETADO (Junio 2/2026)
-* Motor generación eventos Buzón (triggers + datos mercado) (pendiente)
-
-### 7. Sistema de Rebalanceo
-* Evaluación trimestral automática vs bandas configuradas
-* Rebalanceo de oportunidad (CDT próximo a vencer)
-* Recálculo Hurdle Rate (cambio tasa Banrep)
-
-### 8. Flujo Onboarding (pre-publicación)
-* Pantalla filosofía básica (lenguaje accesible, sin tecnicismos)
-* Configuración bandas CDT/ETF con slider (default: desde perfil)
-* Solo 1ª vez (flag `onboarding_completed` en Supabase)
-* Implementar cuando todas las features estén terminadas
-
-### 9. Cumplimiento legal (prerrequisito para terceros)
-* **No aplica para uso personal de Harvey**
-* **Política datos** (Ley 1581/2012): documento completo con finalidad, plazo, derechos
-* **Aviso privacidad**: versión corta en registro con checkbox autorización
-* **Inscripción RNBD**: registro base de datos ante SIC (cuando haya usuarios ≠ Harvey)
-* **Revisión legal**: validar que análisis/info no califica como asesoría financiera bajo SFC
-* **Términos y condiciones**: documento real con (a) app no es broker/asesor, (b) usuario registra posiciones externas, (c) análisis educativo/histórico
+**Impacto:** Sin esto, el Hurdle Rate tiene desviaciones de 0.3-0.8% vs valor real.
 
 ---
 
-## 🔲 Deuda Técnica Deliberada (Phase 2)
+### 2. Hurdle Rate — Completar backend (depende de #1)
+**Estado:** UI completa, backend parcial
 
-* **Tasas CDT por banco individual:** Banrep da promedios. Por banco requerirá scraping o entrada manual.
-* **Calculador tributario interactivo:** Phase 1 tiene tooltips educativos. Calculador real → Phase 2.
-* **Asistente IA:** Chat con contexto del portafolio. Buzón educativo es su precursor.
-* **Multi-dispositivo:** Ya funciona nativamente (Supabase + RLS).
-* **Matching automático ETFs:** Selección automática según perfil. Phase 1 usa watchlist manual.
+**Completado:**
+- ✅ Cálculo matemático (Ecuación de Fisher)
+- ✅ Query TRM histórica (últimos 5 años)
+- ✅ Mostrado en ContextStrip del Portafolio con modal educativo
+- ✅ Integrado en calculadora CDT vs ETF con veredicto claro
+- ✅ Veredictos con lenguaje coloquial y variaciones aleatorias
+
+**Bloqueado por:** Inflación dinámica (#1) — actualmente usa valores hardcodeados
 
 ---
 
-## 📋 Para Winston — Revisión Solicitada
+### 3. Watchlist ETFs inicial
+**Estado:** Vacía
 
-1. **API Banrep única fuente Hurdle Rate:** ¿Riesgo de dependencia? ¿Complementar con DANE?
-2. **Bandas default (CDTs 50–70% / ETFs 30–50%):** ¿Correcto para perfil Harvey en Phase 1?
-3. **Watchlist inicial ETFs:** ¿Criterios de selección o tickers específicos?
-4. **Complejidad fiscal:** ¿Falta alguna dimensión fiscal relevante para residente colombiano invirtiendo en ETFs USD?
-5. **¿Algo que falta?** Huecos conceptuales, técnicos o filosóficos identificados en contextos.
+**Acción:** Claude sugerirá 3-5 tickers representativos (VOO, VTI, VXUS, etc.) como semilla. Usuario podrá agregar/quitar después.
+
+---
+
+### 4. Motor de eventos Buzón (backend)
+**Estado:** Mockdata funcional, UI completa, **falta backend real**
+
+**Triggers a implementar:**
+- CDT próximo a vencer (30/60/90 días antes)
+- ETF con drawdown significativo (>15% desde compra)
+- Cambio en tasa Banrep → recalcular Hurdle Rate
+- Bandas de asignación fuera de rango
+
+**Decisión arquitectónica:** Edge Function con cron semanal que lee portafolio + datos de mercado → genera eventos → inserta en tabla `inbox_events`.
+
+---
+
+### 5. Sistema de Rebalanceo
+**Estado:** Pendiente
+
+**Componentes:**
+- Evaluación trimestral automática vs bandas
+- Rebalanceo de oportunidad (CDT venciendo)
+- Recálculo Hurdle Rate ante cambios macro
+
+---
+
+## 🔲 Phase 2 (Post-MVP)
+
+* Calculador tributario interactivo (Phase 1: tooltips educativos)
+* Asistente IA con contexto del portafolio
+* Matching automático ETFs según perfil
+* Perfil de usuario completo (tipo doc, número, ciudad)
+* Autenticación biométrica (`expo-local-authentication`)
+* Flujo Onboarding (filosofía + configuración bandas)
+
+---
+
+## 🔲 Cumplimiento Legal (prerrequisito para terceros)
+
+**No aplica para uso personal de Harvey.** Cuando haya usuarios externos:
+- Política de datos (Ley 1581/2012)
+- Aviso de privacidad con checkbox
+- Inscripción RNBD ante SIC
+- Términos y condiciones (disclaimers legales)
+- Revisión legal: validar que no califica como asesoría financiera (SFC)
+
+---
+
+## 📋 Para Winston — Preguntas Pendientes
+
+1. **Watchlist inicial ETFs:** ¿Criterios de selección o tickers específicos recomendados?
+2. **Bandas default (CDT 50-70% / ETF 30-50%):** ¿Correcto para perfil Harvey en Phase 1?
+3. **Complejidad fiscal:** ¿Falta alguna dimensión relevante para residente colombiano invirtiendo en ETFs USD?
+4. **Dependencia única API Banrep:** ¿Riesgo? ¿Complementar con DANE?
+5. **¿Algo que falta?** Huecos conceptuales, técnicos o filosóficos identificados.

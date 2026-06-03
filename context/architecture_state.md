@@ -147,6 +147,41 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
   - 3 ETFs activos: VTI (251 días), VOO (251 días), QQQ (251 días)
   - Aproximadamente 1 año de histórico con tier free
 
+### B. Hurdle Rate — Integración completa
+* **Estado:** ✅ **IMPLEMENTADO** (Junio 3, 2026)
+* **Concepto:** Tasa mínima que un ETF debe superar para justificar el riesgo vs un CDT (sin riesgo, garantizado). Separa decisiones matemáticas de decisiones emocionales.
+* **Fórmula (Ecuación de Fisher ajustada):**
+  ```
+  Hurdle Rate = CDT_rate + Devaluación_COP/USD - (Inflación_COP - Inflación_USD) - TER
+  ```
+* **Componentes:**
+  - **Cálculo matemático:** `src/lib/hurdle-rate.ts`
+    - `calculateDevaluation()`: Devaluación anualizada de COP vs USD usando histórico de TRM (últimos 5 años)
+    - `calculatePortfolioHurdleRate()`: Aplica Ecuación de Fisher con inputs macro
+  - **Datos de entrada:**
+    - ✅ TRM histórica (5 años): `getTrmHistory()` → actualizada diariamente a las 00:30 AM
+    - ✅ CDT tasa mercado (360 días): `getCdtMarketRates()` → actualizada diariamente
+    - ⚠️ Inflación COP: **hardcodeada o manual** (pendiente implementar)
+    - ⚠️ Inflación USD: **hardcodeada a 3.0%** (pendiente implementar)
+  - **UI implementada:**
+    - **Portfolio (`src/app/portfolio/index.tsx`):**
+      - Cálculo on-demand al cargar (líneas 166-187)
+      - Mostrado en `ContextStrip` con valor destacado y modal educativo completo
+      - Explicación: qué es, cómo se calcula (Fisher), para qué sirve, cuándo cambia
+    - **Calculadora CDT vs ETF (`src/app/tools/cdt-vs-etf.tsx`):**
+      - Carga automática del Hurdle Rate al abrir
+      - **Veredicto matemático claro:** "Te conviene más [CDT/ETF] porque..."
+      - 4 escenarios posibles con 4 variantes cada uno (16 mensajes totales)
+      - Lenguaje coloquial: "plata", "ganancias", "capital", "rentabilidad"
+      - Variaciones aleatorias por cálculo para naturalidad
+      - Footer con link al modal educativo del Hurdle Rate
+* **Limitaciones actuales:**
+  - Inflación hardcodeada → desviación de 0.3-0.8% en Hurdle Rate final
+  - **Prioridad alta:** Implementar inflación dinámica (ver §8 Próximos Pasos)
+* **Frecuencia de actualización:**
+  - Cambios significativos: cada ~45 días (cuando Banrep cambia tasa de política)
+  - Cambios marginales: diarios (TRM y CDT rates actualizados)
+
 * **Portafolio integrado:** Las tarjetas de ETF en `portfolio/index.tsx` muestran:
   - Valor invertido original
   - Valor actual (calculado con `adjusted_close` × shares × TRM)

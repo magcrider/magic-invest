@@ -1,4 +1,4 @@
-import { Modal, View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Modal, View, TouchableOpacity, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './themed-text';
 import { Spacing } from '@/constants/theme';
@@ -21,14 +21,10 @@ export function InfoModal({ visible, onClose, title, children }: InfoModalProps)
       animationType="fade"
       onRequestClose={onClose}
     >
-      <TouchableOpacity
-        style={styles.backdrop}
-        activeOpacity={1}
-        onPress={onClose}
-      >
+      <View style={styles.backdrop}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View
           style={[styles.card, { backgroundColor: theme.backgroundElement }]}
-          onStartShouldSetResponder={() => true}
         >
           {/* Header */}
           <View style={styles.header}>
@@ -52,14 +48,14 @@ export function InfoModal({ visible, onClose, title, children }: InfoModalProps)
             {children}
           </ScrollView>
         </View>
-      </TouchableOpacity>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   backdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -68,7 +64,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 500,
-    maxHeight: '88%',
+    maxHeight: '85%',
     borderRadius: Spacing.three,
     overflow: 'hidden',
   },
@@ -93,5 +89,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: Spacing.four,
     paddingTop: 0,
+    paddingBottom: Spacing.five,
   },
 });

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -618,12 +619,9 @@ export default function AddEtfScreen() {
           animationType="fade"
           onRequestClose={() => setShowDatePicker(false)}
         >
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowDatePicker(false)}
-          >
-            <TouchableOpacity activeOpacity={1} style={styles.calendarCard}>
+          <View style={styles.modalBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowDatePicker(false)} />
+            <View style={styles.calendarCard}>
               <View style={styles.calendarHeader}>
                 <ThemedText style={[styles.calendarTitle, { color: '#1F2024' }]}>
                   Fecha de compra
@@ -664,8 +662,8 @@ export default function AddEtfScreen() {
                   💡 Si pagaste en varias transacciones, usa la fecha promedio o crea múltiples posiciones.
                 </ThemedText>
               </View>
-            </TouchableOpacity>
-          </TouchableOpacity>
+            </View>
+          </View>
         </Modal>
       </SafeAreaView>
     </ThemedView>
@@ -884,7 +882,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   modalBackdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     paddingHorizontal: Spacing.four,

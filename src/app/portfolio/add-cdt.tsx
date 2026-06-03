@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -326,12 +327,9 @@ export default function AddCdtScreen() {
         animationType="fade"
         onRequestClose={() => setShowCalendar(false)}
       >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => setShowCalendar(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={styles.calendarCard}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowCalendar(false)} />
+          <View style={styles.calendarCard}>
             <View style={styles.calendarHeader}>
               <ThemedText style={[styles.calendarTitle, { color: '#1F2024' }]}>
                 Seleccionar fecha de inicio
@@ -342,6 +340,7 @@ export default function AddCdtScreen() {
             </View>
             <Calendar
               current={isoStart ?? todayIso()}
+              maxDate={new Date().toISOString().split('T')[0]}
               onDayPress={(day) => {
                 setIsoStart(day.dateString);
                 setShowCalendar(false);
@@ -366,8 +365,8 @@ export default function AddCdtScreen() {
                 textMonthFontSize: 15,
               }}
             />
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </ThemedView>
   );
@@ -522,7 +521,7 @@ const styles = StyleSheet.create({
 
   // Calendar modal
   modalBackdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     paddingHorizontal: Spacing.four,

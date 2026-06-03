@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { Dimensions, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,18 +16,15 @@ function ToolCard({ tool }: { tool: ToolDefinition }) {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { backgroundColor: theme.backgroundElement }]}
       onPress={() => router.push(`/tools/${tool.id}`)}
       activeOpacity={0.7}>
-      <ThemedView style={styles.cardContent}>
-        <ThemedView style={styles.cardText}>
-          <ThemedText type="default" style={styles.cardTitle}>{tool.name}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">{tool.description}</ThemedText>
-        </ThemedView>
-        <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
-          <Ionicons name={tool.icon} size={22} color={theme.positive} />
-        </ThemedView>
+      <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+        <Ionicons name={tool.icon} size={24} color={theme.positive} />
       </ThemedView>
+      <ThemedText type="small" style={styles.cardTitle} numberOfLines={2}>
+        {tool.name}
+      </ThemedText>
     </TouchableOpacity>
   );
 }
@@ -44,14 +41,18 @@ export default function ToolsScreen() {
           data={TOOLS}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ToolCard tool={item} />}
+          numColumns={3}
           style={styles.flatList}
           contentContainerStyle={styles.list}
+          columnWrapperStyle={styles.row}
           showsVerticalScrollIndicator={false}
         />
       </SafeAreaView>
     </ThemedView>
   );
 }
+
+const CARD_WIDTH = (Dimensions.get('window').width - (Spacing.four * 2) - (Spacing.two * 2)) / 3;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -65,33 +66,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   list: {
-    gap: Spacing.two,
     paddingBottom: BottomTabInset + Spacing.three,
   },
+  row: {
+    gap: Spacing.two,
+    marginBottom: Spacing.two,
+  },
   card: {
+    width: CARD_WIDTH,
+    aspectRatio: 1,
     borderRadius: Spacing.three,
-    overflow: 'hidden',
-  },
-  cardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: Spacing.three,
-    gap: Spacing.three,
-    borderRadius: Spacing.three,
-  },
-  cardText: {
-    flex: 1,
-    gap: Spacing.half,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
   },
   cardTitle: {
     fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   iconBox: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
   },
 });

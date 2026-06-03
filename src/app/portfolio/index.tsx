@@ -19,7 +19,8 @@ import { InfoModal } from '@/components/info-modal';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PROFILE_CONFIG, PROFILE_BANDS, type RiskProfile } from '@/constants/risk-profile';
-import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs, getMacroContext, getCdtMarketRates, getLatestEodPrices, type MacroContext, type CdtMarketRate, type EodPrice } from '@/services/supabase-queries';
+import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs, getMacroContext, getCdtMarketRates, getLatestEodPrices, getTrmHistory, type MacroContext, type CdtMarketRate, type EodPrice } from '@/services/supabase-queries';
+import { calculateDevaluation, calculatePortfolioHurdleRate } from '@/lib/hurdle-rate';
 import { profileEvents } from '@/utils/profile-events';
 import { formatCurrency, abbreviateValue } from '@/utils/format';
 import { useAuth } from '@/hooks/use-auth';
@@ -121,6 +122,8 @@ export default function PortfolioScreen() {
   const [macroContext, setMacroContext] = useState<MacroContext | null>(null);
   const [cdtRate360, setCdtRate360] = useState<number | null>(null);
   const [eodPrices, setEodPrices] = useState<Map<string, EodPrice>>(new Map());
+  const [hurdleRate, setHurdleRate] = useState<number | null>(null);
+  const [networkError, setNetworkError] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showProjectionModal, setShowProjectionModal] = useState(false);
   const isFirstFocus          = useRef(true);
@@ -135,13 +138,7 @@ export default function PortfolioScreen() {
         getRiskProfile(),
         getAllCdts(),
         getAllEtfs(),
-        getMacroContext().catch(() => ({
-          trm: 4200,
-          policyRate: 9.25,
-          inflationCOP: 5.3,
-          inflationUSD: 3.2,
-          date: new Date().toISOString().split('T')[0],
-        })),
+        getMacroContext().catch(() => null),
         getCdtMarketRates(360).then(rates => rates[0]?.rate ?? null).catch(() => null)
       ]).then(
         async ([p, cdtList, etfList, macro, cdtRate]) => {
@@ -151,6 +148,13 @@ export default function PortfolioScreen() {
           setMacroContext(macro);
           setCdtRate360(cdtRate);
 
+          // Detectar error de red: si no hay macro data y tampoco CDT rate, probablemente no hay conexión
+          if (!macro && !cdtRate) {
+            setNetworkError(true);
+          } else {
+            setNetworkError(false);
+          }
+
           // Cargar precios EOD de todos los ETFs
           if (etfList.length > 0) {
             const tickers = etfList.map(e => e.ticker);
@@ -158,9 +162,37 @@ export default function PortfolioScreen() {
             setEodPrices(prices);
           }
 
+          // Calcular Hurdle Rate solo si tenemos todos los datos necesarios
+          if (macro && cdtRate && macro.inflationCOP) {
+            try {
+              const trmHistory = await getTrmHistory(5);
+              if (trmHistory.length > 0) {
+                const devaluationRate = calculateDevaluation(trmHistory, 5);
+                const { hurdleRate: calculatedHurdleRate } = calculatePortfolioHurdleRate({
+                  cdtRate: cdtRate / 100,
+                  devaluationRate,
+                  inflationCOP: macro.inflationCOP / 100,
+                  inflationUSD: (macro.inflationUSD ?? 3.0) / 100,
+                });
+                setHurdleRate(calculatedHurdleRate * 100);
+              } else {
+                setHurdleRate(null);
+              }
+            } catch (error) {
+              console.error('Error calculating hurdle rate:', error);
+              setHurdleRate(null);
+            }
+          } else {
+            setHurdleRate(null);
+          }
+
           setState(p ? 'portfolio' : 'risk_profile');
         }
-      );
+      ).catch((error) => {
+        console.error('Error loading portfolio:', error);
+        setNetworkError(true);
+        setState('portfolio'); // Mostrar portfolio vacío con mensaje de error
+      });
     }, [])
   );
 
@@ -204,6 +236,8 @@ export default function PortfolioScreen() {
             macroContext={macroContext}
             cdtRate360={cdtRate360}
             eodPrices={eodPrices}
+            hurdleRate={hurdleRate}
+            networkError={networkError}
             showProfileModal={showProfileModal}
             setShowProfileModal={setShowProfileModal}
             showProjectionModal={showProjectionModal}
@@ -226,6 +260,8 @@ interface PortfolioContentProps {
   macroContext: MacroContext | null;
   cdtRate360: number | null;
   eodPrices: Map<string, EodPrice>;
+  hurdleRate: number | null;
+  networkError: boolean;
   showProfileModal: boolean;
   setShowProfileModal: (show: boolean) => void;
   showProjectionModal: boolean;
@@ -239,6 +275,8 @@ function PortfolioContent({
   macroContext,
   cdtRate360,
   eodPrices,
+  hurdleRate,
+  networkError,
   showProfileModal,
   setShowProfileModal,
   showProjectionModal,
@@ -250,7 +288,7 @@ function PortfolioContent({
   const bands   = PROFILE_BANDS[profile.label];
   const isEmpty = cdts.length === 0 && etfs.length === 0;
   const [tab, setTab] = useState<PortfolioTab>('resumen');
-  const [contextModal, setContextModal] = useState<'banrep' | 'cdt' | 'inflation' | 'trm' | null>(null);
+  const [contextModal, setContextModal] = useState<'banrep' | 'cdt' | 'inflation' | 'trm' | 'hurdle' | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -473,7 +511,7 @@ function PortfolioContent({
               </View>
 
               <DistributionSection cdtPct={cdtPct} etfPct={etfPct} bands={bands} />
-              <ContextStrip macroContext={macroContext} cdtRate360={cdtRate360} onOpenModal={setContextModal} />
+              <ContextStrip macroContext={macroContext} cdtRate360={cdtRate360} hurdleRate={hurdleRate} networkError={networkError} onOpenModal={setContextModal} />
             </>
           )}
         </ScrollView>
@@ -838,6 +876,76 @@ function PortfolioContent({
           </ThemedText>
         </View>
       </InfoModal>
+
+      <InfoModal
+        visible={contextModal === 'hurdle'}
+        onClose={() => setContextModal(null)}
+        title="Hurdle Rate"
+      >
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Qué es?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Es la <ThemedText style={{ fontWeight: '600' }}>tasa mínima que un ETF debe superar</ThemedText> para justificar el riesgo vs un CDT (sin riesgo, garantizado).
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Cómo se calcula?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Ajustamos la tasa CDT con la <ThemedText style={{ fontWeight: '600' }}>Ecuación de Fisher</ThemedText>:
+          </ThemedText>
+          <View style={styles.modalList}>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              + Devaluación COP/USD (últimos 5 años)
+            </ThemedText>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              − Diferencial de inflación (COP vs USD)
+            </ThemedText>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              − Costos del ETF (TER)
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Para qué sirve?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Separa inversiones sensatas de emocionales:
+          </ThemedText>
+          <View style={styles.modalList}>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • <ThemedText style={{ fontWeight: '600' }}>ETF arriba</ThemedText> → Justifica el riesgo
+            </ThemedText>
+            <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
+              • <ThemedText style={{ fontWeight: '600' }}>ETF abajo</ThemedText> → Mejor en CDTs
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            ¿Es fijo?
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            No. Cambia cuando varían las tasas Banrep, la devaluación o la inflación. Te avisamos en el Buzón.
+          </ThemedText>
+        </View>
+
+        <View style={[styles.modalDisclaimer, {
+          backgroundColor: theme.background,
+          borderLeftColor: theme.primary,
+        }]}>
+          <ThemedText style={[styles.modalDisclaimerText, { color: theme.textSecondary }]}>
+            Este es el <ThemedText style={{ fontWeight: '600' }}>fundamento matemático</ThemedText> de Magic Invest. No es una sugerencia — es una línea objetiva calculada con datos reales.
+          </ThemedText>
+        </View>
+      </InfoModal>
     </View>
   );
 }
@@ -961,25 +1069,72 @@ function DistributionSection({
 function ContextStrip({
   macroContext,
   cdtRate360,
+  hurdleRate,
+  networkError,
   onOpenModal
 }: {
   macroContext: MacroContext | null;
   cdtRate360: number | null;
-  onOpenModal: (type: 'banrep' | 'cdt' | 'inflation' | 'trm') => void;
+  hurdleRate: number | null;
+  networkError: boolean;
+  onOpenModal: (type: 'banrep' | 'cdt' | 'inflation' | 'trm' | 'hurdle') => void;
 }) {
   const theme = useTheme();
+
+  // Si hay error de red, mostrar mensaje
+  if (networkError) {
+    return (
+      <View style={[styles.contextStrip, { backgroundColor: theme.backgroundElement }]}>
+        <View style={styles.networkErrorContainer}>
+          <Ionicons name="cloud-offline-outline" size={24} color={theme.textSecondary} />
+          <ThemedText style={[styles.networkErrorText, { color: theme.textSecondary }]}>
+            Sin conexión a internet
+          </ThemedText>
+          <ThemedText style={[styles.networkErrorSubtext, { color: theme.textSecondary }]}>
+            No se pueden cargar datos de mercado
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
+
+  // Si no hay datos disponibles, no mostrar nada
+  const hasAnyData = macroContext || cdtRate360;
+  if (!hasAnyData) return null;
+
   return (
     <View style={[styles.contextStrip, { backgroundColor: theme.backgroundElement }]}>
       <ThemedText style={[styles.contextTitle, { color: theme.textSecondary }]}>Contexto actual</ThemedText>
       <View style={styles.contextRow}>
-        <ContextItem label="Banrep"      value={`${macroContext?.policyRate ?? 9.25}%`} onPress={() => onOpenModal('banrep')} />
-        <ContextItem label="CDT mercado" value={`${(cdtRate360 ?? CDT_MKT_RATE).toFixed(1)}%`} onPress={() => onOpenModal('cdt')} />
-        <ContextItem label="Inflación"   value={`${(macroContext?.inflationCOP ?? 5.3).toFixed(2)}%`} onPress={() => onOpenModal('inflation')} />
-        <ContextItem label="TRM"         value={`$${(macroContext?.trm ?? 4200).toLocaleString('es-CO')}`} onPress={() => onOpenModal('trm')} />
+        {macroContext?.policyRate && (
+          <ContextItem label="Banrep" value={`${macroContext.policyRate.toFixed(2)}%`} onPress={() => onOpenModal('banrep')} />
+        )}
+        {cdtRate360 && (
+          <ContextItem label="CDT mercado" value={`${cdtRate360.toFixed(1)}%`} onPress={() => onOpenModal('cdt')} />
+        )}
+        {macroContext?.inflationCOP && (
+          <ContextItem label="Inflación" value={`${macroContext.inflationCOP.toFixed(2)}%`} onPress={() => onOpenModal('inflation')} />
+        )}
+        {macroContext?.trm && (
+          <ContextItem label="TRM" value={`$${macroContext.trm.toLocaleString('es-CO')}`} onPress={() => onOpenModal('trm')} />
+        )}
       </View>
-      <ThemedText style={[styles.contextNote, { color: theme.textSecondary }]}>
-        TRM actualizada {macroContext?.date ? `(${fmtDate(macroContext.date)})` : 'diariamente'}
-      </ThemedText>
+      {hurdleRate !== null && (
+        <View style={[styles.hurdleRow, { borderTopColor: theme.divider, marginTop: Spacing.two, paddingTop: Spacing.two }]}>
+          <TouchableOpacity style={styles.hurdleButton} onPress={() => onOpenModal('hurdle')} activeOpacity={0.7}>
+            <ThemedText style={[styles.hurdleLabel, { color: theme.textSecondary }]}>Hurdle Rate</ThemedText>
+            <View style={styles.hurdleValueRow}>
+              <ThemedText style={[styles.hurdleValue, { color: theme.primary }]}>{hurdleRate.toFixed(2)}%</ThemedText>
+              <Ionicons name="information-circle-outline" size={16} color={theme.primary} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
+      {macroContext?.date && (
+        <ThemedText style={[styles.contextNote, { color: theme.textSecondary }]}>
+          TRM actualizada ({fmtDate(macroContext.date)})
+        </ThemedText>
+      )}
     </View>
   );
 }
@@ -1337,6 +1492,43 @@ const styles = StyleSheet.create({
   contextLabel: { fontSize: 10, textAlign: 'center' },
   contextInfoIcon: { position: 'absolute', top: 0, right: -2, opacity: 0.5 },
   contextNote:  { fontSize: 10, fontStyle: 'italic' },
+  hurdleRow: {
+    borderTopWidth: 1,
+  },
+  hurdleButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.one,
+  },
+  hurdleLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  hurdleValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  hurdleValue: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  networkErrorContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing.three,
+    gap: Spacing.one,
+  },
+  networkErrorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: Spacing.one,
+  },
+  networkErrorSubtext: {
+    fontSize: 11,
+  },
   accordionContainer: {
     marginBottom: Spacing.one,
   },

@@ -416,6 +416,33 @@ export async function getTrmOnDate(date: string): Promise<number> {
   });
 }
 
+/**
+ * Obtiene histórico de TRM para calcular devaluación
+ * @param years - Años de histórico a obtener (default: 5)
+ * @returns Array de {date, trm} ordenado cronológicamente (más antiguo primero)
+ */
+export async function getTrmHistory(years: number = 5): Promise<Array<{ date: string; trm: number }>> {
+  return withRetry(async () => {
+    const startDate = new Date();
+    startDate.setFullYear(startDate.getFullYear() - years);
+    const fromDate = startDate.toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('macro_rates')
+      .select('effective_date, value')
+      .eq('type', 'trm')
+      .gte('effective_date', fromDate)
+      .order('effective_date', { ascending: true });
+
+    if (error) throw error;
+
+    return data.map(row => ({
+      date: row.effective_date,
+      trm: row.value,
+    }));
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CDT RATES (tasas promedio de mercado)
 // ─────────────────────────────────────────────────────────────────────────────

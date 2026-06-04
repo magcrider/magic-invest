@@ -211,6 +211,16 @@ export default function CdtVsEtfScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
+        {/* Header sticky */}
+        <ThemedView style={styles.stickyHeader}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
+          </TouchableOpacity>
+          <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
+            <Ionicons name="scale-outline" size={22} color={theme.positive} />
+          </ThemedView>
+        </ThemedView>
+
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior="padding"
@@ -222,15 +232,6 @@ export default function CdtVsEtfScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
-
-          <ThemedView style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
-            <ThemedView style={[styles.iconBox, { backgroundColor: theme.positiveSubtle }]}>
-              <Ionicons name="scale-outline" size={22} color={theme.positive} />
-            </ThemedView>
-          </ThemedView>
 
           <ThemedView style={styles.titleBlock}>
             <ThemedText type="subtitle" style={styles.title}>
@@ -485,15 +486,17 @@ export default function CdtVsEtfScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safe: { flex: 1, paddingTop: Spacing.four },
-  scroll: { flex: 1, paddingHorizontal: Spacing.four },
-  scrollContent: { paddingBottom: BottomTabInset + Spacing.three },
-  header: {
+  safe: { flex: 1 },
+  stickyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.three,
   },
+  scroll: { flex: 1, paddingHorizontal: Spacing.four },
+  scrollContent: { paddingTop: Spacing.two, paddingBottom: BottomTabInset + Spacing.three },
   iconBox: {
     width: 44,
     height: 44,

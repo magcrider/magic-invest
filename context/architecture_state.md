@@ -395,7 +395,89 @@ dismissEvent(id)          // Soft delete (dismissed_at)
 
 ---
 
-## 11. Reglas Inquebrantables de UI/UX (Bienestar Cognitivo)
+## 11. Patrón de Navegación: Sticky Headers
+
+**Decisión:** Todas las pantallas con navegación hacia atrás usan **header sticky** (flecha back + ícono contextual).
+
+### Implementación
+
+El header permanece visible en la parte superior mientras el usuario hace scroll:
+
+```tsx
+<SafeAreaView style={styles.safe}>
+  {/* Header sticky - FUERA del ScrollView/KeyboardAvoidingView */}
+  <ThemedView style={styles.stickyHeader}>
+    <TouchableOpacity onPress={() => router.back()}>
+      <Ionicons name="arrow-back-outline" />
+    </TouchableOpacity>
+    <ThemedView style={styles.iconBox}>
+      {/* Ícono contextual de la pantalla */}
+    </ThemedView>
+  </ThemedView>
+
+  <KeyboardAvoidingView> {/* Si aplica */}
+    <ScrollView>
+      {/* Contenido scrolleable */}
+    </ScrollView>
+  </KeyboardAvoidingView>
+</SafeAreaView>
+```
+
+### Estilos
+
+```tsx
+stickyHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingHorizontal: Spacing.four,
+  paddingTop: Spacing.four,
+  paddingBottom: Spacing.three,
+}
+scrollContent: {
+  paddingTop: Spacing.two,  // Reducido porque header ya no está dentro
+  paddingBottom: BottomTabInset + Spacing.three,
+}
+```
+
+### Pantallas con Sticky Header
+
+**Detalles de activos (2):**
+- `portfolio/cdt/[id].tsx`
+- `portfolio/etf/[id].tsx`
+
+**Formularios (3):**
+- `portfolio/add-cdt.tsx`
+- `portfolio/add-etf.tsx`
+- `portfolio/add.tsx`
+
+**Buzón (1):**
+- `inbox/[id].tsx`
+
+**Calculadoras (10):**
+- `tools/compound-interest.tsx`
+- `tools/time-to-goal.tsx`
+- `tools/debt-freedom.tsx`
+- `tools/rate-converter.tsx`
+- `tools/cdt-vs-etf.tsx`
+- `tools/dca-vs-lump.tsx`
+- `tools/real-return.tsx`
+- `tools/cagr.tsx`
+- `tools/fee-drag.tsx`
+- `tools/loan-payment.tsx`
+
+**Wrapper (1):**
+- `tools/[id].tsx` (placeholder)
+
+### Beneficio UX
+
+- **Navegación siempre accesible** — usuario puede volver sin hacer scroll al inicio
+- **Consistencia visual** — mismo patrón en toda la app
+- **Menor fricción** — especialmente útil en mensajes largos del Buzón y calculadoras con resultados extensos
+
+---
+
+## 12. Reglas Inquebrantables de UI/UX (Bienestar Cognitivo)
 * **Notificaciones:** Cero alertas push. Toda información asíncrona vive en el Buzón. El usuario decide cuándo consumir.
 * **Badges:** Cero badges en el ícono de la app. Indicadores silenciosos dentro de la app (como "eventos relacionados" en el detalle de un activo) son aceptables porque son contextuales, no interruptivos.
 * **Jerarquía cromática anti-ansiedad:**

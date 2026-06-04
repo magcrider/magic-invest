@@ -211,7 +211,10 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
     - `macro_rates`: Almacena TRM, inflación y tasa política. Columnas: `type`, `value`, `effective_date`, `source`. Unique constraint en `(type, effective_date)`.
     - `cdt_rates`: Almacena tasas CDT por plazo. Columnas: `bank` (NULL para promedio de mercado), `term_days`, `rate`, `effective_date`, `source`. Unique constraint en `(bank, term_days, effective_date)`.
   - **Queries en app:** `src/services/supabase-queries.ts` expone `getMacroContext()` (TRM, policy rate, inflación más recientes) y `getCdtMarketRates(termDays?)` (tasas CDT por plazo).
-  - **Cron job:** Configurado en Supabase Integrations → Cron. Ejecuta `fetch-banrep-data` diariamente. pg_cron + pg_net habilitados.
+  - **Cron jobs:** Configurados en Supabase Integrations → Cron. Tipo: "Supabase Edge Function" (invocación interna eficiente):
+    - `fetch-banrep-data`: diario 00:30 AM Colombia (05:30 UTC)
+    - `fetch-etf-prices`: diario 00:30 AM Colombia (05:30 UTC)
+    - `fetch-inflation-data`: ✅ mensual día 1, 05:00 AM UTC (12 AM Colombia)
 
 * **Estado de datos actuales (Junio 4, 2026):**
   - TRM: 2,468 registros (2016-01-05 → 2026-06-02)

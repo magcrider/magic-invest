@@ -13,11 +13,11 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
   - Módulo Herramientas (10 calculadoras)
   - Módulo Buzón (mock data)
   - Módulo Portafolio Fase 1 (CRUD completo)
-  - Backend Supabase (TRM, CDT rates, EOD prices, **Inflación dinámica**)
+  - Backend Supabase (TRM, CDT rates, EOD prices, **Inflación dinámica desde World Bank**)
   - Sistema color dinámico (light/dark)
   - Sistema validación/formateo inputs
   - Modals educativos
-  - **Hurdle Rate 100% dinámico** (Portfolio + Calculadora CDT vs ETF)
+  - **Hurdle Rate 100% dinámico y preciso** (sin datos hardcodeados)
 
 ---
 

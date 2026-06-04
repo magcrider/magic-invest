@@ -266,22 +266,23 @@ export default function InboxDetailScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
+        {/* Header sticky */}
+        <View style={styles.stickyHeader}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
+          </TouchableOpacity>
+          <View style={[styles.typePill, { backgroundColor: accentBg }]}>
+            <Ionicons name={config.icon} size={14} color={accentColor} />
+            <ThemedText style={[styles.typeLabel, { color: accentColor }]}>
+              {config.label}
+            </ThemedText>
+          </View>
+        </View>
+
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
-            <View style={[styles.typePill, { backgroundColor: accentBg }]}>
-              <Ionicons name={config.icon} size={14} color={accentColor} />
-              <ThemedText style={[styles.typeLabel, { color: accentColor }]}>
-                {config.label}
-              </ThemedText>
-            </View>
-          </View>
 
           <ThemedText type="small" themeColor="textSecondary">{eventDate}</ThemedText>
 
@@ -315,15 +316,22 @@ export default function InboxDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safe: { flex: 1, paddingTop: Spacing.four },
+  safe: { flex: 1 },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  stickyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.three,
+  },
   scroll: { flex: 1, paddingHorizontal: Spacing.four },
-  scrollContent: { gap: Spacing.four, paddingBottom: BottomTabInset + Spacing.three },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  scrollContent: { gap: Spacing.four, paddingBottom: BottomTabInset + Spacing.three, paddingTop: Spacing.two },
   typePill: {
     flexDirection: 'row',
     alignItems: 'center',

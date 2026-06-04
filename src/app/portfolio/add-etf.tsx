@@ -201,6 +201,16 @@ export default function AddEtfScreen() {
   return (
     <ThemedView style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }}>
+        {/* Header sticky */}
+        <View style={styles.stickyHeader}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
+          </TouchableOpacity>
+          <View style={[styles.headerIcon, { backgroundColor: theme.positiveSubtle }]}>
+            <Ionicons name="analytics-outline" size={20} color={theme.assetEtf} />
+          </View>
+        </View>
+
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior="padding"
@@ -212,15 +222,6 @@ export default function AddEtfScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Header */}
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-                <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
-              </TouchableOpacity>
-              <View style={[styles.headerIcon, { backgroundColor: theme.positiveSubtle }]}>
-                <Ionicons name="analytics-outline" size={20} color={theme.assetEtf} />
-              </View>
-            </View>
             <ThemedText style={styles.screenTitle}>Registrar ETF</ThemedText>
             <ThemedText style={[styles.screenSubtitle, { color: theme.textSecondary }]}>
               Ingresa los datos del ETF que ya tienes en tu broker.
@@ -710,16 +711,18 @@ function PreviewRow({ label, value, highlight }: { label: string; value: string;
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    paddingHorizontal: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.five,
-  },
-  header: {
+  stickyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
-    marginBottom: Spacing.three,
+    paddingBottom: Spacing.three,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: BottomTabInset + Spacing.five,
   },
   headerIcon: {
     width: 36,

@@ -68,17 +68,17 @@ export default function AddAssetScreen() {
   return (
     <ThemedView style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }}>
+        {/* Header sticky */}
+        <View style={styles.stickyHeader}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
           <ThemedText style={styles.title}>¿Qué quieres agregar?</ThemedText>
           <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
             Selecciona el tipo de activo para registrarlo en tu portafolio.
@@ -142,13 +142,15 @@ export default function AddAssetScreen() {
 }
 
 const styles = StyleSheet.create({
+  stickyHeader: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.three,
+  },
   scrollContent: {
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
     paddingBottom: BottomTabInset + Spacing.five,
-  },
-  header: {
-    paddingTop: Spacing.three,
-    marginBottom: Spacing.three,
   },
   title: {
     fontSize: 26,

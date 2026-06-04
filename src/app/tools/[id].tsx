@@ -28,8 +28,8 @@ export default function ToolDetailScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
-
-        <ThemedView style={styles.header}>
+        {/* Header sticky */}
+        <ThemedView style={styles.stickyHeader}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
             <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
           </TouchableOpacity>
@@ -57,15 +57,15 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safe: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
     paddingBottom: BottomTabInset + Spacing.three,
-    gap: Spacing.three,
   },
-  header: {
+  stickyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.three,
   },
   iconBox: {
     width: 44,

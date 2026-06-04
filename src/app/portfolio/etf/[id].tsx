@@ -103,20 +103,20 @@ export default function EtfDetailScreen() {
   return (
     <ThemedView style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }}>
+        {/* Header sticky */}
+        <View style={styles.stickyHeader}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
+          </TouchableOpacity>
+          <View style={[styles.headerIcon, { backgroundColor: theme.positiveSubtle }]}>
+            <Ionicons name="analytics-outline" size={20} color={theme.assetEtf} />
+          </View>
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
-            <View style={[styles.headerIcon, { backgroundColor: theme.positiveSubtle }]}>
-              <Ionicons name="analytics-outline" size={20} color={theme.assetEtf} />
-            </View>
-          </View>
-
           <ThemedText style={[styles.tickerText, { color: theme.assetEtf }]}>{etf.ticker}</ThemedText>
           <ThemedText style={[styles.fundName, { color: theme.textSecondary }]}>{etf.name}</ThemedText>
 
@@ -336,21 +336,23 @@ function Divider() {
 }
 
 const styles = StyleSheet.create({
+  stickyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.three,
+  },
   scrollContent: {
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
     paddingBottom: BottomTabInset + Spacing.five,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Spacing.three,
-    marginBottom: Spacing.three,
   },
   headerIcon: {
     width: 36,

@@ -107,27 +107,27 @@ export default function CdtDetailScreen() {
   return (
     <ThemedView style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }}>
+        {/* Header sticky */}
+        <View style={styles.stickyHeader}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
+          </TouchableOpacity>
+          <View style={[
+            styles.headerIcon,
+            { backgroundColor: expired ? theme.backgroundElement : theme.positiveSubtle },
+          ]}>
+            <Ionicons
+              name="time-outline"
+              size={20}
+              color={expired ? theme.textSecondary : theme.assetCdt}
+            />
+          </View>
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back-outline" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
-            <View style={[
-              styles.headerIcon,
-              { backgroundColor: expired ? theme.backgroundElement : theme.positiveSubtle },
-            ]}>
-              <Ionicons
-                name="time-outline"
-                size={20}
-                color={expired ? theme.textSecondary : theme.assetCdt}
-              />
-            </View>
-          </View>
-
           <ThemedText style={[styles.bankName, { color: theme.assetCdt }]}>{cdt.bank}</ThemedText>
 
           {/* Status badge */}
@@ -317,21 +317,23 @@ function Divider() {
 }
 
 const styles = StyleSheet.create({
+  stickyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.three,
+  },
   scrollContent: {
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
     paddingBottom: BottomTabInset + Spacing.five,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Spacing.three,
-    marginBottom: Spacing.three,
   },
   headerIcon: {
     width: 36,

@@ -7,65 +7,30 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 ## Estado General
 
 * **Fase:** 🟡 Implementación en progreso
-* **Última sesión:** junio 3, 2026
+* **Última sesión:** junio 4, 2026
 * **Completados:**
   - Infraestructura + Autenticación + Shell
   - Módulo Herramientas (10 calculadoras)
   - Módulo Buzón (mock data)
   - Módulo Portafolio Fase 1 (CRUD completo)
-  - Backend Supabase (TRM, CDT rates, EOD prices)
+  - Backend Supabase (TRM, CDT rates, EOD prices, **Inflación dinámica**)
   - Sistema color dinámico (light/dark)
   - Sistema validación/formateo inputs
   - Modals educativos
-  - **Hurdle Rate completamente integrado** (Portfolio + Calculadora CDT vs ETF)
+  - **Hurdle Rate 100% dinámico** (Portfolio + Calculadora CDT vs ETF)
 
 ---
 
 ## 🎯 Próximos Pasos Inmediatos
 
-### 1. ⚠️ PRIORIDAD ALTA: Inflación dinámica (eliminar hardcoded)
-**Estado:** Crítico — actualmente hardcodeada, afecta precisión del Hurdle Rate
-
-**Problema actual:**
-```typescript
-inflationCOP: hardcodeada o manual (desactualizada)
-inflationUSD: 3.0% fijo (no refleja realidad)
-```
-
-**Tareas:**
-- [ ] Investigar fuentes de datos para inflación COP (DANE vía datos.gov.co o Banrep)
-- [ ] Investigar fuentes de datos para inflación USD (FRED API o World Bank)
-- [ ] Crear Edge Function para fetch inflación mensual/anual
-- [ ] Actualizar tabla macro_rates con datos históricos de inflación
-- [ ] Reemplazar valores hardcodeados en cálculo de Hurdle Rate
-- [ ] Validar que Hurdle Rate se actualiza correctamente con datos reales
-
-**Impacto:** Sin esto, el Hurdle Rate tiene desviaciones de 0.3-0.8% vs valor real.
-
----
-
-### 2. Hurdle Rate — Completar backend (depende de #1)
-**Estado:** UI completa, backend parcial
-
-**Completado:**
-- ✅ Cálculo matemático (Ecuación de Fisher)
-- ✅ Query TRM histórica (últimos 5 años)
-- ✅ Mostrado en ContextStrip del Portafolio con modal educativo
-- ✅ Integrado en calculadora CDT vs ETF con veredicto claro
-- ✅ Veredictos con lenguaje coloquial y variaciones aleatorias
-
-**Bloqueado por:** Inflación dinámica (#1) — actualmente usa valores hardcodeados
-
----
-
-### 3. Watchlist ETFs inicial
+### 1. Watchlist ETFs inicial
 **Estado:** Vacía
 
 **Acción:** Claude sugerirá 3-5 tickers representativos (VOO, VTI, VXUS, etc.) como semilla. Usuario podrá agregar/quitar después.
 
 ---
 
-### 4. Motor de eventos Buzón (backend)
+### 2. Motor de eventos Buzón (backend)
 **Estado:** Mockdata funcional, UI completa, **falta backend real**
 
 **Triggers a implementar:**
@@ -78,7 +43,7 @@ inflationUSD: 3.0% fijo (no refleja realidad)
 
 ---
 
-### 5. Sistema de Rebalanceo
+### 3. Sistema de Rebalanceo
 **Estado:** Pendiente
 
 **Componentes:**

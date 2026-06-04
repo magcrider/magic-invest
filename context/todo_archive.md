@@ -289,6 +289,50 @@ Sistema de reintento automático para error PGRST303 ("JWT issued at future") ca
 
 ---
 
+## Sesión junio 2, 2026 — Backend Supabase + Integración EOD
+
+* ✅ Backend Supabase — API Banrep + World Bank implementado
+* ✅ Edge Functions: fetch-banrep-data (diaria) + backfill-historical-data (única vez)
+* ✅ Tablas: macro_rates (TRM, inflación, policy rate) + cdt_rates (tasas por plazo)
+* ✅ Histórico poblado: TRM 10 años, CDT 8 años, Inflación 15 años
+* ✅ Cron job configurado (00:30 AM Colombia diario)
+* ✅ Portafolio ContextStrip con datos reales (TRM, Banrep, Inflación, CDT 360d)
+* ✅ Modals educativos para los 4 indicadores del ContextStrip
+* ✅ **Integración EOD completa (EODHD.com)** — Precios reales de ETFs
+* ✅ Edge Functions: fetch-etf-prices (diaria) + backfill-etf-historical
+* ✅ Tabla: eod_prices con OHLCV + adjusted_close
+* ✅ Tarjetas ETF rediseñadas: Invertido | Actual | Ganancia + proyecciones 2/5/10 años
+* ✅ Colores semánticos: verde para ganancias, naranja para pérdidas
+* ✅ Formulario ETF mejorado: TRM automática por fecha, date picker integrado
+* ✅ Paquete nuevo: `eodhd` (SDK oficial TypeScript)
+* ✅ **Mejoras UX Portafolio:**
+  - Acordeones colapsables por tipo de activo (CDT, ETF)
+  - Cerrados por defecto, scroll más manejable
+  - Preparado para futuros tipos: Acciones, Fondos, Cripto
+  - Fix: Inflación redondeada a 2 decimales máximo
+
+## Sesión junio 3, 2026 — Calculadora #10 + Rediseño UX Herramientas
+
+* ✅ **Calculadora #10: Cuota de crédito** — Sistema francés de amortización
+  - Inputs: Monto, tasa EA, plazo en meses
+  - Outputs: Cuota fija, total a pagar, total intereses, primera/última cuota (capital e intereses)
+  - Modals educativos para tasa y plazo con info contextual
+  - Validación y formateo consistente con resto de calculadoras
+* ✅ **Rediseño UX Herramientas:**
+  - Cuadrícula 3 columnas (antes: lista vertical)
+  - Nombres cortos optimizados (ej: "Interés compuesto", "CDT vs ETF", "CAGR")
+  - Tarjetas cuadradas con ícono + título centrado
+  - Calculadora de crédito en 4ta posición
+* ✅ Mejoras UX calculadoras:
+  - Espaciados optimizados (labels más cerca de inputs)
+  - Scroll automático a resultados sin tapar contenido
+  - Altura consistente en todos los campos de input
+* ✅ Hurdle Rate: cálculo devaluación + query TRM histórica (`getTrmHistory`)
+* ✅ Modal scroll fix: Pressable pattern aplicado a todos los modales (portfolio + herramientas)
+* ✅ CDT calendar: bloqueo de fechas futuras
+
+---
+
 ## Última sesión completada (junio 1, 2026)
 
 * **Auto-retry JWT transparente:** Sistema de reintento automático para error PGRST303. Refresh silencioso de sesión + reintento (max 2 intentos). Usuario nunca ve el error.

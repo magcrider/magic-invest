@@ -161,8 +161,8 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
   - **Datos de entrada:**
     - ✅ TRM histórica (5 años): `getTrmHistory()` → actualizada diariamente a las 00:30 AM
     - ✅ CDT tasa mercado (360 días): `getCdtMarketRates()` → actualizada diariamente
-    - ⚠️ Inflación COP: **hardcodeada o manual** (pendiente implementar)
-    - ⚠️ Inflación USD: **hardcodeada a 3.0%** (pendiente implementar)
+    - ✅ **Inflación COP:** World Bank API → actualizada mensualmente (día 1 de cada mes)
+    - ✅ **Inflación USD:** World Bank API → actualizada mensualmente (día 1 de cada mes)
   - **UI implementada:**
     - **Portfolio (`src/app/portfolio/index.tsx`):**
       - Cálculo on-demand al cargar (líneas 166-187)
@@ -175,12 +175,13 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
       - Lenguaje coloquial: "plata", "ganancias", "capital", "rentabilidad"
       - Variaciones aleatorias por cálculo para naturalidad
       - Footer con link al modal educativo del Hurdle Rate
-* **Limitaciones actuales:**
-  - Inflación hardcodeada → desviación de 0.3-0.8% en Hurdle Rate final
-  - **Prioridad alta:** Implementar inflación dinámica (ver §8 Próximos Pasos)
 * **Frecuencia de actualización:**
   - Cambios significativos: cada ~45 días (cuando Banrep cambia tasa de política)
-  - Cambios marginales: diarios (TRM y CDT rates actualizados)
+  - Cambios diarios: TRM y CDT rates
+  - Cambios mensuales: Inflación COP y USD (datos World Bank)
+* **Edge Functions:**
+  - `fetch-inflation-data`: Actualización mensual (día 1) desde World Bank API
+  - `backfill-inflation-historical`: Histórico 2014-2026 (22 registros iniciales)
 
 * **Portafolio integrado:** Las tarjetas de ETF en `portfolio/index.tsx` muestran:
   - Valor invertido original
@@ -196,23 +197,27 @@ Estos componentes forman la capa de navegación y presentación base sobre la qu
 * **Fuentes de datos:**
   - **TRM (Tasa Representativa del Mercado COP/USD):** API pública datos.gov.co (Banco de la República). Datos diarios desde 1991. Endpoint: `32sa-8pi3.json`
   - **Tasas CDT promedio por plazo:** API pública datos.gov.co (Banco de la República). Datos granulares por banco y plazo (30, 60, 90, 120, 180, 360 días) desde 2018. Endpoint: `axk9-g2nh.json`. La Edge Function calcula promedio ponderado por monto para obtener tasa de mercado.
-  - **Inflación COP anual:** World Bank API. Datos consolidados anuales desde 2010. Endpoint: `FP.CPI.TOTL.ZG` para Colombia. Gratis, sin autenticación, confiable.
+  - **Inflación COP anual:** ✅ World Bank API (IMF como fuente). Datos anuales consolidados desde 2014. Endpoint: `/v2/country/COL/indicator/FP.CPI.TOTL.ZG`. Gratis, sin autenticación. Dato actual: 6.61% (2024).
+  - **Inflación USD anual:** ✅ World Bank API. Datos anuales consolidados desde 2014. Endpoint: `/v2/country/USA/indicator/FP.CPI.TOTL.ZG`. Gratis, sin autenticación. Dato actual: 2.95% (2024).
   - **Tasa de política monetaria Banrep:** Fallback manual (11.25% vigente). No hay API pública disponible. Actualización manual 4-8 veces/año cuando JDBR anuncie cambios.
 
 * **Arquitectura implementada:**
   - **Supabase Edge Functions:**
-    - `fetch-banrep-data`: Sincronización diaria (cron 00:30 AM Colombia = 05:30 UTC). Trae TRM (últimos 7 días), CDT (últimas 2 semanas), Inflación (últimos 10 años).
-    - `backfill-historical-data`: Poblado inicial de histórico (TRM 10 años, CDT 8 años, Inflación 15 años). Optimizado para detectar datos existentes y solo insertar faltantes.
+    - `fetch-banrep-data`: Sincronización diaria (cron 00:30 AM Colombia = 05:30 UTC). Trae TRM (últimos 7 días) y CDT (últimas 2 semanas).
+    - `backfill-historical-data`: Poblado inicial de histórico (TRM 10 años, CDT 8 años). Optimizado para detectar datos existentes y solo insertar faltantes.
+    - `fetch-inflation-data`: ✅ Sincronización mensual (día 1 de cada mes, 5 AM UTC). Trae inflación COP y USD desde World Bank API. Inserta valores anuales más recientes en `macro_rates`.
+    - `backfill-inflation-historical`: ✅ Poblado inicial de inflación (2014-2026, 22 registros: 11 COP + 11 USD). Ejecutado una vez al deploy.
   - **Tablas PostgreSQL:**
     - `macro_rates`: Almacena TRM, inflación y tasa política. Columnas: `type`, `value`, `effective_date`, `source`. Unique constraint en `(type, effective_date)`.
     - `cdt_rates`: Almacena tasas CDT por plazo. Columnas: `bank` (NULL para promedio de mercado), `term_days`, `rate`, `effective_date`, `source`. Unique constraint en `(bank, term_days, effective_date)`.
   - **Queries en app:** `src/services/supabase-queries.ts` expone `getMacroContext()` (TRM, policy rate, inflación más recientes) y `getCdtMarketRates(termDays?)` (tasas CDT por plazo).
   - **Cron job:** Configurado en Supabase Integrations → Cron. Ejecuta `fetch-banrep-data` diariamente. pg_cron + pg_net habilitados.
 
-* **Estado de datos actuales (Junio 2026):**
+* **Estado de datos actuales (Junio 4, 2026):**
   - TRM: 2,468 registros (2016-01-05 → 2026-06-02)
   - CDT: 6,138 promedios de mercado (2018-01-31 → 2026-05-29)
-  - Inflación: 15 años (2010-2024, World Bank consolida retrospectivamente)
+  - Inflación COP: 11 registros anuales (2014-2024), último valor: 6.61% (2024)
+  - Inflación USD: 11 registros anuales (2014-2024), último valor: 2.95% (2024)
 
 * **Portafolio integrado:** El ContextStrip en `portfolio/index.tsx` muestra TRM, tasa Banrep, inflación y tasa CDT mercado (360 días) con datos reales traídos desde Supabase. Fallbacks a valores conocidos si falla query. Modales educativos implementados para cada indicador explicando qué es, para qué sirve y de dónde vienen los datos.
 

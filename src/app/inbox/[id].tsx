@@ -129,7 +129,7 @@ export default function InboxDetailScreen() {
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safe}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.primary} />
+            <ActivityIndicator size="large" color={theme.positive} />
           </View>
         </SafeAreaView>
       </ThemedView>

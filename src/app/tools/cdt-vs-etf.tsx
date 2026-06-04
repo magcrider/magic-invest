@@ -132,15 +132,13 @@ export default function CdtVsEtfScreen() {
           const cdtRates = await getCdtMarketRates(360);
           const cdtRate = cdtRates[0]?.rate;
 
-          if (macro && cdtRate && macro.inflationCOP) {
+          if (macro && cdtRate) {
             const trmHistory = await getTrmHistory(5);
             if (trmHistory.length > 0) {
               const devaluationRate = calculateDevaluation(trmHistory, 5);
               const { hurdleRate: calculatedHurdleRate } = calculatePortfolioHurdleRate({
                 cdtRate: cdtRate / 100,
                 devaluationRate,
-                inflationCOP: macro.inflationCOP / 100,
-                inflationUSD: (macro.inflationUSD ?? 3.0) / 100,
               });
               setHurdleRate(calculatedHurdleRate * 100);
             }
@@ -311,9 +309,9 @@ export default function CdtVsEtfScreen() {
                 const etfWinsValue = result.etf.finalValue > result.cdt.finalValueNet;
 
                 let verdict = '';
-                let verdictColor = theme.text;
-                let verdictBg = theme.backgroundElement;
-                let verdictBorder = theme.divider;
+                let verdictColor: string = theme.text;
+                let verdictBg: string = theme.backgroundElement;
+                let verdictBorder: string = theme.divider;
 
                 // Usar el estado para seleccionar versión
                 const variantIndex = verdictVariant % 4;
@@ -435,17 +433,27 @@ export default function CdtVsEtfScreen() {
                 ¿Cómo se calcula?
               </ThemedText>
               <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
-                Ajustamos la tasa CDT con la <ThemedText style={{ fontWeight: '600' }}>Ecuación de Fisher</ThemedText>:
+                Usamos ecuación rigurosa de <ThemedText style={{ fontWeight: '600' }}>equivalencia de retornos netos</ThemedText>:
+              </ThemedText>
+              <ThemedText style={[styles.modalFormula, {
+                color: theme.textSecondary,
+                backgroundColor: theme.backgroundElement,
+                fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+              }]}>
+                R = [(CDT × 0.96) - e] / (1 + e) + TER
+              </ThemedText>
+              <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+                Donde:
               </ThemedText>
               <View style={styles.modalList}>
                 <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
-                  + Devaluación COP/USD (últimos 5 años)
+                  • <ThemedText style={{ fontWeight: '600' }}>CDT × 0.96</ThemedText> — Rentabilidad neta después de retefuente 4%
                 </ThemedText>
                 <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
-                  − Diferencial de inflación (COP vs USD)
+                  • <ThemedText style={{ fontWeight: '600' }}>e</ThemedText> — Devaluación COP/USD histórica (5 años)
                 </ThemedText>
                 <ThemedText style={[styles.modalListItem, { color: theme.textSecondary }]}>
-                  − Costos del ETF (TER)
+                  • <ThemedText style={{ fontWeight: '600' }}>TER</ThemedText> — Costos del ETF (reduce retorno)
                 </ThemedText>
               </View>
             </View>
@@ -469,7 +477,7 @@ export default function CdtVsEtfScreen() {
 
             <View style={[styles.modalDisclaimer, {
               backgroundColor: theme.background,
-              borderLeftColor: theme.primary,
+              borderLeftColor: theme.positive,
             }]}>
               <ThemedText style={[styles.modalDisclaimerText, { color: theme.textSecondary }]}>
                 Este es el <ThemedText style={{ fontWeight: '600' }}>fundamento matemático</ThemedText> de Magic Invest. No es una sugerencia — es una línea objetiva calculada con datos reales del mercado colombiano.
@@ -586,6 +594,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     letterSpacing: -0.1,
+  },
+  modalFormula: {
+    fontSize: 13,
+    lineHeight: 19,
+    padding: Spacing.two,
+    borderRadius: Spacing.one,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.two,
+    textAlign: 'center',
   },
   modalList: {
     gap: Spacing.one + Spacing.half,

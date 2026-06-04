@@ -16,6 +16,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { RiskProfileFlow } from '@/components/risk-profile-flow';
 import { InfoModal } from '@/components/info-modal';
+import { OfflineScreen } from '@/components/offline-screen';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PROFILE_CONFIG, PROFILE_BANDS, type RiskProfile } from '@/constants/risk-profile';
@@ -92,8 +93,8 @@ export default function PortfolioScreen() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showProjectionModal, setShowProjectionModal] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [cdtUnreadMap, setCdtUnreadMap] = useState<Map<number, boolean>>(new Map());
-  const [etfUnreadMap, setEtfUnreadMap] = useState<Map<number, boolean>>(new Map());
+  const [cdtUnreadMap, setCdtUnreadMap] = useState<Map<string, boolean>>(new Map());
+  const [etfUnreadMap, setEtfUnreadMap] = useState<Map<string, boolean>>(new Map());
   const isFirstFocus          = useRef(true);
 
   useFocusEffect(
@@ -103,9 +104,9 @@ export default function PortfolioScreen() {
         isFirstFocus.current = false;
       }
       Promise.all([
-        getRiskProfile(),
-        getAllCdts(),
-        getAllEtfs(),
+        getRiskProfile().catch(() => null),
+        getAllCdts().catch(() => []),
+        getAllEtfs().catch(() => []),
         getMacroContext().catch(() => null),
         getCdtMarketRates(360).then(rates => rates[0]?.rate ?? null).catch(() => null)
       ]).then(
@@ -147,20 +148,20 @@ export default function PortfolioScreen() {
             setUnreadCount(relatedCount);
 
             // Mapear badges por CDT
-            const cdtMap = new Map<number, boolean>();
+            const cdtMap = new Map<string, boolean>();
             cdtList.forEach(cdt => {
               const hasUnread = unreadEvents.some(
                 evt => evt.assetRef?.toLowerCase().includes(cdt.bank.toLowerCase())
               );
-              cdtMap.set(Number(cdt.id), hasUnread);
+              cdtMap.set(cdt.id, hasUnread);
             });
             setCdtUnreadMap(cdtMap);
 
             // Mapear badges por ETF
-            const etfMap = new Map<number, boolean>();
+            const etfMap = new Map<string, boolean>();
             etfList.forEach(etf => {
               const hasUnread = unreadEvents.some(evt => evt.assetRef === etf.ticker);
-              etfMap.set(Number(etf.id), hasUnread);
+              etfMap.set(etf.id, hasUnread);
             });
             setEtfUnreadMap(etfMap);
           } catch (error) {
@@ -169,7 +170,7 @@ export default function PortfolioScreen() {
           }
 
           // Calcular Hurdle Rate solo si tenemos todos los datos necesarios
-          if (macro && cdtRate && macro.inflationCOP) {
+          if (macro && cdtRate) {
             try {
               const trmHistory = await getTrmHistory(5);
               if (trmHistory.length > 0) {
@@ -177,8 +178,6 @@ export default function PortfolioScreen() {
                 const { hurdleRate: calculatedHurdleRate } = calculatePortfolioHurdleRate({
                   cdtRate: cdtRate / 100,
                   devaluationRate,
-                  inflationCOP: macro.inflationCOP / 100,
-                  inflationUSD: (macro.inflationUSD ?? 3.0) / 100,
                 });
                 setHurdleRate(calculatedHurdleRate * 100);
               } else {
@@ -217,7 +216,117 @@ export default function PortfolioScreen() {
     setState('portfolio');
   }
 
+  function handleRetry() {
+    // Limpiar error de red y reiniciar carga
+    setNetworkError(false);
+    setState('loading');
+    isFirstFocus.current = true; // Forzar recarga completa
+
+    // Reinvocar el efecto de carga
+    Promise.all([
+      getRiskProfile().catch(() => null),
+      getAllCdts().catch(() => []),
+      getAllEtfs().catch(() => []),
+      getMacroContext().catch(() => null),
+      getCdtMarketRates(360).then(rates => rates[0]?.rate ?? null).catch(() => null)
+    ]).then(
+      async ([p, cdtList, etfList, macro, cdtRate]) => {
+        setProfile(p);
+        setCdts(cdtList);
+        setEtfs(etfList);
+        setMacroContext(macro);
+        setCdtRate360(cdtRate);
+
+        if (!macro && !cdtRate) {
+          setNetworkError(true);
+        } else {
+          setNetworkError(false);
+        }
+
+        // Cargar precios EOD
+        if (etfList.length > 0) {
+          const tickers = etfList.map(e => e.ticker);
+          const prices = await getLatestEodPrices(tickers).catch(() => new Map());
+          setEodPrices(prices);
+        }
+
+        // Cargar mensajes no leídos
+        try {
+          const events = await getInboxEvents();
+          const unreadEvents = events.filter(evt => !evt.readAt && evt.assetRef);
+          const relatedCount = unreadEvents.filter((evt) => {
+            const asset = evt.assetRef!;
+            if (asset.startsWith('CDT ')) {
+              const bank = asset.slice(4);
+              return cdtList.some((c) => c.bank.toLowerCase() === bank.toLowerCase());
+            }
+            return etfList.some((e) => e.ticker === asset);
+          }).length;
+          setUnreadCount(relatedCount);
+
+          const cdtMap = new Map<string, boolean>();
+          cdtList.forEach(cdt => {
+            const hasUnread = unreadEvents.some(
+              evt => evt.assetRef?.toLowerCase().includes(cdt.bank.toLowerCase())
+            );
+            cdtMap.set(cdt.id, hasUnread);
+          });
+          setCdtUnreadMap(cdtMap);
+
+          const etfMap = new Map<string, boolean>();
+          etfList.forEach(etf => {
+            const hasUnread = unreadEvents.some(evt => evt.assetRef === etf.ticker);
+            etfMap.set(etf.id, hasUnread);
+          });
+          setEtfUnreadMap(etfMap);
+        } catch (error) {
+          console.error('Error loading inbox events:', error);
+          setUnreadCount(0);
+        }
+
+        // Calcular Hurdle Rate
+        if (macro && cdtRate) {
+          try {
+            const trmHistory = await getTrmHistory(5);
+            if (trmHistory.length > 0) {
+              const devaluationRate = calculateDevaluation(trmHistory, 5);
+              const { hurdleRate: calculatedHurdleRate } = calculatePortfolioHurdleRate({
+                cdtRate: cdtRate / 100,
+                devaluationRate,
+              });
+              setHurdleRate(calculatedHurdleRate * 100);
+            } else {
+              setHurdleRate(null);
+            }
+          } catch (error) {
+            console.error('Error calculating hurdle rate:', error);
+            setHurdleRate(null);
+          }
+        } else {
+          setHurdleRate(null);
+        }
+
+        setState(p ? 'portfolio' : 'risk_profile');
+      }
+    ).catch((error) => {
+      console.error('Error loading portfolio:', error);
+      setNetworkError(true);
+      setState('portfolio');
+    });
+  }
+
   const subtitle = displayName ? `Hola, ${displayName}` : 'Tus posiciones reales';
+
+  // Si hay error de red sin datos, mostrar pantalla offline completa
+  if (networkError && !profile) {
+    return (
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.safe}>
+          <OfflineScreen onRetry={handleRetry} isRetrying={state === 'loading'} />
+        </SafeAreaView>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -276,8 +385,8 @@ interface PortfolioContentProps {
   showProjectionModal: boolean;
   setShowProjectionModal: (show: boolean) => void;
   unreadCount: number;
-  cdtUnreadMap: Map<number, boolean>;
-  etfUnreadMap: Map<number, boolean>;
+  cdtUnreadMap: Map<string, boolean>;
+  etfUnreadMap: Map<string, boolean>;
 }
 
 function PortfolioContent({
@@ -948,7 +1057,7 @@ function PortfolioContent({
 
         <View style={[styles.modalDisclaimer, {
           backgroundColor: theme.background,
-          borderLeftColor: theme.primary,
+          borderLeftColor: theme.positive,
         }]}>
           <ThemedText style={[styles.modalDisclaimerText, { color: theme.textSecondary }]}>
             Este es el <ThemedText style={{ fontWeight: '600' }}>fundamento matemático</ThemedText> de Magic Invest. No es una sugerencia — es una línea objetiva calculada con datos reales.
@@ -1133,8 +1242,8 @@ function ContextStrip({
           <TouchableOpacity style={styles.hurdleButton} onPress={() => onOpenModal('hurdle')} activeOpacity={0.7}>
             <ThemedText style={[styles.hurdleLabel, { color: theme.textSecondary }]}>Hurdle Rate</ThemedText>
             <View style={styles.hurdleValueRow}>
-              <ThemedText style={[styles.hurdleValue, { color: theme.primary }]}>{hurdleRate.toFixed(2)}%</ThemedText>
-              <Ionicons name="information-circle-outline" size={16} color={theme.primary} />
+              <ThemedText style={[styles.hurdleValue, { color: theme.positive }]}>{hurdleRate.toFixed(2)}%</ThemedText>
+              <Ionicons name="information-circle-outline" size={16} color={theme.positive} />
             </View>
           </TouchableOpacity>
         </View>

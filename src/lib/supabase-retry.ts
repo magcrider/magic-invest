@@ -34,14 +34,11 @@ export async function withRetry<T>(
         throw error;
       }
 
-      // Si es el primer intento, refrescar sesión y reintentar
+      // Si es el primer intento, refreschar sesión y reintentar
       if (attempt === 0) {
-        console.log('[Supabase] Detected JWT future error, refreshing session...');
-
         const { error: refreshError } = await supabase.auth.refreshSession();
 
         if (refreshError) {
-          console.error('[Supabase] Failed to refresh session:', refreshError);
           throw refreshError;
         }
 

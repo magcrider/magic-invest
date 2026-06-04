@@ -18,6 +18,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { withRetry } from '@/lib/supabase-retry';
+import { withTimeout } from '@/lib/fetch-with-timeout';
 import type { CdtPosition, EtfPosition, AllocationBands } from '@/types/database';
 import type { RiskProfile } from '@/constants/risk-profile';
 import { PROFILE_BANDS } from '@/constants/risk-profile';
@@ -31,17 +32,19 @@ export async function getAllCdts(): Promise<CdtPosition[]> {
   if (!user) return [];
 
   const { data, error } = await withRetry(async () => {
-    const result = await supabase
-      .from('cdt_positions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('end_date', { ascending: true });
+    const result = await withTimeout(
+      supabase
+        .from('cdt_positions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('end_date', { ascending: true }),
+      8000
+    );
     return result;
   });
 
   if (error) {
-    console.error('[Supabase] Error getting CDTs:', error);
-    return [];
+    throw error;
   }
 
   return (data || []) as CdtPosition[];
@@ -135,17 +138,19 @@ export async function getAllEtfs(): Promise<EtfPosition[]> {
   if (!user) return [];
 
   const { data, error } = await withRetry(async () => {
-    const result = await supabase
-      .from('etf_positions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('ticker', { ascending: true });
+    const result = await withTimeout(
+      supabase
+        .from('etf_positions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('ticker', { ascending: true }),
+      8000
+    );
     return result;
   });
 
   if (error) {
-    console.error('[Supabase] Error getting ETFs:', error);
-    return [];
+    throw error;
   }
 
   return (data || []) as EtfPosition[];
@@ -261,12 +266,15 @@ async function getConfig(key: string): Promise<any | null> {
   if (!user) return null;
 
   const { data, error } = await withRetry(async () => {
-    const result = await supabase
-      .from('user_config')
-      .select('value')
-      .eq('user_id', user.id)
-      .eq('key', key)
-      .single();
+    const result = await withTimeout(
+      supabase
+        .from('user_config')
+        .select('value')
+        .eq('user_id', user.id)
+        .eq('key', key)
+        .single(),
+      8000
+    );
     return result;
   });
 
@@ -349,42 +357,54 @@ export interface MacroContext {
 export async function getMacroContext(): Promise<MacroContext> {
   return withRetry(async () => {
     // 1. TRM más reciente
-    const { data: trmData, error: trmError } = await supabase
-      .from('macro_rates')
-      .select('value, effective_date')
-      .eq('type', 'trm')
-      .order('effective_date', { ascending: false })
-      .limit(1)
-      .single();
+    const { data: trmData, error: trmError } = await withTimeout(
+      supabase
+        .from('macro_rates')
+        .select('value, effective_date')
+        .eq('type', 'trm')
+        .order('effective_date', { ascending: false })
+        .limit(1)
+        .single(),
+      8000
+    );
 
     if (trmError) throw trmError;
 
     // 2. Tasa de política (manual, puede no existir)
-    const { data: policyData } = await supabase
-      .from('macro_rates')
-      .select('value')
-      .eq('type', 'banrep_policy_rate')
-      .order('effective_date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data: policyData } = await withTimeout(
+      supabase
+        .from('macro_rates')
+        .select('value')
+        .eq('type', 'banrep_policy_rate')
+        .order('effective_date', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      8000
+    );
 
     // 3. Inflación COP (opcional)
-    const { data: inflationCOPData } = await supabase
-      .from('macro_rates')
-      .select('value')
-      .eq('type', 'inflation_cop_annual')
-      .order('effective_date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data: inflationCOPData } = await withTimeout(
+      supabase
+        .from('macro_rates')
+        .select('value')
+        .eq('type', 'inflation_cop_annual')
+        .order('effective_date', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      8000
+    );
 
     // 4. Inflación USD (opcional)
-    const { data: inflationUSDData } = await supabase
-      .from('macro_rates')
-      .select('value')
-      .eq('type', 'inflation_usd_annual')
-      .order('effective_date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data: inflationUSDData } = await withTimeout(
+      supabase
+        .from('macro_rates')
+        .select('value')
+        .eq('type', 'inflation_usd_annual')
+        .order('effective_date', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      8000
+    );
 
     return {
       trm: trmData.value,
@@ -475,7 +495,7 @@ export async function getCdtMarketRates(termDays?: number): Promise<CdtMarketRat
       query = query.limit(10);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await withTimeout(query, 8000);
 
     if (error) throw error;
 

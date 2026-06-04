@@ -106,9 +106,13 @@ serve(async (req) => {
             query = query.is('asset_ref', null)
           }
 
-          const { data: existing } = await query.maybeSingle()
+          // Corrección bug duplicados (Winston, 2026-06-04):
+          // Usar .limit(1) en lugar de .maybeSingle() para evitar error PGRST116
+          // si ya existen múltiples duplicados en BD
+          const { data: existing } = await query.limit(1)
 
-          if (!existing) {
+          // Verificar si el array está vacío (no hay duplicados)
+          if (!existing || existing.length === 0) {
             const { error: insertError } = await supabase
               .from('inbox_events')
               .insert(event)
@@ -782,31 +786,14 @@ async function calculateHurdleRate(supabase: any): Promise<number> {
     devaluationRate = Math.pow(newestTrm / oldestTrm, 1 / years) - 1
   }
 
-  // 3. Inflación COP y USD
-  const { data: inflationCOP } = await supabase
-    .from('macro_rates')
-    .select('value')
-    .eq('type', 'inflation_cop_annual')
-    .order('effective_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  // 3. TER promedio ETFs indexados (VOO, VTI: ~0.03-0.05%)
+  const ter = 0.0005 // 0.05%
 
-  const { data: inflationUSD } = await supabase
-    .from('macro_rates')
-    .select('value')
-    .eq('type', 'inflation_usd_annual')
-    .order('effective_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const infCOP = (inflationCOP?.value || 6.61) / 100
-  const infUSD = (inflationUSD?.value || 2.95) / 100
-
-  // 4. TER promedio (asumido 0.04% para ETFs indexados)
-  const ter = 0.0004
-
-  // Ecuación de Fisher adaptada
-  const hurdleRate = (cdtRate.rate / 100) + devaluationRate - (infCOP - infUSD) - ter
+  // 4. Ecuación rigurosa corregida (Winston, 2026-06-04)
+  // (1 + R_ETF - TER)(1 + e) = 1 + (R_CDT × 0.96)
+  // Despejando: R_Hurdle_USD = [(R_CDT × 0.96) - e] / (1 + e) + TER
+  const cdtNet = (cdtRate.rate / 100) * 0.96  // Retefuente 4% descontada
+  const hurdleRate = (cdtNet - devaluationRate) / (1 + devaluationRate) + ter
 
   return hurdleRate * 100
 }

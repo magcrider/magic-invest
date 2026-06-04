@@ -6,9 +6,9 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 ## Estado General — Junio 4, 2026
 
-* **Fase:** 🟢 Fase 1 (MVP) — 85% completado
-* **Último cambio:** Junio 4, 2026 — Actualización de contextos post-compactación
-* **Próxima sesión con Winston:** Pendiente revisión estratégica
+* **Fase:** 🟢 Fase 1 (MVP) — 88% completado
+* **Último cambio:** Junio 4, 2026 — Corrección de 4 bugs críticos (auditoría Winston)
+* **Próxima sesión con Winston:** Revisión de correcciones + estrategia Fase 2
 
 ### ✅ Módulos Completados
 
@@ -212,35 +212,58 @@ Cuando haya usuarios externos:
 - ✅ Junio 3: Motor de eventos Buzón (4 triggers)
 - ✅ Junio 4: Mensajes Markdown enriquecidos
 - ✅ Junio 4: Sticky headers (17 pantallas)
+- ✅ Junio 4: Corrección 4 bugs críticos (auditoría Winston)
 - ⏳ Junio 5+: Watchlist ETFs + Sistema Rebalanceo
 
 ---
 
 ## 📝 Notas de Sesión Actual
 
-**Contexto:** Harvey notó que mi memoria estaba obsoleta (sugería tareas ya completadas). Revisé en detalle todos los archivos de contexto y código implementado para sincronizar estado real.
+**Contexto:** Winston (IA Interventora) realizó auditoría técnica completa y encontró 4 bugs críticos/medios que debían corregirse antes de continuar con Fase 2.
 
-**Hallazgos:**
-1. Plan `listo-vamos-a-planear-unified-shamir.md` completamente obsoleto (describía backend como pendiente)
-2. Backend Banrep/inflación/EOD **100% implementado** (7 Edge Functions operativas)
-3. Motor de eventos Buzón **100% funcional** (4 de 5 triggers)
-4. Hurdle Rate **100% dinámico** (sin datos hardcodeados)
-5. **Única tarea real pendiente Fase 1:** Watchlist ETFs + Sistema Rebalanceo
+**Bugs corregidos (Junio 4, 2026):**
 
-**Acción tomada:**
-- ✅ Plan obsoleto archivado como `COMPLETADO-backend-supabase-fase-1.md`
-- ✅ Este archivo (`todo_and_wip.md`) actualizado con estado preciso
-- ⏳ Pendiente: Revisión de Winston para próximos pasos
+### 1. Bug Crítico: Ecuación Hurdle Rate Invertida
+- **Problema:** Signos de devaluación y TER invertidos, inflación redundante
+- **Impacto:** Cálculo completamente erróneo (podía recomendar ETF cuando CDT era mejor)
+- **Corrección:** Ecuación de Fisher correcta: `R = [(CDT × 0.96) - e] / (1 + e) + TER`
+- **Archivos:** `src/lib/hurdle-rate.ts`, `src/app/tools/cdt-vs-etf.tsx`, `src/app/portfolio/index.tsx`
+- **Estado:** ✅ Probado y aprobado por Winston
+
+### 2. Bug Medio: Tasa Banrep No Automatizada
+- **Problema:** Hardcoded fallback 11.25% impedía funcionamiento del Trigger #3 del Buzón
+- **Corrección:** Web scraping de página oficial Banrep (3 patrones regex + validación de seguridad)
+- **Archivo:** `supabase/functions/fetch-banrep-data/index.ts`
+- **Estado:** ✅ Aprobado por Winston
+
+### 3. Bug Medio: UX Offline Pantalla en Blanco
+- **Problema:** Error de red mostraba pantalla vacía en lugar de feedback visual
+- **Corrección:** Componente `<OfflineScreen>` + timeout 8s + manejo de errores silencioso
+- **Archivos:** `src/components/offline-screen.tsx`, `src/app/portfolio/index.tsx`, `src/app/inbox/index.tsx`, `src/lib/fetch-with-timeout.ts`
+- **Estado:** ✅ Aprobado por Winston, probado en emulador
+
+### 4. Bug Medio: Duplicados Infinitos Motor Buzón
+- **Problema:** `.maybeSingle()` fallaba con error PGRST116 cuando había 2+ duplicados → insertaba más duplicados en bucle
+- **Corrección:** `.limit(1)` + validación `existing.length === 0`
+- **Archivo:** `supabase/functions/generate-inbox-events/index.ts` (línea 109)
+- **Estado:** ✅ Aprobado por Winston
+
+**Resultado:**
+- Sistema ahora matemáticamente correcto y robusto
+- UX offline funcional en Portafolio y Buzón
+- Motor de eventos estable (no agrava duplicados existentes)
+- ⏳ Pendiente: Commit consolidado de los 4 fixes
 
 ---
 
 ## 🔄 Última Actualización
 
-**Fecha:** Junio 4, 2026  
-**Autor:** Claude Code (sesión post-compactación)  
+**Fecha:** Junio 4, 2026 (19:00)  
+**Autor:** Claude Code (sesión auditoría Winston)  
 **Commits recientes:**
 - `35c59a5` — Parsing robusto + consistencia símbolos + docs optimizados
 - `f6b9682` — Mejorar proyección + modals educativos en Portafolio
 - `01c2c6c` — Auto-retry transparente JWT (PGRST303)
 - `273f1f2` — Validación estricta + scroll automático + tipografía robusta
 - `0d1e9c2` — Actualizar contextos + regla no-commits-sin-aprobación
+- ⏳ **Próximo commit:** Fix 4 bugs críticos (Hurdle Rate + Banrep + Offline + Duplicados)

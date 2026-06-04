@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PageHeader } from '@/components/page-header';
+import { OfflineScreen } from '@/components/offline-screen';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { EVENT_TYPE_CONFIG, type EventType } from '@/constants/inbox-mock';
@@ -228,16 +229,21 @@ export default function InboxScreen() {
   const router = useRouter();
   const [events, setEvents] = useState<InboxEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [networkError, setNetworkError] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const loadEvents = useCallback(async () => {
     try {
       const dbEvents = await getInboxEvents()
       const adapted = dbEvents.map(adaptEventFromDB)
       setEvents(adapted)
+      setNetworkError(false)
     } catch (error) {
-      console.error('Error loading inbox events:', error)
+      // Error de red detectado
+      setNetworkError(true)
     } finally {
       setLoading(false)
+      setIsRetrying(false)
     }
   }, [])
 
@@ -247,9 +253,15 @@ export default function InboxScreen() {
     }, [loadEvents])
   )
 
+  function handleRetry() {
+    setIsRetrying(true)
+    setLoading(true)
+    loadEvents()
+  }
+
   function handleOpen(id: string) {
     // Marcar como leído al abrir
-    markEventAsRead(parseInt(id)).catch(console.error)
+    markEventAsRead(parseInt(id)).catch(() => {})
     router.push(`/inbox/${id}`)
   }
 
@@ -258,7 +270,7 @@ export default function InboxScreen() {
       await dismissEvent(parseInt(id))
       await loadEvents()
     } catch (error) {
-      console.error('Error deleting event:', error)
+      // Error silencioso - no hay conexión
     }
   }
 
@@ -267,12 +279,23 @@ export default function InboxScreen() {
       await markEventAsUnread(parseInt(id))
       await loadEvents()
     } catch (error) {
-      console.error('Error marking as unread:', error)
+      // Error silencioso - no hay conexión
     }
   }
 
   const unreadCount = events.filter((e) => !e.isRead).length;
   const theme = useTheme();
+
+  // Mostrar offline screen si hay error de red y no hay eventos previos
+  if (networkError && events.length === 0 && !loading) {
+    return (
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.safe}>
+          <OfflineScreen onRetry={handleRetry} isRetrying={isRetrying} />
+        </SafeAreaView>
+      </ThemedView>
+    )
+  }
 
   if (loading) {
     return (
@@ -280,7 +303,7 @@ export default function InboxScreen() {
         <SafeAreaView style={styles.safe}>
           <PageHeader title="Buzón" subtitle="Cargando mensajes..." />
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.primary} />
+            <ActivityIndicator size="large" color={theme.positive} />
           </View>
         </SafeAreaView>
       </ThemedView>

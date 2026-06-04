@@ -172,7 +172,7 @@ export function DrawerMenu({ visible, onClose }: Props) {
                   }}
                 >
                   <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
-                    <Ionicons name="flask-outline" size={18} color={theme.primary} />
+                    <Ionicons name="flask-outline" size={18} color={theme.positive} />
                     <ThemedText type="default">Generar mensajes Buzón</ThemedText>
                   </ThemedView>
                   <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />

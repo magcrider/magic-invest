@@ -158,6 +158,121 @@ serve(async (req) => {
       console.error('[fetch-banrep-data] Error procesando inflación:', inflError)
     }
 
+    // 8. Fetch Tasa de Política Monetaria (scraping sitio oficial Banrep)
+    const policyRateUrl = 'https://www.banrep.gov.co/es/estadisticas/tasas-intervencion-politica-monetaria'
+    console.log('[fetch-banrep-data] Consultando tasa de política monetaria:', policyRateUrl)
+
+    let policyRateInserted = 0
+    let policyRateValue: number | null = null
+    let policyRateDate: string | null = null
+
+    try {
+      const policyResponse = await fetch(policyRateUrl)
+
+      if (!policyResponse.ok) {
+        console.error('[fetch-banrep-data] Sitio Banrep falló:', policyResponse.status)
+      } else {
+        const html = await policyResponse.text()
+
+        // Buscar tasa: patrones posibles del sitio
+        // Ejemplo 1: "Tasa de intervención actual: 11,25%"
+        // Ejemplo 2: "11,25%" en tabla con clase específica
+        // Ejemplo 3: JSON embebido con datos
+        const ratePatterns = [
+          /Tasa\s+de\s+intervenci[oó]n\s+actual:\s*([\d,]+)\s*%/i,
+          /Tasa\s+actual:\s*([\d,]+)\s*%/i,
+          /<td[^>]*>\s*([\d,]+)\s*%?\s*<\/td>/i  // Tabla HTML
+        ]
+
+        let rateMatch: RegExpMatchArray | null = null
+        for (const pattern of ratePatterns) {
+          rateMatch = html.match(pattern)
+          if (rateMatch) break
+        }
+
+        if (rateMatch) {
+          const rateStr = rateMatch[1].replace(',', '.')
+          policyRateValue = parseFloat(rateStr)
+          console.log('[fetch-banrep-data] Tasa de política encontrada:', policyRateValue)
+        }
+
+        // Buscar fecha de vigencia
+        // Ejemplo: "Aplica desde el 1 de abril de 2026"
+        // Ejemplo: "Vigente desde: 01/04/2026"
+        const datePatterns = [
+          /Aplica\s+desde\s+el\s+(\d+)\s+de\s+(\w+)\s+de\s+(\d{4})/i,
+          /Vigente\s+desde:\s*(\d{2})\/(\d{2})\/(\d{4})/i,
+          /A\s+partir\s+del\s+(\d+)\s+de\s+(\w+)\s+de\s+(\d{4})/i
+        ]
+
+        let dateMatch: RegExpMatchArray | null = null
+        let matchedPattern = -1
+        for (let i = 0; i < datePatterns.length; i++) {
+          dateMatch = html.match(datePatterns[i])
+          if (dateMatch) {
+            matchedPattern = i
+            break
+          }
+        }
+
+        if (dateMatch && matchedPattern === 0) {
+          // Formato: "1 de abril de 2026"
+          const day = dateMatch[1].padStart(2, '0')
+          const monthName = dateMatch[2].toLowerCase()
+          const year = dateMatch[3]
+          const month = spanishMonthToNumber(monthName)
+          policyRateDate = `${year}-${month}-${day}`
+          console.log('[fetch-banrep-data] Fecha vigencia encontrada:', policyRateDate)
+        } else if (dateMatch && matchedPattern === 1) {
+          // Formato: "01/04/2026"
+          policyRateDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`
+          console.log('[fetch-banrep-data] Fecha vigencia encontrada:', policyRateDate)
+        } else if (dateMatch && matchedPattern === 2) {
+          // Formato: "1 de abril de 2026" (alternativo)
+          const day = dateMatch[1].padStart(2, '0')
+          const monthName = dateMatch[2].toLowerCase()
+          const year = dateMatch[3]
+          const month = spanishMonthToNumber(monthName)
+          policyRateDate = `${year}-${month}-${day}`
+          console.log('[fetch-banrep-data] Fecha vigencia encontrada:', policyRateDate)
+        }
+
+        // 9. Validaciones de seguridad antes de insertar (Winston, 2026-06-04)
+        const isValidRate = policyRateValue && policyRateValue > 0 && policyRateValue < 25.0
+        const parsedDate = policyRateDate ? Date.parse(policyRateDate) : NaN
+        const oneDayFromNow = Date.now() + 86400000 // +24h tolerancia para anuncios anticipados
+        const isValidDate = !isNaN(parsedDate) && parsedDate <= oneDayFromNow
+
+        if (!isValidRate) {
+          console.warn('[fetch-banrep-data] Tasa inválida (fuera de rango 0-25%):', policyRateValue)
+        }
+        if (!isValidDate) {
+          console.warn('[fetch-banrep-data] Fecha inválida o futura:', policyRateDate)
+        }
+
+        // 10. Upsert tasa de política en macro_rates (solo si ambas validaciones pasan)
+        if (isValidRate && isValidDate) {
+          const { error } = await supabase.from('macro_rates').upsert({
+            type: 'banrep_policy_rate',
+            value: policyRateValue,
+            effective_date: policyRateDate,
+            source: 'banrep.gov.co'
+          }, { onConflict: 'type,effective_date' })
+
+          if (error) {
+            console.error('[fetch-banrep-data] Error insertando tasa de política:', error)
+          } else {
+            policyRateInserted = 1
+            console.log('[fetch-banrep-data] Tasa de política insertada:', policyRateValue, policyRateDate)
+          }
+        } else {
+          console.warn('[fetch-banrep-data] No se pudo extraer tasa o fecha de vigencia del HTML')
+        }
+      }
+    } catch (policyError) {
+      console.error('[fetch-banrep-data] Error scraping tasa de política:', policyError)
+    }
+
     const result = {
       success: true,
       trm_records: trmData.length,
@@ -166,6 +281,9 @@ serve(async (req) => {
       cdt_inserted: cdtInserted,
       inflation_inserted: inflationInserted,
       inflation_years: inflationYears,
+      policy_rate_inserted: policyRateInserted,
+      policy_rate_value: policyRateValue,
+      policy_rate_date: policyRateDate,
       timestamp: new Date().toISOString()
     }
 
@@ -197,6 +315,24 @@ function getHeaders(): HeadersInit {
     console.log('[fetch-banrep-data] Usando Socrata App Token')
   }
   return headers
+}
+
+function spanishMonthToNumber(monthName: string): string {
+  const months: Record<string, string> = {
+    'enero': '01',
+    'febrero': '02',
+    'marzo': '03',
+    'abril': '04',
+    'mayo': '05',
+    'junio': '06',
+    'julio': '07',
+    'agosto': '08',
+    'septiembre': '09',
+    'octubre': '10',
+    'noviembre': '11',
+    'diciembre': '12'
+  }
+  return months[monthName] || '01'
 }
 
 function aggregateCdtRates(

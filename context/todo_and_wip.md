@@ -6,9 +6,9 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 ## Estado General — Junio 4, 2026
 
-* **Fase:** 🟢 Fase 1 (MVP) — 88% completado
-* **Último cambio:** Junio 4, 2026 — Corrección de 4 bugs críticos (auditoría Winston)
-* **Próxima sesión con Winston:** Revisión de correcciones + estrategia Fase 2
+* **Fase:** 🟢 Fase 1 (MVP) — 95% completado
+* **Último cambio:** Junio 4, 2026 — Watchlist ETFs + Trigger #5 del Buzón implementado
+* **Próxima sesión con Winston:** Auditoría Watchlist + definir Sistema de Rebalanceo
 
 ### ✅ Módulos Completados
 
@@ -28,24 +28,24 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 #### 3. Módulo Buzón (100%)
 - UI completa (lista + detalle con Markdown enriquecido)
-- Motor de eventos backend con 4 de 5 triggers:
+- Motor de eventos backend con **5 de 5 triggers:**
   - ✅ CDT próximo a vencer (30/60/90 días)
   - ✅ Drawdown ETF (>25% desde pico)
   - ✅ Cambio tasa Banrep (≥50 bps)
   - ✅ Bandas de asignación fuera de rango
-  - ⏳ ETF cruza Hurdle Rate (requiere watchlist)
+  - ✅ **ETF cruza Hurdle Rate (watchlist implementada)**
 - Swipe actions (eliminar / marcar no leído)
 - Navegación bidireccional con Portafolio
 - Badges dinámicos en tarjetas de activos
 
-#### 4. Módulo Portafolio Fase 1 (90%)
+#### 4. Módulo Portafolio Fase 1 (100%)
 - CRUD completo (CDTs + ETFs)
 - Cálculo de valor actual con precios EOD reales
 - Proyecciones a 2, 5 y 10 años
 - ContextStrip con datos macroeconómicos reales
 - Modales educativos (Hurdle Rate, perfil, proyección)
 - Badges dinámicos (eventos relacionados por activo)
-- **Faltante:** Watchlist ETFs (tabla vacía)
+- ✅ **Watchlist ETFs funcional** (agregar/eliminar, precios, comparación vs HR)
 
 #### 5. Backend Supabase (100%)
 - **7 Edge Functions operativas:**
@@ -72,27 +72,7 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 ## 🎯 Tareas Pendientes Inmediatas
 
-### 1. Watchlist ETFs — Semilla Inicial
-
-**Estado:** Tabla `etf_watchlist` vacía
-
-**Acción requerida:**
-1. Definir criterios de selección (Winston)
-2. Poblar con 3-5 tickers representativos sugeridos por Claude
-3. Permitir agregar/quitar después desde UI
-
-**Desbloquea:**
-- Trigger #5 del Buzón (ETF cruza Hurdle Rate)
-- Sistema de comparación vs portafolio actual
-
-**Preguntas para Winston:**
-- ¿Qué criterios usar? (capitalización, sector, TER, histórico)
-- ¿Tickers específicos recomendados para perfil Harvey?
-- ¿Cuántos ETFs en watchlist inicial? (3, 5, 10)
-
----
-
-### 2. Sistema de Rebalanceo
+### 1. Sistema de Rebalanceo
 
 **Estado:** No implementado
 
@@ -213,7 +193,8 @@ Cuando haya usuarios externos:
 - ✅ Junio 4: Mensajes Markdown enriquecidos
 - ✅ Junio 4: Sticky headers (17 pantallas)
 - ✅ Junio 4: Corrección 4 bugs críticos (auditoría Winston)
-- ⏳ Junio 5+: Watchlist ETFs + Sistema Rebalanceo
+- ✅ Junio 4: Watchlist ETFs + Trigger #5 del Buzón
+- ⏳ Junio 5+: Sistema Rebalanceo
 
 ---
 

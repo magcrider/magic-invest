@@ -247,6 +247,17 @@ export function DrawerMenu({ visible, onClose }: Props) {
               <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => {
+                onClose();
+                router.push('/portfolio/watchlist');
+              }}
+            >
+              <ThemedText type="default">Watchlist ETFs</ThemedText>
+              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+
             <ThemedView style={[styles.divider, { backgroundColor: theme.divider }]} />
 
             <ThemedText type="small" themeColor="textSecondary" style={styles.sectionLabel}>

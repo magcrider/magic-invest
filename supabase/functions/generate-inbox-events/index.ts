@@ -741,11 +741,137 @@ Si tu perfil de riesgo cambió, puedes actualizar las bandas en vez de rebalance
 /**
  * Trigger #5: ETF cruza Hurdle Rate (ahora justifica capital)
  */
+/**
+ * Trigger #5: ETF en watchlist cruza Hurdle Rate
+ * Notifica cuando un ETF supera o baja del Hurdle Rate del usuario
+ */
 async function checkEtfCrossesHurdle(supabase: any, userId: string): Promise<InboxEvent[]> {
   const events: InboxEvent[] = []
 
-  // Obtener watchlist del usuario (tabla futura, por ahora skip)
-  // TODO: implementar cuando exista tabla etf_watchlist
+  // 1. Obtener watchlist del usuario
+  const { data: watchlist, error: watchlistError } = await supabase
+    .from('watchlist_etfs')
+    .select('ticker')
+    .eq('user_id', userId)
+
+  if (watchlistError || !watchlist || watchlist.length === 0) {
+    return events
+  }
+
+  // 2. Calcular Hurdle Rate del usuario
+  const hurdleRate = await calculateHurdleRate(supabase)
+
+  // 3. Obtener precios EOD de los ETFs en watchlist
+  const tickers = watchlist.map((w: any) => w.ticker)
+
+  for (const ticker of tickers) {
+    // Obtener precio EOD más reciente
+    const { data: eodData } = await supabase
+      .from('eod_prices')
+      .select('close, adjusted_close, date')
+      .eq('ticker', ticker)
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!eodData) continue
+
+    // Obtener precio EOD de hace 1 año (para calcular retorno anual)
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+
+    const { data: eodOneYearAgo } = await supabase
+      .from('eod_prices')
+      .select('adjusted_close')
+      .eq('ticker', ticker)
+      .lte('date', oneYearAgo.toISOString().split('T')[0])
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!eodOneYearAgo) continue
+
+    // Calcular CAGR anual (usando adjusted_close para considerar dividendos)
+    const priceNow = eodData.adjusted_close
+    const priceYearAgo = eodOneYearAgo.adjusted_close
+    const returnPct = ((priceNow / priceYearAgo) - 1) * 100
+
+    // Determinar si cruza el Hurdle Rate
+    const exceedsHurdle = returnPct > hurdleRate
+    const margin = Math.abs(returnPct - hurdleRate)
+
+    // Solo notificar si la diferencia es significativa (>0.5%)
+    if (margin < 0.5) continue
+
+    // Generar evento
+    const direction = exceedsHurdle ? 'supera' : 'está por debajo de'
+    const emoji = exceedsHurdle ? '✅' : '⚠️'
+
+    const body = `${emoji} **${ticker}** ha tenido un rendimiento anual de **${returnPct.toFixed(2)}%** — **${direction}** tu Hurdle Rate de **${hurdleRate.toFixed(2)}%**.
+
+---
+
+## 📊 Comparación
+
+| Métrica | Valor |
+|---|---:|
+| **Retorno ${ticker} (1 año)** | ${returnPct.toFixed(2)}% |
+| **Tu Hurdle Rate** | ${hurdleRate.toFixed(2)}% |
+| **Diferencia** | ${exceedsHurdle ? '+' : ''}${(returnPct - hurdleRate).toFixed(2)}% |
+
+---
+
+## 🤔 ¿Qué significa esto?
+
+${exceedsHurdle
+  ? `> **${ticker} está justificando el riesgo cambiario.**
+>
+> Su rendimiento en USD supera tu Hurdle Rate, lo que significa que — después de descontar devaluación, retefuente CDT y costos TER — está generando valor real vs mantener CDTs.
+
+**Opciones a considerar:**
+
+1️⃣ **Mantener posición actual** — El ETF está cumpliendo su función
+2️⃣ **Aumentar exposición** — Si las bandas lo permiten
+3️⃣ **No hacer nada** — Rendimiento pasado no garantiza futuro`
+  : `> **${ticker} NO está justificando el riesgo cambiario.**
+>
+> Su rendimiento en USD está por debajo de tu Hurdle Rate. Esto significa que — considerando devaluación, costos y retefuente — no está generando valor vs mantener CDTs.
+
+**Opciones a considerar:**
+
+1️⃣ **Monitorear de cerca** — Puede ser volatilidad temporal
+2️⃣ **Evaluar reducción** — Si la tendencia persiste
+3️⃣ **Revisar watchlist** — ¿Hay mejores alternativas indexadas?`
+}
+
+---
+
+## 📌 Nota metodológica
+
+* **Retorno calculado:** Últimos 12 meses usando precio ajustado (incluye dividendos)
+* **Hurdle Rate:** Calculado con tu tasa CDT actual, devaluación histórica y TER promedio
+* **Fecha precio:** ${formatDate(eodData.date)}
+
+> ⚠️ **Disclaimer:** Este análisis se basa en datos históricos. El comportamiento pasado no garantiza resultados futuros. No constituye asesoría financiera.`
+
+    events.push({
+      user_id: userId,
+      type: 'market_trigger',
+      subtype: 'etf_cross_hurdle',
+      title: `${ticker} ${direction} tu Hurdle Rate`,
+      body,
+      asset_ref: ticker,
+      asset_type: 'etf',
+      metadata: {
+        ticker,
+        return_pct: returnPct,
+        hurdle_rate: hurdleRate,
+        exceeds: exceedsHurdle,
+        margin,
+        price_date: eodData.date,
+      },
+    })
+  }
 
   return events
 }

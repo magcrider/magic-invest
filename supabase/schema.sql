@@ -104,6 +104,14 @@ CREATE TABLE IF NOT EXISTS public.inbox_events (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.watchlist_etfs (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  ticker     TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, ticker)
+);
+
 -- ============================================================
 -- ÍNDICES
 -- ============================================================
@@ -115,6 +123,7 @@ CREATE INDEX IF NOT EXISTS idx_user_config_user_key   ON public.user_config(user
 CREATE INDEX IF NOT EXISTS idx_cdt_positions_user     ON public.cdt_positions(user_id, end_date);
 CREATE INDEX IF NOT EXISTS idx_etf_positions_user     ON public.etf_positions(user_id, ticker);
 CREATE INDEX IF NOT EXISTS idx_inbox_events_user_read ON public.inbox_events(user_id, read_at, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_watchlist_etfs_user    ON public.watchlist_etfs(user_id, ticker);
 
 -- ============================================================
 -- ROW LEVEL SECURITY
@@ -127,6 +136,7 @@ ALTER TABLE public.user_config    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cdt_positions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.etf_positions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inbox_events   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.watchlist_etfs ENABLE ROW LEVEL SECURITY;
 
 -- Datos de mercado: cualquier usuario autenticado puede leer, nadie puede escribir desde cliente
 DROP POLICY IF EXISTS "market_data_read" ON public.macro_rates;
@@ -156,4 +166,8 @@ CREATE POLICY "own_data" ON public.etf_positions
 
 DROP POLICY IF EXISTS "own_data" ON public.inbox_events;
 CREATE POLICY "own_data" ON public.inbox_events
+  FOR ALL TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "own_data" ON public.watchlist_etfs;
+CREATE POLICY "own_data" ON public.watchlist_etfs
   FOR ALL TO authenticated USING (auth.uid() = user_id);

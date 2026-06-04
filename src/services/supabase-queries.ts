@@ -747,3 +747,100 @@ export async function dismissEvent(eventId: number): Promise<void> {
     if (error) throw error
   })
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WATCHLIST ETFs
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WatchlistEtf {
+  id: string
+  userId: string
+  ticker: string
+  createdAt: string
+}
+
+/**
+ * Obtiene la lista de ETFs que el usuario sigue
+ */
+export async function getWatchlistEtfs(): Promise<WatchlistEtf[]> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No authenticated user')
+
+    const { data, error } = await supabase
+      .from('watchlist_etfs')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return (data || []).map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      ticker: row.ticker,
+      createdAt: row.created_at,
+    }))
+  })
+}
+
+/**
+ * Agrega un ETF a la watchlist del usuario
+ * @param ticker - Símbolo del ETF (ej: 'VOO', 'VTI', 'QQQ')
+ */
+export async function addEtfToWatchlist(ticker: string): Promise<void> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No authenticated user')
+
+    const { error } = await supabase
+      .from('watchlist_etfs')
+      .insert({
+        user_id: user.id,
+        ticker: ticker.toUpperCase().trim(),
+      })
+
+    if (error) throw error
+  })
+}
+
+/**
+ * Elimina un ETF de la watchlist del usuario
+ * @param ticker - Símbolo del ETF a eliminar
+ */
+export async function removeEtfFromWatchlist(ticker: string): Promise<void> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No authenticated user')
+
+    const { error } = await supabase
+      .from('watchlist_etfs')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('ticker', ticker.toUpperCase().trim())
+
+    if (error) throw error
+  })
+}
+
+/**
+ * Verifica si un ETF está en la watchlist del usuario
+ * @param ticker - Símbolo del ETF
+ */
+export async function isEtfInWatchlist(ticker: string): Promise<boolean> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
+
+    const { data, error } = await supabase
+      .from('watchlist_etfs')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('ticker', ticker.toUpperCase().trim())
+      .limit(1)
+
+    if (error) throw error
+
+    return (data && data.length > 0)
+  })
+}

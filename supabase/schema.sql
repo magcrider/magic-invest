@@ -45,6 +45,40 @@ CREATE TABLE IF NOT EXISTS public.eod_prices (
 );
 
 -- ============================================================
+-- TABLAS DE REBALANCEO (Sistema de Rebalanceo - Fase 1)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.user_allocation_bands (
+  user_id    UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  cdt_min    NUMERIC(5,2) NOT NULL DEFAULT 50.00,
+  cdt_max    NUMERIC(5,2) NOT NULL DEFAULT 70.00,
+  etf_min    NUMERIC(5,2) NOT NULL DEFAULT 30.00,
+  etf_max    NUMERIC(5,2) NOT NULL DEFAULT 50.00,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.portfolio_snapshots (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  snapshot_date   DATE NOT NULL,
+  cdt_percentage  NUMERIC(5,2) NOT NULL,
+  etf_percentage  NUMERIC(5,2) NOT NULL,
+  total_value_cop NUMERIC(15,2) NOT NULL,
+  hurdle_rate     NUMERIC(5,2),
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, snapshot_date)
+);
+
+CREATE TABLE IF NOT EXISTS public.hurdle_rate_cache (
+  user_id       UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  hurdle_rate   NUMERIC(5,2) NOT NULL,
+  calculated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_portfolio_snapshots_user_date
+  ON public.portfolio_snapshots(user_id, snapshot_date DESC);
+
+-- ============================================================
 -- TABLAS DE USUARIO (por usuario autenticado)
 -- ============================================================
 
@@ -170,4 +204,16 @@ CREATE POLICY "own_data" ON public.inbox_events
 
 DROP POLICY IF EXISTS "own_data" ON public.watchlist_etfs;
 CREATE POLICY "own_data" ON public.watchlist_etfs
+  FOR ALL TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "own_data" ON public.user_allocation_bands;
+CREATE POLICY "own_data" ON public.user_allocation_bands
+  FOR ALL TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "own_data" ON public.portfolio_snapshots;
+CREATE POLICY "own_data" ON public.portfolio_snapshots
+  FOR ALL TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "own_data" ON public.hurdle_rate_cache;
+CREATE POLICY "own_data" ON public.hurdle_rate_cache
   FOR ALL TO authenticated USING (auth.uid() = user_id);

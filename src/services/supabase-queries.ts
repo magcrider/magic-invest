@@ -844,3 +844,191 @@ export async function isEtfInWatchlist(ticker: string): Promise<boolean> {
     return (data && data.length > 0)
   })
 }
+
+// ============================================================================
+// Rebalancing — Sistema de Rebalanceo
+// ============================================================================
+
+export interface PortfolioSnapshot {
+  id: string
+  snapshotDate: string
+  cdtPercentage: number
+  etfPercentage: number
+  totalValueCOP: number
+  hurdleRate: number | null
+  createdAt: string
+}
+
+export interface HurdleRateCache {
+  hurdleRate: number
+  calculatedAt: string
+}
+
+/**
+ * Obtiene las bandas de asignación del usuario desde tabla dedicada
+ * Si no existen, retorna preset "moderate" por defecto
+ */
+export async function getUserAllocationBands(): Promise<AllocationBands> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No authenticated user')
+
+    const { data, error } = await supabase
+      .from('user_allocation_bands')
+      .select('cdt_min, cdt_max, etf_min, etf_max')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (error) throw error
+
+    // Si no existen bandas, retornar preset "moderate"
+    if (!data) {
+      return {
+        cdt_min: 50,
+        cdt_max: 70,
+        etf_min: 30,
+        etf_max: 50,
+      }
+    }
+
+    return {
+      cdt_min: data.cdt_min,
+      cdt_max: data.cdt_max,
+      etf_min: data.etf_min,
+      etf_max: data.etf_max,
+    }
+  })
+}
+
+/**
+ * Actualiza las bandas de asignación del usuario en tabla dedicada
+ * Si no existen, las crea (upsert)
+ */
+export async function updateUserAllocationBands(bands: AllocationBands): Promise<void> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No authenticated user')
+
+    const { error } = await supabase
+      .from('user_allocation_bands')
+      .upsert({
+        user_id: user.id,
+        cdt_min: bands.cdt_min,
+        cdt_max: bands.cdt_max,
+        etf_min: bands.etf_min,
+        etf_max: bands.etf_max,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+
+    if (error) throw error
+  })
+}
+
+/**
+ * Guarda un snapshot del portafolio
+ * Usado por Edge Function en evaluaciones trimestrales
+ */
+export async function savePortfolioSnapshot(
+  snapshotDate: string,
+  cdtPercentage: number,
+  etfPercentage: number,
+  totalValueCOP: number,
+  hurdleRate: number | null
+): Promise<void> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No authenticated user')
+
+    const { error } = await supabase
+      .from('portfolio_snapshots')
+      .upsert({
+        user_id: user.id,
+        snapshot_date: snapshotDate,
+        cdt_percentage: cdtPercentage,
+        etf_percentage: etfPercentage,
+        total_value_cop: totalValueCOP,
+        hurdle_rate: hurdleRate,
+      }, { onConflict: 'user_id,snapshot_date' })
+
+    if (error) throw error
+  })
+}
+
+/**
+ * Obtiene snapshots históricos del portafolio
+ * @param months - Número de meses hacia atrás (default: 12)
+ */
+export async function getPortfolioSnapshots(months: number = 12): Promise<PortfolioSnapshot[]> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No authenticated user')
+
+    const startDate = new Date()
+    startDate.setMonth(startDate.getMonth() - months)
+
+    const { data, error } = await supabase
+      .from('portfolio_snapshots')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('snapshot_date', startDate.toISOString().split('T')[0])
+      .order('snapshot_date', { ascending: true })
+
+    if (error) throw error
+
+    return (data || []).map(row => ({
+      id: row.id,
+      snapshotDate: row.snapshot_date,
+      cdtPercentage: row.cdt_percentage,
+      etfPercentage: row.etf_percentage,
+      totalValueCOP: row.total_value_cop,
+      hurdleRate: row.hurdle_rate,
+      createdAt: row.created_at,
+    }))
+  })
+}
+
+/**
+ * Obtiene el último Hurdle Rate cacheado
+ * Retorna null si no existe
+ */
+export async function getCachedHurdleRate(): Promise<HurdleRateCache | null> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const { data, error } = await supabase
+      .from('hurdle_rate_cache')
+      .select('hurdle_rate, calculated_at')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (error) throw error
+
+    if (!data) return null
+
+    return {
+      hurdleRate: data.hurdle_rate,
+      calculatedAt: data.calculated_at,
+    }
+  })
+}
+
+/**
+ * Actualiza el cache de Hurdle Rate
+ */
+export async function updateHurdleRateCache(hurdleRate: number): Promise<void> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No authenticated user')
+
+    const { error } = await supabase
+      .from('hurdle_rate_cache')
+      .upsert({
+        user_id: user.id,
+        hurdle_rate: hurdleRate,
+        calculated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+
+    if (error) throw error
+  })
+}

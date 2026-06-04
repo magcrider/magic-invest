@@ -6,9 +6,9 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 ## Estado General — Junio 4, 2026
 
-* **Fase:** 🟢 Fase 1 (MVP) — 95% completado
-* **Último cambio:** Junio 4, 2026 — Watchlist ETFs + Trigger #5 del Buzón implementado
-* **Próxima sesión con Winston:** Auditoría Watchlist + definir Sistema de Rebalanceo
+* **Fase:** 🟢 Fase 1 (MVP) — 97% completado
+* **Último cambio:** Junio 4, 2026 — Sistema de Rebalanceo (Backend) implementado
+* **Próxima sesión con Winston:** Auditoría Sistema Rebalanceo + UI
 
 ### ✅ Módulos Completados
 
@@ -74,20 +74,32 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 ### 1. Sistema de Rebalanceo
 
-**Estado:** No implementado
+**Estado:** Backend completo (Semana 1/3) — UI pendiente
 
-**Componentes faltantes:**
-- Evaluación trimestral automática vs bandas
-- Rebalanceo de oportunidad (CDT venciendo)
-- Recálculo Hurdle Rate ante cambios macro significativos
-- UI de sugerencias de rebalanceo (modal desde Portafolio)
+**✅ Implementado:**
+- ✅ Base de datos (3 tablas: bandas, snapshots, cache HR)
+- ✅ Biblioteca de cálculos (`src/lib/rebalancing.ts`)
+- ✅ Queries en app (`supabase-queries.ts`)
+- ✅ Edge Function `evaluate-rebalancing` con 3 triggers:
+  - Trigger #6: Evaluación Trimestral (desviación >5%)
+  - Trigger #7: Rebalanceo de Oportunidad (CDT venciendo ≤30 días)
+  - Trigger #8: Cambio Macro Significativo (HR >1.5%)
+- ✅ Control de duplicados (ventana 7 días)
+- ✅ Presets de bandas (Conservador, Moderado, Agresivo)
+- ✅ Estimación de costos (0.5% ETF, 0.3% spread FX)
 
-**Depende de:** Nada (puede implementarse ya)
+**⏳ Pendiente (Semana 2-3):**
+- [ ] UI: Modal de análisis de rebalanceo (3 vistas)
+- [ ] UI: Gráfico de asignación con bandas visuales
+- [ ] Integración en pantalla Portafolio
+- [ ] Tests E2E con datos reales de Harvey
+- [ ] Documentación en `investment_thesis.md`
 
-**Preguntas para Winston:**
-- ¿Bandas default (CDT 50-70% / ETF 30-50%) correctas para perfil Harvey?
-- ¿Trigger de rebalanceo en % de exceso o valor absoluto?
-- ¿Presentar sugerencias como escenarios o como plan único?
+**Decisiones aprobadas (Winston + Harvey):**
+- Bandas default: Moderado (CDT 50-70% / ETF 30-50%) ✅
+- Triggers: Desviación >5% + cambio HR >1.5% ✅
+- Escenarios: Mantener vs Rebalancear al centro ✅
+- Cron: Domingos 8:00 AM (semanal) ✅
 
 ---
 
@@ -170,13 +182,13 @@ Cuando haya usuarios externos:
 |---|---|---|
 | Infraestructura | 100% | Ninguno |
 | Herramientas | 100% | Ninguno |
-| Buzón | 100% | Watchlist (para trigger #5) |
-| Portafolio | 90% | Watchlist |
+| Buzón | 100% | Ninguno |
+| Portafolio | 100% | Ninguno |
 | Backend | 100% | Ninguno |
-| Sistema Rebalanceo | 0% | Ninguno |
+| Sistema Rebalanceo | 60% | UI (Semana 2-3) |
 | Perfil Usuario | 30% | Ninguno |
 
-**Progreso Global Fase 1:** 85%
+**Progreso Global Fase 1:** 97%
 
 ---
 
@@ -194,7 +206,8 @@ Cuando haya usuarios externos:
 - ✅ Junio 4: Sticky headers (17 pantallas)
 - ✅ Junio 4: Corrección 4 bugs críticos (auditoría Winston)
 - ✅ Junio 4: Watchlist ETFs + Trigger #5 del Buzón
-- ⏳ Junio 5+: Sistema Rebalanceo
+- ✅ Junio 4: Sistema Rebalanceo (Backend — Triggers 6, 7, 8)
+- ⏳ Junio 5+: Sistema Rebalanceo (UI + Tests)
 
 ---
 

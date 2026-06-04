@@ -19,14 +19,12 @@ import { InfoModal } from '@/components/info-modal';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PROFILE_CONFIG, PROFILE_BANDS, type RiskProfile } from '@/constants/risk-profile';
-import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs, getMacroContext, getCdtMarketRates, getLatestEodPrices, getTrmHistory, type MacroContext, type CdtMarketRate, type EodPrice } from '@/services/supabase-queries';
+import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs, getMacroContext, getCdtMarketRates, getLatestEodPrices, getTrmHistory, getInboxEvents, type MacroContext, type CdtMarketRate, type EodPrice } from '@/services/supabase-queries';
 import { calculateDevaluation, calculatePortfolioHurdleRate } from '@/lib/hurdle-rate';
 import { profileEvents } from '@/utils/profile-events';
 import { formatCurrency, abbreviateValue } from '@/utils/format';
 import { useAuth } from '@/hooks/use-auth';
 import type { CdtPosition, EtfPosition, AllocationBands } from '@/types/database';
-import { INBOX_EVENTS, type InboxEvent } from '@/constants/inbox-mock';
-import { inboxState } from '@/utils/inbox-state';
 
 // ── Tasas hardcodeadas mientras implementamos backend completo ──────────
 const CDT_MKT_RATE  = 11.2;  // TODO: vendrá de cdt_rates cuando implementemos API CDT
@@ -76,39 +74,6 @@ function bandHealth(pct: number, min: number, max: number): BandHealth {
   return 'fuera';
 }
 
-function isEffectivelyUnread(evt: InboxEvent): boolean {
-  if (inboxState.isDeleted(evt.id)) return false;
-  if (inboxState.isUnread(evt.id)) return true;
-  if (inboxState.isRead(evt.id)) return false;
-  return !evt.isRead;
-}
-
-function relatedUnreadCount(cdts: CdtPosition[], etfs: EtfPosition[]): number {
-  return INBOX_EVENTS.filter((evt) => {
-    if (!isEffectivelyUnread(evt) || !evt.relatedAsset) return false;
-    const asset = evt.relatedAsset;
-    if (asset.startsWith('CDT ')) {
-      const bank = asset.slice(4);
-      return cdts.some((c) => c.bank.toLowerCase() === bank.toLowerCase());
-    }
-    return etfs.some((e) => e.ticker === asset);
-  }).length;
-}
-
-function hasCdtUnread(cdt: CdtPosition): boolean {
-  return INBOX_EVENTS.some(
-    (evt) =>
-      isEffectivelyUnread(evt) &&
-      evt.relatedAsset?.toLowerCase().includes(cdt.bank.toLowerCase()),
-  );
-}
-
-function hasEtfUnread(etf: EtfPosition): boolean {
-  return INBOX_EVENTS.some(
-    (evt) => isEffectivelyUnread(evt) && evt.relatedAsset === etf.ticker,
-  );
-}
-
 // ── Main screen ───────────────────────────────────────────────────────────
 
 export default function PortfolioScreen() {
@@ -126,6 +91,9 @@ export default function PortfolioScreen() {
   const [networkError, setNetworkError] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showProjectionModal, setShowProjectionModal] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [cdtUnreadMap, setCdtUnreadMap] = useState<Map<number, boolean>>(new Map());
+  const [etfUnreadMap, setEtfUnreadMap] = useState<Map<number, boolean>>(new Map());
   const isFirstFocus          = useRef(true);
 
   useFocusEffect(
@@ -160,6 +128,44 @@ export default function PortfolioScreen() {
             const tickers = etfList.map(e => e.ticker);
             const prices = await getLatestEodPrices(tickers).catch(() => new Map());
             setEodPrices(prices);
+          }
+
+          // Cargar mensajes no leídos relacionados
+          try {
+            const events = await getInboxEvents();
+            const unreadEvents = events.filter(evt => !evt.readAt && evt.assetRef);
+
+            // Contar total de mensajes relacionados
+            const relatedCount = unreadEvents.filter((evt) => {
+              const asset = evt.assetRef!;
+              if (asset.startsWith('CDT ')) {
+                const bank = asset.slice(4);
+                return cdtList.some((c) => c.bank.toLowerCase() === bank.toLowerCase());
+              }
+              return etfList.some((e) => e.ticker === asset);
+            }).length;
+            setUnreadCount(relatedCount);
+
+            // Mapear badges por CDT
+            const cdtMap = new Map<number, boolean>();
+            cdtList.forEach(cdt => {
+              const hasUnread = unreadEvents.some(
+                evt => evt.assetRef?.toLowerCase().includes(cdt.bank.toLowerCase())
+              );
+              cdtMap.set(Number(cdt.id), hasUnread);
+            });
+            setCdtUnreadMap(cdtMap);
+
+            // Mapear badges por ETF
+            const etfMap = new Map<number, boolean>();
+            etfList.forEach(etf => {
+              const hasUnread = unreadEvents.some(evt => evt.assetRef === etf.ticker);
+              etfMap.set(Number(etf.id), hasUnread);
+            });
+            setEtfUnreadMap(etfMap);
+          } catch (error) {
+            console.error('Error loading inbox events:', error);
+            setUnreadCount(0);
           }
 
           // Calcular Hurdle Rate solo si tenemos todos los datos necesarios
@@ -242,6 +248,9 @@ export default function PortfolioScreen() {
             setShowProfileModal={setShowProfileModal}
             showProjectionModal={showProjectionModal}
             setShowProjectionModal={setShowProjectionModal}
+            unreadCount={unreadCount}
+            cdtUnreadMap={cdtUnreadMap}
+            etfUnreadMap={etfUnreadMap}
           />
         )}
       </SafeAreaView>
@@ -266,6 +275,9 @@ interface PortfolioContentProps {
   setShowProfileModal: (show: boolean) => void;
   showProjectionModal: boolean;
   setShowProjectionModal: (show: boolean) => void;
+  unreadCount: number;
+  cdtUnreadMap: Map<number, boolean>;
+  etfUnreadMap: Map<number, boolean>;
 }
 
 function PortfolioContent({
@@ -281,6 +293,9 @@ function PortfolioContent({
   setShowProfileModal,
   showProjectionModal,
   setShowProjectionModal,
+  unreadCount,
+  cdtUnreadMap,
+  etfUnreadMap,
 }: PortfolioContentProps) {
   const router  = useRouter();
   const theme   = useTheme();
@@ -294,11 +309,6 @@ function PortfolioContent({
   useEffect(() => {
     if (isEmpty) setTab('resumen');
   }, [isEmpty]);
-
-  const [, setInboxTick] = useState(0);
-  useEffect(() => {
-    return inboxState.subscribe(() => setInboxTick((n) => n + 1));
-  }, []);
 
   const cdtTotal       = cdts.reduce((s, c) => s + c.amount, 0);
   const etfTotalInvestedCOP = etfs.reduce((s, e) => s + etfInvestedCOP(e, macroContext?.trm ?? 4200), 0);
@@ -322,7 +332,6 @@ function PortfolioContent({
   const proj2High   = portfolioTotal * Math.pow(1 + blendedHigh, 2);
   const proj5Low    = portfolioTotal * Math.pow(1 + blendedLow,  5);
   const proj5High   = portfolioTotal * Math.pow(1 + blendedHigh, 5);
-  const unreadCount = relatedUnreadCount(cdts, etfs);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => {
@@ -536,7 +545,7 @@ function PortfolioContent({
                 <CdtCard
                   key={cdt.id}
                   cdt={cdt}
-                  hasUnread={hasCdtUnread(cdt)}
+                  hasUnread={cdtUnreadMap.get(cdt.id) || false}
                   onPress={() => router.push({ pathname: '/portfolio/cdt/[id]', params: { id: cdt.id } })}
                 />
               ))}
@@ -554,7 +563,7 @@ function PortfolioContent({
                 <EtfCard
                   key={etf.id}
                   etf={etf}
-                  hasUnread={hasEtfUnread(etf)}
+                  hasUnread={etfUnreadMap.get(etf.id) || false}
                   eodPrice={eodPrices.get(etf.ticker)}
                   trm={macroContext?.trm ?? 4200}
                   onPress={() => router.push({ pathname: '/portfolio/etf/[id]', params: { id: etf.id } })}

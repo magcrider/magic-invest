@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -10,10 +10,27 @@ import { ThemedView } from '@/components/themed-view';
 import { PageHeader } from '@/components/page-header';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { EVENT_TYPE_CONFIG, INBOX_EVENTS, type EventType, type InboxEvent } from '@/constants/inbox-mock';
-import { inboxState } from '@/utils/inbox-state';
+import { EVENT_TYPE_CONFIG, type EventType } from '@/constants/inbox-mock';
+import {
+  getInboxEvents,
+  markEventAsRead,
+  markEventAsUnread,
+  dismissEvent,
+  type InboxEvent as InboxEventDB,
+} from '@/services/supabase-queries';
 
 type ThemeColors = ReturnType<typeof useTheme>;
+
+// Tipo local para eventos adaptados
+interface InboxEvent {
+  id: string
+  type: EventType
+  title: string
+  summary: string
+  date: string
+  isRead: boolean
+  relatedAsset?: string
+}
 
 function getAssetColors(event: InboxEvent, theme: ThemeColors) {
   if (!event.relatedAsset)                      return { color: theme.textSecondary, bg: theme.backgroundElement };
@@ -181,36 +198,94 @@ function Separator() {
 
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
-function buildEvents(): InboxEvent[] {
-  return INBOX_EVENTS
-    .filter((e) => !inboxState.isDeleted(e.id))
-    .map((e) => ({
-      ...e,
-      isRead: inboxState.isUnread(e.id) ? false : e.isRead || inboxState.isRead(e.id),
-    }));
+/**
+ * Convierte evento de BD a formato UI
+ */
+function adaptEventFromDB(dbEvent: InboxEventDB): InboxEvent {
+  // Extraer primer párrafo del body como summary
+  const summary = dbEvent.body.split('\n\n')[0].substring(0, 150) + (dbEvent.body.length > 150 ? '...' : '')
+
+  // Formatear fecha
+  const date = new Date(dbEvent.createdAt)
+  const formatted = new Intl.DateTimeFormat('es-CO', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
+
+  return {
+    id: dbEvent.id.toString(),
+    type: dbEvent.type as EventType,
+    title: dbEvent.title,
+    summary,
+    date: formatted,
+    isRead: !!dbEvent.readAt,
+    relatedAsset: dbEvent.assetRef,
+  }
 }
 
 export default function InboxScreen() {
   const router = useRouter();
-  const [events, setEvents] = useState<InboxEvent[]>(buildEvents);
+  const [events, setEvents] = useState<InboxEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    return inboxState.subscribe(() => setEvents(buildEvents()));
-  }, []);
+  const loadEvents = useCallback(async () => {
+    try {
+      const dbEvents = await getInboxEvents()
+      const adapted = dbEvents.map(adaptEventFromDB)
+      setEvents(adapted)
+    } catch (error) {
+      console.error('Error loading inbox events:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useFocusEffect(
+    useCallback(() => {
+      loadEvents()
+    }, [loadEvents])
+  )
 
   function handleOpen(id: string) {
-    router.push(`/inbox/${id}`);
+    // Marcar como leído al abrir
+    markEventAsRead(parseInt(id)).catch(console.error)
+    router.push(`/inbox/${id}`)
   }
 
-  function handleDelete(id: string) {
-    inboxState.markDeleted(id);
+  async function handleDelete(id: string) {
+    try {
+      await dismissEvent(parseInt(id))
+      await loadEvents()
+    } catch (error) {
+      console.error('Error deleting event:', error)
+    }
   }
 
-  function handleMarkUnread(id: string) {
-    inboxState.markUnread(id);
+  async function handleMarkUnread(id: string) {
+    try {
+      await markEventAsUnread(parseInt(id))
+      await loadEvents()
+    } catch (error) {
+      console.error('Error marking as unread:', error)
+    }
   }
 
   const unreadCount = events.filter((e) => !e.isRead).length;
+  const theme = useTheme();
+
+  if (loading) {
+    return (
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.safe}>
+          <PageHeader title="Buzón" subtitle="Cargando mensajes..." />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+          </View>
+        </SafeAreaView>
+      </ThemedView>
+    )
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -220,26 +295,40 @@ export default function InboxScreen() {
           subtitle={
             unreadCount > 0
               ? `${unreadCount} sin leer · sin notificaciones push`
-              : 'Eventos del sistema · sin notificaciones push'
+              : events.length === 0
+              ? 'No hay mensajes en este momento'
+              : 'Mensajes del sistema · sin notificaciones push'
           }
         />
 
-        <FlatList
-          data={events}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <EventCard
-              event={item}
-              onPress={() => handleOpen(item.id)}
-              onDelete={() => handleDelete(item.id)}
-              onMarkUnread={() => handleMarkUnread(item.id)}
-            />
-          )}
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={Separator}
-        />
+        {events.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="mail-open-outline" size={64} color={theme.textSecondary} />
+            <ThemedText type="subtitle" themeColor="textSecondary" style={styles.emptyText}>
+              No hay mensajes en el Buzón
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.emptyHint}>
+              El sistema generará mensajes cuando detecte condiciones relevantes en tu portafolio
+            </ThemedText>
+          </View>
+        ) : (
+          <FlatList
+            data={events}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <EventCard
+                event={item}
+                onPress={() => handleOpen(item.id)}
+                onDelete={() => handleDelete(item.id)}
+                onMarkUnread={() => handleMarkUnread(item.id)}
+              />
+            )}
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ItemSeparatorComponent={Separator}
+          />
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -247,6 +336,26 @@ export default function InboxScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.four * 2,
+    gap: Spacing.two,
+  },
+  emptyText: {
+    marginTop: Spacing.three,
+    textAlign: 'center',
+  },
+  emptyHint: {
+    textAlign: 'center',
+    maxWidth: 280,
+  },
   safe: {
     flex: 1,
     paddingHorizontal: Spacing.four,

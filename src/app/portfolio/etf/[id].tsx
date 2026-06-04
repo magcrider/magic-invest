@@ -15,10 +15,8 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getEtfById, deleteEtf } from '@/services/supabase-queries';
+import { getEtfById, deleteEtf, getInboxEvents, type InboxEvent } from '@/services/supabase-queries';
 import type { EtfPosition } from '@/types/database';
-import { INBOX_EVENTS } from '@/constants/inbox-mock';
-import { inboxState } from '@/utils/inbox-state';
 
 const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -264,9 +262,22 @@ export default function EtfDetailScreen() {
 
 function RelatedMessages({ ticker, onPress }: { ticker: string; onPress: (id: string) => void }) {
   const theme = useTheme();
-  const events = INBOX_EVENTS.filter(
-    (e) => !inboxState.isDeleted(e.id) && e.relatedAsset === ticker,
-  );
+  const [events, setEvents] = useState<InboxEvent[]>([]);
+
+  useEffect(() => {
+    getInboxEvents()
+      .then(allEvents => {
+        const related = allEvents.filter(
+          e => !e.dismissedAt && e.assetRef === ticker
+        );
+        setEvents(related);
+      })
+      .catch(error => {
+        console.error('Error loading related messages:', error);
+        setEvents([]);
+      });
+  }, [ticker]);
+
   if (events.length === 0) return null;
 
   return (
@@ -280,7 +291,7 @@ function RelatedMessages({ ticker, onPress }: { ticker: string; onPress: (id: st
             {i > 0 && <View style={[styles.msgDivider, { backgroundColor: theme.assetEtf + '35' }]} />}
             <TouchableOpacity
               style={styles.msgRow}
-              onPress={() => onPress(evt.id)}
+              onPress={() => onPress(evt.id.toString())}
               activeOpacity={0.7}
             >
               <ThemedText style={[styles.msgTitle, { color: theme.text }]} numberOfLines={2}>

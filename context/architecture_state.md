@@ -281,7 +281,121 @@ Los datos del usuario (posiciones, perfil de riesgo, historial de interacción) 
 
 No se comparten con terceros para fines comerciales ni publicitarios.
 
-## 10. Reglas Inquebrantables de UI/UX (Bienestar Cognitivo)
+## 10. Motor de Eventos del Buzón (Backend)
+
+**Estado:** ✅ Implementado junio 4, 2026
+
+El motor de eventos es el **sistema nervioso** de Magic Invest — conecta datos matemáticos con educación contextual en el momento oportuno.
+
+### Edge Function: `generate-inbox-events`
+- **Frecuencia:** Semanal (lunes 6 AM Colombia)
+- **Lógica:** Evaluación determinística de condiciones matemáticas contra datos reales
+- **Output:** Inserta eventos en tabla `inbox_events` cuando se cumplen triggers
+
+### Triggers Implementados
+
+#### 1. CDT próximo a vencer (30/60/90 días)
+**Condición:** `end_date - today IN [30, 60, 90] días`
+**Metadata incluida:**
+- Valor al vencimiento (capital + rendimientos - retefuente)
+- Hurdle Rate vigente
+- Tasa de mercado actual vs tasa original
+- Distribución actual CDT/ETF vs bandas configuradas
+
+#### 2. Drawdown estructural ETF (>25%)
+**Condición:** `(current_price - peak_price) / peak_price < -0.25`
+**Cálculo:**
+- Identifica pico histórico en últimos 3 años
+- Cuenta episodios similares en historial del ETF
+- Promedio de días de recuperación histórica
+**Metadata incluida:**
+- Precio actual vs precio en pico
+- Fecha del pico
+- Número de episodios comparables
+- Tiempo promedio de recuperación
+
+#### 3. Cambio significativo tasa Banrep (≥50 bps)
+**Condición:** `|current_rate - previous_rate| >= 0.5`
+**Metadata incluida:**
+- Tasa anterior y nueva
+- Cambio en puntos básicos
+- Nuevo Hurdle Rate calculado
+- Impacto en ETFs en cartera (si existen)
+
+#### 4. Bandas de asignación fuera de rango
+**Condición:** `cdt_pct < band.cdt_min OR cdt_pct > band.cdt_max OR etf_pct > band.etf_max`
+**Metadata incluida:**
+- Distribución actual (% CDT / % ETF)
+- Bandas configuradas
+- Exceso en puntos porcentuales
+- Exceso en valor absoluto COP
+
+#### 5. ETF cruza Hurdle Rate
+**Condición:** `CAGR_5y > hurdle_rate` (anteriormente no lo superaba)
+**Estado:** Pendiente — requiere tabla `etf_watchlist`
+
+### Datos Consumidos
+- `cdt_positions` — posiciones CDT activas
+- `etf_positions` — posiciones ETF activas
+- `eod_prices` — precios históricos para cálculo drawdown
+- `macro_rates` — TRM, inflación, tasa Banrep para Hurdle Rate
+- `cdt_rates` — tasas de mercado para comparación
+- `user_config` — bandas configuradas (default: CDT 50-70%, ETF 30-50%)
+
+### Prevención de Duplicados
+- Query verifica eventos similares en últimos 7 días
+- No inserta si existe evento idéntico (mismo tipo + mismo asset_ref)
+- Permite re-trigger después de 7 días si condición persiste
+
+### Queries App (`supabase-queries.ts`)
+```typescript
+getInboxEvents()          // Todos los eventos no eliminados, ordenados
+markEventAsRead(id)       // Marca read_at
+markEventAsUnread(id)     // Limpia read_at
+dismissEvent(id)          // Soft delete (dismissed_at)
+```
+
+### Formato de Mensajes: Markdown Enriquecido
+**Decisión:** Mensajes se almacenan en formato Markdown en campo `body` (tipo TEXT en BD).
+
+**Ventajas:**
+- **Portabilidad:** Mismo contenido funciona en app, email, web sin reescribir
+- **Legibilidad:** Texto plano es legible incluso sin renderizado
+- **Extensibilidad:** Agregar tablas, listas, énfasis sin cambiar estructura de BD
+- **Email-ready:** Conversión a HTML + CSS del design system para emails futuros
+
+**Elementos Markdown usados:**
+- **Tablas** — comparaciones lado a lado (| Indicador | Valor |)
+- **Blockquotes** — información destacada con borde de color (> texto)
+- **Headers** — jerarquía visual (## Sección, ### Subsección)
+- **Bold/Emphasis** — **texto importante** para números y conceptos clave
+- **Listas** — bullets con opciones y pasos
+- **Separadores** — `---` para dividir secciones conceptuales
+- **Emojis inline** — 💰 📊 🔼 🔽 ⚠️ ✅ (semántica visual rápida)
+
+**Librería:** `react-native-markdown-display` v7.0.2
+- Soporte CommonMark + extensiones (tablas, typographer)
+- Estilos personalizados siguiendo design system (colores theme-aware)
+- Renderizado nativo (no WebView)
+
+### UI Actualizada
+- `/inbox/index.tsx` — lista de eventos desde BD (reemplaza mock data)
+- `/inbox/[id].tsx` — detalle con renderizado Markdown enriquecido
+  - Estilos de tabla (bordes, celdas, headers con fondo)
+  - Blockquotes con borde de color según tipo de mensaje
+  - Tipografía consistente con design system
+- Swipe actions funcionales (eliminar / marcar no leído)
+- Estado vacío educativo cuando no hay eventos
+- Badges dinámicos en Portafolio (cdtUnreadMap, etfUnreadMap)
+
+### Próxima Iteración
+- Implementar trigger #5 cuando exista tabla `etf_watchlist`
+- Sistema de prioridades (alto/medio/bajo) según urgencia del evento
+- Conversión Markdown → HTML + CSS para emails (cuando se implemente notificaciones)
+
+---
+
+## 11. Reglas Inquebrantables de UI/UX (Bienestar Cognitivo)
 * **Notificaciones:** Cero alertas push. Toda información asíncrona vive en el Buzón. El usuario decide cuándo consumir.
 * **Badges:** Cero badges en el ícono de la app. Indicadores silenciosos dentro de la app (como "eventos relacionados" en el detalle de un activo) son aceptables porque son contextuales, no interruptivos.
 * **Jerarquía cromática anti-ansiedad:**

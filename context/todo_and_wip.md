@@ -11,13 +11,19 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 * **Completados:**
   - Infraestructura + Autenticación + Shell
   - Módulo Herramientas (10 calculadoras)
-  - Módulo Buzón (mock data)
-  - Módulo Portafolio Fase 1 (CRUD completo)
+  - Módulo Buzón — **UI + Backend completo con datos reales + Markdown enriquecido**
+  - Módulo Portafolio Fase 1 (CRUD completo + badges dinámicos)
   - Backend Supabase (TRM, CDT rates, EOD prices, **Inflación dinámica desde World Bank**)
+  - **Motor de eventos Buzón** — 4 de 5 triggers implementados con mensajes Markdown ricos
+    - CDT maturity (tablas, blockquotes, emojis, 3 escenarios)
+    - Drawdown ETF (análisis histórico con tabla comparativa)
+    - Cambio tasa Banrep (impacto en Hurdle Rate con diferencial visual)
+    - Bandas de asignación (tabla distribución, opciones de rebalanceo numeradas)
   - Sistema color dinámico (light/dark)
   - Sistema validación/formateo inputs
   - Modals educativos
   - **Hurdle Rate 100% dinámico y preciso** (sin datos hardcodeados)
+  - **Sistema retry automático JWT** (PGRST303 transparente para usuario)
 
 ---
 
@@ -28,22 +34,11 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 **Acción:** Claude sugerirá 3-5 tickers representativos (VOO, VTI, VXUS, etc.) como semilla. Usuario podrá agregar/quitar después.
 
----
-
-### 2. Motor de eventos Buzón (backend)
-**Estado:** Mockdata funcional, UI completa, **falta backend real**
-
-**Triggers a implementar:**
-- CDT próximo a vencer (30/60/90 días antes)
-- ETF con drawdown significativo (>15% desde compra)
-- Cambio en tasa Banrep → recalcular Hurdle Rate
-- Bandas de asignación fuera de rango
-
-**Decisión arquitectónica:** Edge Function con cron semanal que lee portafolio + datos de mercado → genera eventos → inserta en tabla `inbox_events`.
+**Desbloquea:** Trigger #5 del Buzón (ETF cruza Hurdle Rate)
 
 ---
 
-### 3. Sistema de Rebalanceo
+### 2. Sistema de Rebalanceo
 **Estado:** Pendiente
 
 **Componentes:**

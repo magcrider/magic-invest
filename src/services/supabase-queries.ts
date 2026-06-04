@@ -630,3 +630,100 @@ export async function getLatestEodPrices(tickers: string[]): Promise<Map<string,
 
   return pricesMap;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INBOX EVENTS (eventos del Buzón generados por motor backend)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface InboxEvent {
+  id: number
+  userId: string
+  type: string
+  subtype?: string
+  title: string
+  body: string
+  assetRef?: string
+  assetType?: string
+  readAt?: string
+  dismissedAt?: string
+  metadata: Record<string, any>
+  createdAt: string
+}
+
+/**
+ * Obtiene todos los eventos del Buzón del usuario (no eliminados)
+ * Ordenados por: no leídos primero, luego por fecha descendente
+ */
+export async function getInboxEvents(): Promise<InboxEvent[]> {
+  return withRetry(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('No authenticated user')
+
+    const { data, error } = await supabase
+      .from('inbox_events')
+      .select('*')
+      .eq('user_id', user.id)
+      .is('dismissed_at', null)  // solo eventos no eliminados
+      .order('read_at', { ascending: true, nullsFirst: true })  // no leídos primero
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return (data || []).map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      type: row.type,
+      subtype: row.subtype,
+      title: row.title,
+      body: row.body,
+      assetRef: row.asset_ref,
+      assetType: row.asset_type,
+      readAt: row.read_at,
+      dismissedAt: row.dismissed_at,
+      metadata: row.metadata || {},
+      createdAt: row.created_at,
+    }))
+  })
+}
+
+/**
+ * Marca un evento como leído
+ */
+export async function markEventAsRead(eventId: number): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from('inbox_events')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', eventId)
+
+    if (error) throw error
+  })
+}
+
+/**
+ * Marca un evento como no leído
+ */
+export async function markEventAsUnread(eventId: number): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from('inbox_events')
+      .update({ read_at: null })
+      .eq('id', eventId)
+
+    if (error) throw error
+  })
+}
+
+/**
+ * Elimina (soft delete) un evento del Buzón
+ */
+export async function dismissEvent(eventId: number): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from('inbox_events')
+      .update({ dismissed_at: new Date().toISOString() })
+      .eq('id', eventId)
+
+    if (error) throw error
+  })
+}

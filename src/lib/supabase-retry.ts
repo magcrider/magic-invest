@@ -18,42 +18,39 @@ const MAX_RETRIES = 2;
  * @returns El resultado de la query o throw si falla después de reintentos
  */
 export async function withRetry<T>(
-  queryFn: () => Promise<{ data: T | null; error: any }>
-): Promise<{ data: T | null; error: any }> {
+  queryFn: () => Promise<T>
+): Promise<T> {
   let lastError: any = null;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const result = await queryFn();
-
-    // Si no hay error, retornar inmediatamente
-    if (!result.error) {
+    try {
+      const result = await queryFn();
       return result;
-    }
+    } catch (error: any) {
+      lastError = error;
 
-    // Si el error NO es JWT temporal, fallar inmediatamente
-    if (result.error.code !== JWT_FUTURE_ERROR_CODE) {
-      return result;
-    }
-
-    lastError = result.error;
-
-    // Si es el primer intento, refrescar sesión y reintentar
-    if (attempt === 0) {
-      console.log('[Supabase] Detected JWT future error, refreshing session...');
-
-      const { error: refreshError } = await supabase.auth.refreshSession();
-
-      if (refreshError) {
-        console.error('[Supabase] Failed to refresh session:', refreshError);
-        // Si el refresh falla, no tiene sentido reintentar
-        return { data: null, error: refreshError };
+      // Si el error NO es JWT temporal, fallar inmediatamente
+      if (error?.code !== JWT_FUTURE_ERROR_CODE) {
+        throw error;
       }
 
-      // Pequeño delay para asegurar que el nuevo token está propagado
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Si es el primer intento, refrescar sesión y reintentar
+      if (attempt === 0) {
+        console.log('[Supabase] Detected JWT future error, refreshing session...');
+
+        const { error: refreshError } = await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          console.error('[Supabase] Failed to refresh session:', refreshError);
+          throw refreshError;
+        }
+
+        // Pequeño delay para asegurar que el nuevo token está propagado
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
   }
 
   // Si llegamos aquí, todos los reintentos fallaron
-  return { data: null, error: lastError };
+  throw lastError;
 }

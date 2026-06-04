@@ -11,3 +11,12 @@ verify_jwt = false  # cron job, no requiere autenticación
 
 [functions.backfill-etf-historical]
 verify_jwt = false  # invocación manual, no requiere autenticación
+
+[functions.fetch-inflation-data]
+verify_jwt = false  # cron job, no requiere autenticación
+
+[functions.backfill-inflation-historical]
+verify_jwt = false  # invocación manual, no requiere autenticación
+
+[functions.generate-inbox-events]
+verify_jwt = false  # cron job, no requiere autenticación

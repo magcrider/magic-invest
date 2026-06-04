@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -35,6 +36,7 @@ interface Props {
 export function DrawerMenu({ visible, onClose }: Props) {
   const { displayName, session } = useAuth();
   const theme   = useTheme();
+  const router  = useRouter();
   const email   = session?.user?.email ?? '';
   const initial = (displayName || email)[0]?.toUpperCase() ?? '?';
   const version = Constants.expoConfig?.version ?? '1.0.0';
@@ -126,6 +128,109 @@ export function DrawerMenu({ visible, onClose }: Props) {
 
           <ScrollView showsVerticalScrollIndicator={false}>
 
+            {/* Herramientas de desarrollo (solo visibles en __DEV__) */}
+            {__DEV__ && (
+              <>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.sectionLabel}>
+                  🛠️ DESARROLLO
+                </ThemedText>
+
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={async () => {
+                    try {
+                      onClose();
+
+                      const response = await fetch(
+                        'https://tvmhgckkgtoivariplju.supabase.co/functions/v1/generate-inbox-events',
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                        }
+                      );
+
+                      const result = await response.json();
+
+                      if (result.success) {
+                        Alert.alert(
+                          '✅ Mensajes generados',
+                          `Se procesaron ${result.users_processed} usuarios y se crearon ${result.events_created} mensajes nuevos.`,
+                          [
+                            {
+                              text: 'Ver Buzón',
+                              onPress: () => router.push('/inbox'),
+                            },
+                            { text: 'Cerrar' },
+                          ]
+                        );
+                      } else {
+                        Alert.alert('❌ Error', result.error || 'No se pudieron generar los mensajes.');
+                      }
+                    } catch (error: any) {
+                      Alert.alert('❌ Error', error.message || 'Error de conexión.');
+                    }
+                  }}
+                >
+                  <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+                    <Ionicons name="flask-outline" size={18} color={theme.primary} />
+                    <ThemedText type="default">Generar mensajes Buzón</ThemedText>
+                  </ThemedView>
+                  <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => {
+                    onClose();
+
+                    Alert.alert(
+                      '🗑️ Limpiar mensajes',
+                      '¿Eliminar todos los mensajes del Buzón para testing? Esta acción no se puede deshacer.',
+                      [
+                        { text: 'Cancelar', style: 'cancel' },
+                        {
+                          text: 'Eliminar',
+                          style: 'destructive',
+                          onPress: async () => {
+                            try {
+                              const { error } = await supabase
+                                .from('inbox_events')
+                                .delete()
+                                .not('id', 'is', null);
+
+                              if (error) throw error;
+
+                              Alert.alert(
+                                '✅ Mensajes eliminados',
+                                'El Buzón se limpió correctamente.',
+                                [
+                                  {
+                                    text: 'Ver Buzón',
+                                    onPress: () => router.push('/inbox'),
+                                  },
+                                  { text: 'OK' },
+                                ]
+                              );
+                            } catch (error: any) {
+                              Alert.alert('❌ Error', error.message || 'No se pudieron eliminar los mensajes.');
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <ThemedView style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+                    <Ionicons name="trash-outline" size={18} color={theme.textSecondary} />
+                    <ThemedText type="default">Limpiar mensajes</ThemedText>
+                  </ThemedView>
+                  <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                </TouchableOpacity>
+
+                <ThemedView style={[styles.divider, { backgroundColor: theme.divider }]} />
+              </>
+            )}
+
             <ThemedText type="small" themeColor="textSecondary" style={styles.sectionLabel}>
               CONFIGURACIÓN
             </ThemedText>
@@ -161,8 +266,8 @@ export function DrawerMenu({ visible, onClose }: Props) {
           <ThemedView style={styles.footer}>
             <ThemedText type="small" themeColor="textSecondary">Versión {version}</ThemedText>
             <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut}>
-              <Ionicons name="log-out-outline" size={18} color={theme.risk} />
-              <ThemedText type="default" style={{ color: theme.risk }}>Cerrar sesión</ThemedText>
+              <Ionicons name="log-out-outline" size={18} color={theme.textSecondary} />
+              <ThemedText type="default">Cerrar sesión</ThemedText>
             </TouchableOpacity>
           </ThemedView>
 

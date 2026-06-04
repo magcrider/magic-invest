@@ -16,10 +16,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatCurrency } from '@/utils/format';
-import { getCdtById, deleteCdt } from '@/services/supabase-queries';
+import { getCdtById, deleteCdt, getInboxEvents, type InboxEvent } from '@/services/supabase-queries';
 import type { CdtCapitalization, CdtPosition } from '@/types/database';
-import { INBOX_EVENTS } from '@/constants/inbox-mock';
-import { inboxState } from '@/utils/inbox-state';
 
 const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -243,11 +241,22 @@ export default function CdtDetailScreen() {
 
 function RelatedMessages({ bank, onPress }: { bank: string; onPress: (id: string) => void }) {
   const theme = useTheme();
-  const events = INBOX_EVENTS.filter(
-    (e) =>
-      !inboxState.isDeleted(e.id) &&
-      e.relatedAsset?.toLowerCase().includes(bank.toLowerCase()),
-  );
+  const [events, setEvents] = useState<InboxEvent[]>([]);
+
+  useEffect(() => {
+    getInboxEvents()
+      .then(allEvents => {
+        const related = allEvents.filter(
+          e => !e.dismissedAt && e.assetRef?.toLowerCase().includes(bank.toLowerCase())
+        );
+        setEvents(related);
+      })
+      .catch(error => {
+        console.error('Error loading related messages:', error);
+        setEvents([]);
+      });
+  }, [bank]);
+
   if (events.length === 0) return null;
 
   return (
@@ -261,7 +270,7 @@ function RelatedMessages({ bank, onPress }: { bank: string; onPress: (id: string
             {i > 0 && <View style={[styles.msgDivider, { backgroundColor: theme.assetCdt + '35' }]} />}
             <TouchableOpacity
               style={styles.msgRow}
-              onPress={() => onPress(evt.id)}
+              onPress={() => onPress(evt.id.toString())}
               activeOpacity={0.7}
             >
               <ThemedText style={[styles.msgTitle, { color: theme.text }]} numberOfLines={2}>

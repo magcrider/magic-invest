@@ -945,10 +945,21 @@ function PortfolioContent({
             Ejemplo práctico
           </ThemedText>
           <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
-            Si guardas $100,000 bajo el colchón y la inflación es 5.3%, al cabo de un año necesitarás $105,300 para comprar lo mismo que hoy compras con $100,000.
+            {macroContext?.inflationCOP
+              ? `Si guardas $100.000 bajo el colchón y la inflación es ${macroContext.inflationCOP.toFixed(2)}%, al cabo de un año necesitarás $${(100000 * (1 + macroContext.inflationCOP / 100)).toLocaleString('es-CO', { maximumFractionDigits: 0 })} para comprar lo mismo que hoy compras con $100.000.`
+              : 'Si guardas $100.000 bajo el colchón y la inflación es 5%, al cabo de un año necesitarás $105.000 para comprar lo mismo que hoy compras con $100.000.'}
           </ThemedText>
           <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary, marginTop: 8 }]}>
             Por eso tu rentabilidad <ThemedText style={{ fontWeight: '600' }}>real</ThemedText> = rentabilidad nominal - inflación.
+          </ThemedText>
+        </View>
+
+        <View style={styles.modalSection}>
+          <ThemedText style={[styles.modalSectionTitle, { color: theme.text }]}>
+            Fuente
+          </ThemedText>
+          <ThemedText style={[styles.modalSectionText, { color: theme.textSecondary }]}>
+            Variación anual del IPC publicada por el Banco de la República (vía servicio SDMX). Se actualiza diariamente.
           </ThemedText>
         </View>
       </InfoModal>

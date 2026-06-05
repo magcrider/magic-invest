@@ -344,6 +344,25 @@ Cuando haya usuarios externos:
   - `src/app/tools/index.tsx` — header compacto
 - **Estado:** ✅ Implementado y testeado por Harvey
 
+### 11. Migración fuente de inflación Colombia: World Bank → Banrep SDMX (Junio 5, 2026)
+- **Problema:** La inflación COP que mostraba la app estaba ~1pp por encima de la inflación real publicada por DANE/Banrep. Diagnóstico: World Bank publica `FP.CPI.TOTL.ZG` con lag 6-12 meses (último dato disponible era 2024 = 6.61%) y además es **promedio anual**, no la **variación 12m** (dic-dic) que reporta DANE en titulares. Dos causas estructurales superpuestas.
+- **Investigación:** Se evaluaron 7 fuentes alternativas (DANE GIS, datos.gov.co, api-colombia, veredata, banrepco_api, DANE XLSX, Banrep SDMX). La única viable fue **Banrep SDMX webservice**.
+- **Hallazgo clave:** Banrep no publica IPC directamente, pero su SDMX expone UVR (Unidad de Valor Real) con periodicidad **diaria** y soporta `UNIT_MEASURE=APC` (Annual Percentage Change), que es exactamente la variación 12m del IPC. Verificado con curl: `https://totoro.banrep.gov.co/nsi-jax-ws/rest/data/ESTAT,DF_UVR_DAILY_LATEST,1.0/all/ALL/?dimensionAtObservation=TIME_PERIOD&detail=full` — HTTP 200, XML SDMX-ML 2.1, sin auth, dato diario hasta 15 días en el futuro.
+- **Cambios implementados:**
+  1. **Edge function nueva `fetch-inflation-cop`**: consulta Banrep SDMX, parsea XML con regex (DOMParser hubiera sido overkill — la estructura es predecible), extrae el ObsValue de la serie con `UNIT_MEASURE=APC` para la fecha más reciente ≤ hoy, valida rango plausible (1-30%) y hace upsert en `macro_rates` con type `inflation_cop_yoy_banrep`.
+  2. **`getMacroContext()` con fallback**: ahora lee primero `inflation_cop_yoy_banrep`. Si no existe, cae a `inflation_cop_annual` (legacy WB). El campo `inflationCOP` del `MacroContext` no cambió de signature, los consumidores no requieren cambios.
+  3. **Filas legacy WB conservadas**: `inflation_cop_annual` se mantiene como serie histórica (es promedio anual real, semánticamente válido), no se borra. `fetch-inflation-data` sigue corriendo solo para USA.
+- **Resultado:** La app ahora muestra **5.64% (2026-06-05)** en lugar de **6.61% (2024-12-31)** — alineado con prensa DANE.
+- **Decisiones tomadas:**
+  - APC se toma directo del SDMX (la serie viene incluida junto a CRVU). No hay que calcular.
+  - Sin fallback a DANE XLSX en esta iteración (Banrep es lo suficientemente estable; si falla, fallback al legacy es suficiente).
+  - Backfill histórico no se hizo (con dato actualizado el problema queda resuelto).
+- **Archivos:**
+  - `supabase/functions/fetch-inflation-cop/index.ts` (nuevo)
+  - `src/services/supabase-queries.ts` (`getMacroContext()`)
+  - `context/todo_and_wip.md` (este registro)
+- **Estado:** ✅ Implementado, parser validado contra XML real con node, type-check OK. Pendiente: deploy + cron + verificación en dispositivo.
+
 ### 10. UX Análisis de Rebalanceo (Junio 5, 2026)
 - **Objetivo:** Priorizar el escenario accionable y eliminar redundancias visuales.
 - **Cambios implementados:**
@@ -370,6 +389,21 @@ Cuando haya usuarios externos:
 
 ---
 
+## 💸 Deudas Técnicas Conocidas
+
+### Inflación USA en World Bank (lag 6-12m, definición incorrecta)
+- **Estado actual:** `fetch-inflation-data` (edge function legacy) sigue corriendo y poblando `inflation_usd_annual` desde World Bank. Mismo problema que tenía COP antes: dato anual, lag de meses, no es la variación 12m que un usuario espera.
+- **Por qué se difiere:** USA se usa marginalmente en la app (no entra en Hurdle Rate ni en cálculos críticos del MVP). La inflación que importa para los activos actuales es la de Colombia.
+- **Cuándo migrar:** Cuando entren acciones individuales, fondos o cripto al portafolio. Ahí el costo real de capital en USD toma peso para CAPM/hurdle rate y se necesita IPC USA fresco.
+- **Fuente recomendada:** **BLS API** (Bureau of Labor Statistics). Gratis con token, datos mensuales con lag de ~5 días, indicador estándar `CUUR0000SA0` o similar. Misma estrategia que Banrep SDMX: edge function diaria que parsea respuesta JSON.
+
+### SDMX de Banrep como oportunidad de consolidación
+- **Estado actual:** TRM, TPM y CDT vienen de `datos.gov.co` (Socrata API) vía `fetch-banrep-data`. Funciona bien, pero el SDMX de Banrep también expone esas mismas series con flow IDs `DF_TRM_DAILY_LATEST`, `DF_CBR_DAILY_LATEST`, `DF_DTF_DAILY_LATEST`.
+- **Beneficio potencial:** Unificar todo el pipeline macro en un solo cliente SDMX (mismo parser XML, mismo endpoint base, misma autenticación cero). Reduce dependencias de plataforma y código duplicado.
+- **Cuándo migrar:** Cuando se necesite agregar nuevas series (IBR, COLCAP, agregados monetarios, UVR para créditos) o cuando datos.gov.co tenga incidentes. No urgente — TRM/CDT actuales funcionan.
+
+---
+
 ## 🔄 Última Actualización
 
 **Fecha:** Junio 5, 2026 (tarde)  
@@ -379,7 +413,8 @@ Cuando haya usuarios externos:
 **Commits recientes:**
 - `11e1ea4` — UX refinada Portafolio: saludo compacto, FAB, distribución objetivo vs actual
 - `cc16f46` — Scroll automático en formularios: input activo centrado sobre el teclado
-- ⏳ **Próximo commit:** Alineamiento al design system (login, tabs, buzón, herramientas) + fix preview markdown + UX rebalanceo (orden de tabs, vista Mantener depurada, spacing unificado)
+- ⏳ Pendiente: Alineamiento DS (login/tabs/buzón/herramientas) + fix markdown + UX rebalanceo
+- ⏳ **Próximo commit:** Migración fuente inflación COP a Banrep SDMX (variación 12m diaria)
 
 **Próximos pasos:**
 - Continuar revisión de UX con Harvey

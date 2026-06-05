@@ -82,6 +82,16 @@ CREATE INDEX IF NOT EXISTS idx_portfolio_snapshots_user_date
 -- TABLAS DE USUARIO (por usuario autenticado)
 -- ============================================================
 
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+  user_id         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name       TEXT NOT NULL,
+  document_type   TEXT, -- 'cc' | 'ce' | 'nit' | 'passport'
+  document_number TEXT,
+  city            TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.user_config (
   id         BIGSERIAL PRIMARY KEY,
   user_id    UUID    NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -217,3 +227,29 @@ CREATE POLICY "own_data" ON public.portfolio_snapshots
 DROP POLICY IF EXISTS "own_data" ON public.hurdle_rate_cache;
 CREATE POLICY "own_data" ON public.hurdle_rate_cache
   FOR ALL TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "own_data" ON public.user_profiles;
+CREATE POLICY "own_data" ON public.user_profiles
+  FOR ALL TO authenticated USING (auth.uid() = user_id);
+
+-- ============================================================
+-- TRIGGERS
+-- ============================================================
+
+-- Crear perfil automáticamente al registrarse
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.user_profiles (user_id, full_name)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', 'Usuario')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

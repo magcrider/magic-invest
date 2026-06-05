@@ -5,6 +5,18 @@ export type CdtCapitalization = 'maturity' | 'monthly' | 'quarterly';
 
 export type RiskProfileLabel = 'conservador' | 'moderado' | 'arriesgado';
 
+export type DocumentType = 'cc' | 'ce' | 'nit' | 'passport';
+
+export interface UserProfile {
+  user_id: string;
+  full_name: string;
+  document_type: DocumentType | null;
+  document_number: string | null;
+  city: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface RiskProfile {
   label: RiskProfileLabel;
   horizon_id: number;

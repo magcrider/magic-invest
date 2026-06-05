@@ -242,6 +242,21 @@ export function DrawerMenu({ visible, onClose }: Props) {
                 trackColor={{ true: theme.positive, false: theme.divider }}
               />
             </ThemedView>
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => {
+                console.log('🔴 DRAWER: Clicked Mi perfil');
+                onClose();
+                setTimeout(() => {
+                  console.log('🔴 DRAWER: Navigating to /portfolio/profile');
+                  router.push('/portfolio/profile');
+                }, 300);
+              }}
+            >
+              <ThemedText type="default">Mi perfil</ThemedText>
+              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.row} onPress={handleResetProfile}>
               <ThemedText type="default">Reevaluar perfil de riesgo</ThemedText>
               <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />

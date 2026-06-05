@@ -19,7 +19,7 @@
 import { supabase } from '@/lib/supabase';
 import { withRetry } from '@/lib/supabase-retry';
 import { withTimeout } from '@/lib/fetch-with-timeout';
-import type { CdtPosition, EtfPosition, AllocationBands } from '@/types/database';
+import type { CdtPosition, EtfPosition, AllocationBands, UserProfile, DocumentType } from '@/types/database';
 import type { RiskProfile } from '@/constants/risk-profile';
 import { PROFILE_BANDS } from '@/constants/risk-profile';
 

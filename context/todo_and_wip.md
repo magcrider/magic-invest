@@ -7,7 +7,7 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 ## Estado General — Junio 4, 2026
 
 * **Fase:** 🟢 Fase 1 (MVP) — 97% completado
-* **Último cambio:** Junio 4, 2026 — Sistema de Rebalanceo (Backend) implementado
+* **Último cambio:** Junio 4, 2026 — UX mejorada: modales nativos reemplazados por design system
 * **Próxima sesión con Winston:** Auditoría Sistema Rebalanceo + UI
 
 ### ✅ Módulos Completados
@@ -246,18 +246,28 @@ Cuando haya usuarios externos:
 - Sistema ahora matemáticamente correcto y robusto
 - UX offline funcional en Portafolio y Buzón
 - Motor de eventos estable (no agrava duplicados existentes)
-- ⏳ Pendiente: Commit consolidado de los 4 fixes
+- ✅ **Commits realizados:** 4 fixes críticos + UX modales mejorada
+
+### 5. Mejora UX: Modales Nativos → Design System
+- **Problema:** `Alert.alert()` nativo inconsistente con el design system de la app
+- **Contexto:** Watchlist ETFs usaba Alert nativo para confirmaciones (agregar/eliminar)
+- **Corrección:**
+  - Modal agregar ETF: error inline + loader reemplaza botones + cierre automático
+  - Modal eliminar ETF: confirmación custom con diseño limpio
+  - Sin componentes redundantes (feedback inline en lugar de segundo modal)
+- **Archivos:** `src/components/add-etf-to-watchlist-modal.tsx`, `src/app/portfolio/watchlist.tsx`
+- **Estado:** ✅ Probado y aprobado por Harvey
 
 ---
 
 ## 🔄 Última Actualización
 
-**Fecha:** Junio 4, 2026 (19:00)  
-**Autor:** Claude Code (sesión auditoría Winston)  
+**Fecha:** Junio 4, 2026 (20:30)  
+**Autor:** Claude Code  
 **Commits recientes:**
 - `35c59a5` — Parsing robusto + consistencia símbolos + docs optimizados
 - `f6b9682` — Mejorar proyección + modals educativos en Portafolio
 - `01c2c6c` — Auto-retry transparente JWT (PGRST303)
 - `273f1f2` — Validación estricta + scroll automático + tipografía robusta
 - `0d1e9c2` — Actualizar contextos + regla no-commits-sin-aprobación
-- ⏳ **Próximo commit:** Fix 4 bugs críticos (Hurdle Rate + Banrep + Offline + Duplicados)
+- ⏳ **Próximo commit:** UX mejorada watchlist (modales design system)

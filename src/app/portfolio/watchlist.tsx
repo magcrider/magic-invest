@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +33,8 @@ export default function WatchlistScreen() {
   const [hurdleRate, setHurdleRate] = useState<number | null>(null);
   const [trm, setTrm] = useState<number | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{ ticker: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadWatchlist = useCallback(async () => {
     try {
@@ -89,7 +91,7 @@ export default function WatchlistScreen() {
       setEtfs(enriched);
     } catch (error) {
       console.error('Error loading watchlist:', error);
-      Alert.alert('Error', 'No se pudo cargar la watchlist');
+      setEtfs([]);
     } finally {
       setLoading(false);
     }
@@ -101,26 +103,24 @@ export default function WatchlistScreen() {
     }, [loadWatchlist])
   );
 
-  async function handleRemove(ticker: string) {
-    Alert.alert(
-      'Eliminar de Watchlist',
-      `¿Eliminar ${ticker} de tu lista de seguimiento?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeEtfFromWatchlist(ticker);
-              await loadWatchlist();
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar el ETF');
-            }
-          },
-        },
-      ]
-    );
+  function handleRemove(ticker: string) {
+    setConfirmDelete({ ticker });
+  }
+
+  async function confirmRemove() {
+    if (!confirmDelete) return;
+
+    setDeleting(true);
+    try {
+      await removeEtfFromWatchlist(confirmDelete.ticker);
+      setConfirmDelete(null);
+      await loadWatchlist();
+    } catch (error) {
+      console.error('Error removing ETF:', error);
+      // El error se queda visible en el modal, usuario puede reintentar
+    } finally {
+      setDeleting(false);
+    }
   }
 
   if (loading) {
@@ -199,6 +199,58 @@ export default function WatchlistScreen() {
           onClose={() => setShowAddModal(false)}
           onAdded={loadWatchlist}
         />
+
+        {/* Modal confirmar eliminación */}
+        {confirmDelete && (
+          <Modal visible transparent animationType="fade" onRequestClose={() => !deleting && setConfirmDelete(null)}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={() => !deleting && setConfirmDelete(null)}
+            >
+              <View
+                style={[styles.confirmModal, { backgroundColor: theme.background }]}
+                onStartShouldSetResponder={() => true}
+              >
+                  <View style={styles.confirmBody}>
+                    <ThemedText type="subtitle">Eliminar de Watchlist</ThemedText>
+                    <ThemedText themeColor="textSecondary" style={{ marginTop: Spacing.two }}>
+                      ¿Eliminar {confirmDelete.ticker} de tu lista de seguimiento?
+                    </ThemedText>
+                  </View>
+
+                  {deleting ? (
+                    <View style={styles.confirmFooter}>
+                      <ActivityIndicator size="large" color={theme.attention} />
+                      <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: Spacing.two }}>
+                        Eliminando...
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <View style={styles.confirmFooter}>
+                      <TouchableOpacity
+                        style={[styles.confirmButton, styles.confirmButtonSecondary, { borderColor: theme.divider }]}
+                        onPress={() => setConfirmDelete(null)}
+                      >
+                        <ThemedText style={{ color: theme.textSecondary, fontWeight: '600' }}>
+                          Cancelar
+                        </ThemedText>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.confirmButton, { backgroundColor: theme.attention }]}
+                        onPress={confirmRemove}
+                      >
+                        <ThemedText style={{ color: '#FFFFFF', fontWeight: '600' }}>
+                          Eliminar
+                        </ThemedText>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+            </TouchableOpacity>
+          </Modal>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -392,5 +444,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmModal: {
+    width: '85%',
+    maxWidth: 400,
+    borderRadius: Spacing.three,
+    overflow: 'hidden',
+  },
+  confirmBody: {
+    padding: Spacing.four,
+  },
+  confirmFooter: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    padding: Spacing.four,
+    paddingTop: Spacing.two,
+  },
+  confirmButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonSecondary: {
+    borderWidth: 1,
   },
 });

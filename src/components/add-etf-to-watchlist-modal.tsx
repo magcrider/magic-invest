@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   View,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -27,28 +27,30 @@ export function AddEtfToWatchlistModal({ visible, onClose, onAdded }: Props) {
   const theme = useTheme();
   const [ticker, setTicker] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   async function handleAdd() {
     const cleanTicker = ticker.trim().toUpperCase();
 
     if (!cleanTicker) {
-      Alert.alert('Campo vacío', 'Ingresa el símbolo del ETF');
+      setErrorMessage('Ingresa el símbolo del ETF');
       return;
     }
 
     // Validación básica: solo letras (máximo 5 caracteres)
     if (!/^[A-Z]{1,5}$/.test(cleanTicker)) {
-      Alert.alert('Símbolo inválido', 'El ticker debe tener 1-5 letras (ej: VOO, VTI, QQQ)');
+      setErrorMessage('El ticker debe tener 1-5 letras (ej: VOO, VTI, QQQ)');
       return;
     }
 
+    setErrorMessage('');
     setLoading(true);
 
     try {
       // Verificar si ya existe
       const exists = await isEtfInWatchlist(cleanTicker);
       if (exists) {
-        Alert.alert('Ya existe', `${cleanTicker} ya está en tu watchlist`);
+        setErrorMessage(`${cleanTicker} ya está en tu watchlist`);
         setLoading(false);
         return;
       }
@@ -56,19 +58,20 @@ export function AddEtfToWatchlistModal({ visible, onClose, onAdded }: Props) {
       // Agregar
       await addEtfToWatchlist(cleanTicker);
 
-      Alert.alert('✅ ETF agregado', `${cleanTicker} se agregó a tu watchlist`);
+      // Cerrar automáticamente después de agregar
       setTicker('');
       onClose();
       onAdded();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo agregar el ETF');
-    } finally {
+      setErrorMessage(error.message || 'No se pudo agregar el ETF');
       setLoading(false);
     }
   }
 
   function handleClose() {
+    if (loading) return; // No cerrar mientras carga
     setTicker('');
+    setErrorMessage('');
     onClose();
   }
 
@@ -120,34 +123,51 @@ export function AddEtfToWatchlistModal({ visible, onClose, onAdded }: Props) {
               <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
                 El ETF se comparará contra tu Hurdle Rate y recibirás notificaciones cuando cruce el umbral.
               </ThemedText>
+
+              {/* Error message */}
+              {errorMessage ? (
+                <View style={[styles.errorBox, { backgroundColor: theme.attentionSubtle }]}>
+                  <Ionicons name="alert-circle" size={16} color={theme.attention} />
+                  <ThemedText type="small" style={{ color: theme.attention, flex: 1 }}>
+                    {errorMessage}
+                  </ThemedText>
+                </View>
+              ) : null}
             </View>
 
             {/* Footer */}
-            <View style={styles.footer}>
-              <TouchableOpacity
-                style={[styles.button, styles.buttonSecondary, { borderColor: theme.divider }]}
-                onPress={handleClose}
-              >
-                <ThemedText style={[styles.buttonText, { color: theme.textSecondary }]}>
-                  Cancelar
+            {loading ? (
+              <View style={styles.loadingFooter}>
+                <ActivityIndicator size="large" color={theme.positive} />
+                <ThemedText type="default" themeColor="textSecondary" style={{ marginTop: Spacing.two }}>
+                  Agregando ETF...
                 </ThemedText>
-              </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.footer}>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonSecondary, { borderColor: theme.divider }]}
+                  onPress={handleClose}
+                >
+                  <ThemedText style={[styles.buttonText, { color: theme.textSecondary }]}>
+                    Cancelar
+                  </ThemedText>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.buttonPrimary,
-                  { backgroundColor: theme.positive },
-                  loading && styles.buttonDisabled,
-                ]}
-                onPress={handleAdd}
-                disabled={loading}
-              >
-                <ThemedText style={[styles.buttonText, { color: '#FFFFFF' }]}>
-                  {loading ? 'Agregando...' : 'Agregar'}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={[
+                    styles.button,
+                    styles.buttonPrimary,
+                    { backgroundColor: theme.positive },
+                  ]}
+                  onPress={handleAdd}
+                >
+                  <ThemedText style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                    Agregar
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
           </TouchableOpacity>
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -217,5 +237,19 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  loadingFooter: {
+    paddingVertical: Spacing.four,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
   },
 });

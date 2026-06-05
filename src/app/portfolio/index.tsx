@@ -628,6 +628,19 @@ function PortfolioContent({
                 </TouchableOpacity>
               </View>
 
+              {/* Botón Analizar Rebalanceo */}
+              <TouchableOpacity
+                style={[styles.rebalancingButton, { backgroundColor: theme.backgroundElement, borderColor: theme.divider }]}
+                onPress={() => router.push('/portfolio/rebalancing')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="analytics-outline" size={20} color={theme.positive} />
+                <ThemedText type="default" style={{ color: theme.positive }}>
+                  Analizar rebalanceo
+                </ThemedText>
+                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+              </TouchableOpacity>
+
               <DistributionSection cdtPct={cdtPct} etfPct={etfPct} bands={bands} />
               <ContextStrip macroContext={macroContext} cdtRate360={cdtRate360} hurdleRate={hurdleRate} networkError={networkError} onOpenModal={setContextModal} />
             </>
@@ -1575,6 +1588,17 @@ const styles = StyleSheet.create({
   metricPart:    { fontSize: 11 },
   summaryBreakdownItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half },
   summaryDot:    { width: 6, height: 6, borderRadius: 3 },
+  rebalancingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    marginTop: Spacing.three,
+    gap: Spacing.two,
+  },
   distributionSection: {
     borderRadius: Spacing.three,
     padding: Spacing.three,

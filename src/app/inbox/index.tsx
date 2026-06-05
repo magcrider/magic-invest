@@ -84,8 +84,13 @@ const markUnreadStyles = StyleSheet.create({
 // ─── Acción derecha: eliminar (swipe izquierdo) ───────────────────────────────
 
 function DeleteAction({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
   return (
-    <TouchableOpacity style={deleteStyles.container} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[deleteStyles.container, { backgroundColor: theme.risk }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
       <ThemedText style={deleteStyles.label}>Eliminar</ThemedText>
     </TouchableOpacity>
@@ -95,7 +100,6 @@ function DeleteAction({ onPress }: { onPress: () => void }) {
 const deleteStyles = StyleSheet.create({
   container: {
     width: 80,
-    backgroundColor: '#C0392B',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.one,
@@ -202,9 +206,30 @@ function Separator() {
 /**
  * Convierte evento de BD a formato UI
  */
+/**
+ * Limpia sintaxis markdown común para mostrar texto plano en previews.
+ * Solo cubre lo que aparece en los bodies de eventos del Buzón:
+ * **bold**, *italic*, __bold__, _italic_, `code`, [link](url), # heading, ~~strike~~.
+ */
+function stripMarkdown(md: string): string {
+  return md
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/(^|[^\w*])\*(?!\s)([^*\n]+?)\*(?!\w)/g, '$1$2')
+    .replace(/(^|[^\w_])_(?!\s)([^_\n]+?)_(?!\w)/g, '$1$2')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/~~(.+?)~~/g, '$1')
+    .trim();
+}
+
 function adaptEventFromDB(dbEvent: InboxEventDB): InboxEvent {
-  // Extraer primer párrafo del body como summary
-  const summary = dbEvent.body.split('\n\n')[0].substring(0, 150) + (dbEvent.body.length > 150 ? '...' : '')
+  // Extraer primer párrafo del body, limpiar markdown y truncar
+  const firstParagraph = stripMarkdown(dbEvent.body.split('\n\n')[0])
+  const summary = firstParagraph.length > 150
+    ? firstParagraph.substring(0, 150) + '...'
+    : firstParagraph
 
   // Formatear fecha
   const date = new Date(dbEvent.createdAt)
@@ -301,7 +326,7 @@ export default function InboxScreen() {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safe}>
-          <PageHeader title="Buzón" subtitle="Cargando mensajes..." />
+          <PageHeader title="Cargando…" compact />
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.positive} />
           </View>
@@ -310,19 +335,17 @@ export default function InboxScreen() {
     )
   }
 
+  const headerTitle =
+    events.length === 0
+      ? 'Sin mensajes'
+      : unreadCount > 0
+      ? `${unreadCount}/${events.length} sin leer`
+      : `${events.length} mensajes · todos leídos`;
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
-        <PageHeader
-          title="Buzón"
-          subtitle={
-            unreadCount > 0
-              ? `${unreadCount} sin leer · sin notificaciones push`
-              : events.length === 0
-              ? 'No hay mensajes en este momento'
-              : 'Mensajes del sistema · sin notificaciones push'
-          }
-        />
+        <PageHeader title={headerTitle} compact />
 
         {events.length === 0 ? (
           <View style={styles.emptyContainer}>

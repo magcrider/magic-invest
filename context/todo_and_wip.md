@@ -316,6 +316,48 @@ Cuando haya usuarios externos:
   - `src/components/page-header.tsx` — prop `compact` para saludo
 - **Estado:** ✅ Implementado y testeado por Harvey
 
+### 8. Scroll automático en formularios (Junio 5, 2026)
+- **Problema:** Tras un cambio previo, todos los `onFocus` de las calculadoras hacían `scrollToEnd`, saltando al final del scroll en lugar de centrar el campo activo. En `add-cdt`/`add-etf`/`login` el offset `y - 100` ponía el campo cerca del top, no centrado sobre el teclado.
+- **Solución:** Helper `scrollToInputCenter` que mide el contenedor del input y calcula el offset para centrarlo en el área visible (usa `Keyboard.metrics()` cuando está abierto, fallback ~45% del alto). `InputField` acepta nueva prop `scrollRef` y maneja todo internamente.
+- **Aplicado en:** 10 calculadoras de Tools + 3 formularios con TextInput propios (add-cdt, add-etf, login).
+- **Archivos:** `src/utils/scroll-to-input.ts` (nuevo), `src/components/calculator/input-field.tsx`, los 10 archivos de tools, add-cdt, add-etf, login.
+- **Estado:** ✅ Implementado y aprobado, commit `cc16f46`.
+
+### 9. Alineamiento al Design System: Login, Navegación, Buzón, Herramientas (Junio 5, 2026)
+- **Objetivo:** Erradicar colores genéricos heredados de etapas tempranas y unificar headers cortos.
+- **Cambios implementados:**
+  1. **Login/Signup — botón submit:** Antes `theme.text`/`theme.background` (negro genérico). Ahora `theme.positive` con texto `#FFFFFF` — mismo CTA que el FAB de Portafolio y los botones del modal de bandas.
+  2. **Login/Signup — selector de modo (segmented):** El estado activo añade borde inferior 2px en `theme.positive` para acento de marca sin romper el patrón segmented.
+  3. **Navegación inferior (NativeTabs):** Antes los íconos heredaban el tinte azul nativo de iOS. Ahora `iconColor={{ default: textSecondary, selected: positive }}` y label en `textSecondary`/`positive`. Coherente con la paleta teal/ámbar/púrpura.
+  4. **Buzón — swipe Eliminar:** Reemplazado hex literal `#C0392B` (rojo de mercado, prohibido por §1) por `theme.risk` (púrpura del DS). Refactor a inline color porque `StyleSheet.create` no tiene acceso al hook.
+  5. **Buzón — header compacto:** Antes `title="Buzón"` (48px) + subtitle. Ahora título compacto único: `9/11 sin leer` o `11 mensajes · todos leídos` o `Sin mensajes`. Eliminada mención "sin notificaciones push".
+  6. **Buzón — preview cards:** El summary mostraba caracteres markdown literales (`**bold**`). Agregado `stripMarkdown()` que limpia bold/italic/code/links/headings/strike antes de truncar. El `...` de truncado solo aparece cuando realmente se trunca, no por longitud del body completo.
+  7. **Herramientas — header compacto:** Mismo patrón. `title="Herramientas"` con prop `compact`, sin subtitle.
+- **Filosofía aplicada:**
+  - §1 dualidad innegociable: cero hex literales emocionales (rojo/verde de mercado).
+  - Identidad visual unificada: `theme.positive` (teal) como CTA primario en toda la app.
+  - Headers compactos consistentes: 24px con contexto útil en lugar de títulos decorativos.
+- **Archivos modificados:**
+  - `src/app/login.tsx` — botón submit + segmented accent
+  - `src/components/app-tabs.tsx` — iconColor y labelStyle de NativeTabs
+  - `src/app/inbox/index.tsx` — DeleteAction inline color, header compacto, stripMarkdown
+  - `src/app/tools/index.tsx` — header compacto
+- **Estado:** ✅ Implementado y testeado por Harvey
+
+### 10. UX Análisis de Rebalanceo (Junio 5, 2026)
+- **Objetivo:** Priorizar el escenario accionable y eliminar redundancias visuales.
+- **Cambios implementados:**
+  1. **Orden de pestañas invertido**: Antes "Mantener · Rebalancear". Ahora "Rebalancear · Mantener" — el plan de acción aparece primero. El estado inicial cambia a `viewMode='rebalance'`.
+  2. **Vista Mantener depurada**: Se retiraron tres elementos redundantes con la pestaña: título "No realizar ninguna acción", intro "Mantener tu asignación actual sin cambios" y badge "Costo: $0". La vista arranca directo en "Consecuencias" + "¿Cuándo tiene sentido?".
+  3. **Spacing unificado**: Reemplazo de `marginTop`/`marginBottom` mixtos por un único `gap: Spacing.three` en el contenedor de cada vista (`viewStack`). El `paddingTop` del content se redujo de `Spacing.four` a `Spacing.two`. Resultado: la vista Mantener queda pegada al inicio (sin huecos extra) y la vista Rebalancear conserva su separación natural sin código duplicado.
+- **Filosofía aplicada:**
+  - Jerarquía: lo accionable se muestra primero, lo informativo segundo.
+  - El marco de la app (pestaña + título de pantalla) no se repite dentro del contenido.
+  - El espaciado entre elementos consecutivos lo da una sola fuente (`gap`), no márgenes individuales.
+- **Archivos modificados:**
+  - `src/app/portfolio/rebalancing.tsx` — orden de tabs, estado inicial, contenido de MaintainView, sistema de spacing
+- **Estado:** ✅ Implementado y testeado por Harvey
+
 ---
 
 ## 🐛 Bugs Conocidos
@@ -330,13 +372,14 @@ Cuando haya usuarios externos:
 
 ## 🔄 Última Actualización
 
-**Fecha:** Junio 5, 2026 (09:00)  
+**Fecha:** Junio 5, 2026 (tarde)  
 **Autor:** Claude Code  
-**Estado:** 🎉 FASE 1 (MVP) COMPLETADA AL 100%
+**Estado:** 🎉 FASE 1 (MVP) COMPLETADA AL 100% — pulido UX en curso
 
 **Commits recientes:**
-- `d33af72` — Perfil de Usuario + UX watchlist + rebase limpio
-- ⏳ **Próximo commit:** UX refinada Portafolio: saludo compacto, FAB, distribución objetivo vs actual con acciones contextuales
+- `11e1ea4` — UX refinada Portafolio: saludo compacto, FAB, distribución objetivo vs actual
+- `cc16f46` — Scroll automático en formularios: input activo centrado sobre el teclado
+- ⏳ **Próximo commit:** Alineamiento al design system (login, tabs, buzón, herramientas) + fix preview markdown + UX rebalanceo (orden de tabs, vista Mantener depurada, spacing unificado)
 
 **Próximos pasos:**
 - Continuar revisión de UX con Harvey

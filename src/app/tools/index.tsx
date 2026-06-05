@@ -33,10 +33,7 @@ export default function ToolsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
-        <PageHeader
-          title="Herramientas"
-          subtitle="Simulaciones locales · sin conexión a red"
-        />
+        <PageHeader title="Herramientas" compact />
         <FlatList
           data={TOOLS}
           keyExtractor={(item) => item.id}

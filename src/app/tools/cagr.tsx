@@ -133,7 +133,7 @@ export default function CagrScreen() {
               label="Valor inicial"
               value={initialValue}
               onChangeText={(t) => { setInitialValue(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="10.000.000"
               hint="Cuánto valía la inversión (o cuánto pusiste) al inicio del período."
@@ -143,7 +143,7 @@ export default function CagrScreen() {
               label="Valor final"
               value={finalValue}
               onChangeText={(t) => { setFinalValue(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="18.500.000"
               hint="Cuánto vale hoy (o al final del período que quieres analizar)."
@@ -156,7 +156,7 @@ export default function CagrScreen() {
               suffix="años"
               placeholder="5"
               inputType="integer"
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
             />
           </ThemedView>
 

@@ -216,7 +216,7 @@ export default function DebtFreedomScreen() {
               label="Saldo actual de la deuda"
               value={balance}
               onChangeText={(t) => { setBalance(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="5.000.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
@@ -225,7 +225,7 @@ export default function DebtFreedomScreen() {
               label="Tasa anual de interés"
               value={rate}
               onChangeText={(t) => { setRate(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="%"
               placeholder="24"
               hint="Las tarjetas de crédito en Colombia suelen estar entre 18% y 30%."
@@ -235,7 +235,7 @@ export default function DebtFreedomScreen() {
               label="Pago mínimo mensual"
               value={minPayment}
               onChangeText={(t) => { setMinPayment(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="200.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
@@ -248,7 +248,7 @@ export default function DebtFreedomScreen() {
               placeholder="0"
               hint="¿Cuánto más puedes destinar cada mes? Incluso poco hace una gran diferencia."
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
             />
           </ThemedView>
 

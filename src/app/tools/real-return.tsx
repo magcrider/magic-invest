@@ -206,7 +206,7 @@ export default function RealReturnScreen() {
               label="Capital actual"
               value={capital}
               onChangeText={(t) => { setCapital(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="10.000.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
@@ -215,7 +215,7 @@ export default function RealReturnScreen() {
               label="Rendimiento nominal (EA)"
               value={nominal}
               onChangeText={(t) => { setNominal(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="%"
               placeholder="13.5"
               hint="La tasa que te prometió el CDT o el promedio histórico del ETF."
@@ -225,7 +225,7 @@ export default function RealReturnScreen() {
               label="Inflación esperada (IPC)"
               value={inflation}
               onChangeText={(t) => { setInflation(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="%"
               placeholder="5"
               hint="Inflación proyectada en Colombia. La meta del Banrep es 3%. En 2024 fue ~5.2%."
@@ -238,7 +238,7 @@ export default function RealReturnScreen() {
               suffix="años"
               placeholder="10"
               inputType="integer"
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
             />
           </ThemedView>
 

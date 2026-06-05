@@ -1,10 +1,11 @@
-import { useRef } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { useRef, type RefObject } from 'react';
+import { StyleSheet, TextInput, View, type ScrollView } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatInput, type InputType } from '@/utils/format';
+import { scrollToInputCenter } from '@/utils/scroll-to-input';
 
 interface Props {
   label: string;
@@ -15,6 +16,7 @@ interface Props {
   hint?: string;
   inputType?: InputType;
   onFocus?: () => void;
+  scrollRef?: RefObject<ScrollView | null>;
 }
 
 export function InputField({
@@ -26,12 +28,21 @@ export function InputField({
   hint,
   inputType = 'decimal',
   onFocus,
+  scrollRef,
 }: Props) {
   const theme = useTheme();
+  const containerRef = useRef<View>(null);
 
   function handleChange(raw: string) {
     const formatted = formatInput(raw, inputType, value);
     onChangeText(formatted);
+  }
+
+  function handleFocus() {
+    if (scrollRef) {
+      scrollToInputCenter(scrollRef, containerRef);
+    }
+    onFocus?.();
   }
 
   // Determinar keyboardType según inputType
@@ -44,14 +55,14 @@ export function InputField({
   const displayPlaceholder = /^[0-9.,\s]+$/.test(placeholder) ? `ej: ${placeholder}` : placeholder;
 
   return (
-    <View style={styles.container}>
+    <View ref={containerRef} style={styles.container}>
       <ThemedText type="small" style={[styles.label, { color: theme.text }]}>{label}</ThemedText>
       <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
         <TextInput
           style={[styles.input, { color: theme.text }]}
           value={value}
           onChangeText={handleChange}
-          onFocus={onFocus}
+          onFocus={handleFocus}
           placeholder={displayPlaceholder}
           placeholderTextColor={theme.textPlaceholder}
           keyboardType={keyboardType}

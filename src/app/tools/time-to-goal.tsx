@@ -172,7 +172,7 @@ export default function TimeToGoalScreen() {
               label="¿Cuánto quieres acumular?"
               value={target}
               onChangeText={(t) => { setTarget(t); setResult(null); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="100.000.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
@@ -181,7 +181,7 @@ export default function TimeToGoalScreen() {
               label="Capital inicial"
               value={principal}
               onChangeText={(t) => { setPrincipal(t); setResult(null); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="0"
               hint="Puedes poner 0 si empiezas desde cero."
@@ -191,7 +191,7 @@ export default function TimeToGoalScreen() {
               label="Aporte mensual"
               value={monthly}
               onChangeText={(t) => { setMonthly(t); setResult(null); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="500.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
@@ -204,7 +204,7 @@ export default function TimeToGoalScreen() {
               placeholder="10"
               hint="Usa el promedio histórico del ETF o la tasa del CDT."
               inputType="percent"
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
             />
           </ThemedView>
 

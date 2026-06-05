@@ -203,7 +203,7 @@ export default function FeeDragScreen() {
               label="Capital inicial"
               value={capital}
               onChangeText={(t) => { setCapital(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="10.000.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
@@ -212,7 +212,7 @@ export default function FeeDragScreen() {
               label="Rendimiento bruto esperado (EA)"
               value={rate}
               onChangeText={(t) => { setRate(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="%"
               placeholder="10"
               hint="Rendimiento del índice antes de descontar comisiones. El S&P 500 ha promediado ~10% en USD."
@@ -222,7 +222,7 @@ export default function FeeDragScreen() {
               label="TER anual del fondo"
               value={ter}
               onChangeText={(t) => { setTer(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="%"
               placeholder="0.20"
               hint="Total Expense Ratio. ETFs indexados baratos cobran 0.03%–0.20%. Los fondos activos suelen cobrar 1%–2%."
@@ -235,7 +235,7 @@ export default function FeeDragScreen() {
               suffix="años"
               placeholder="20"
               inputType="integer"
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
             />
           </ThemedView>
 

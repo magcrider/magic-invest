@@ -242,7 +242,7 @@ export default function RateConverterScreen() {
               suffix="%"
               placeholder={activeConfig.placeholder}
               inputType="percent"
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
             />
           </ThemedView>
 

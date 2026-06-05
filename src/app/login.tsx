@@ -17,6 +17,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
+import { scrollToInputCenter } from '@/utils/scroll-to-input';
 
 type Mode = 'signin' | 'signup';
 
@@ -37,17 +38,7 @@ export default function LoginScreen() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   function scrollToInput(inputRef: React.RefObject<View | null>) {
-    setTimeout(() => {
-      if (inputRef.current && scrollRef.current) {
-        inputRef.current.measureLayout(
-          scrollRef.current as any,
-          (x, y) => {
-            scrollRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true });
-          },
-          () => {}
-        );
-      }
-    }, 100);
+    scrollToInputCenter(scrollRef, inputRef);
   }
 
   async function handleSubmit() {

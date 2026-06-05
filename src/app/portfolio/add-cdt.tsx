@@ -20,6 +20,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatCurrency, formatInput, parseFormattedInput } from '@/utils/format';
+import { scrollToInputCenter } from '@/utils/scroll-to-input';
 import { createCdt } from '@/services/supabase-queries';
 import type { CdtCapitalization } from '@/types/database';
 
@@ -83,17 +84,7 @@ export default function AddCdtScreen() {
   const [saving,           setSaving]           = useState(false);
 
   function scrollToInput(inputRef: React.RefObject<View | null>) {
-    setTimeout(() => {
-      if (inputRef.current && scrollRef.current) {
-        inputRef.current.measureLayout(
-          scrollRef.current as any,
-          (x, y) => {
-            scrollRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true });
-          },
-          () => {}
-        );
-      }
-    }, 100);
+    scrollToInputCenter(scrollRef, inputRef);
   }
 
   const bankFinal  = bank === 'Otro' ? customBank.trim() : bank;

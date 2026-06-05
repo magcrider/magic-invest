@@ -218,7 +218,7 @@ export default function DcaVsLumpScreen() {
               label="Capital total disponible"
               value={capital}
               onChangeText={(t) => { setCapital(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="10.000.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
@@ -227,7 +227,7 @@ export default function DcaVsLumpScreen() {
               label="Horizonte total"
               value={totalMonths}
               onChangeText={(t) => { setTotalMonths(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="meses"
               placeholder="60"
               hint="Cuánto tiempo planeas mantener la inversión en total."
@@ -237,7 +237,7 @@ export default function DcaVsLumpScreen() {
               label="Meses para distribuir (DCA)"
               value={dcaMonths}
               onChangeText={(t) => { setDcaMonths(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="meses"
               placeholder="12"
               hint="En cuántos meses repartirías el capital. Ej: 12 → una cuota mensual durante 1 año."
@@ -251,7 +251,7 @@ export default function DcaVsLumpScreen() {
               placeholder="10"
               hint="Usa el promedio histórico del activo en el que invertirías."
               inputType="percent"
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
             />
           </ThemedView>
 

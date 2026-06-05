@@ -131,7 +131,7 @@ export default function CompoundInterestScreen() {
               label="Capital inicial"
               value={principal}
               onChangeText={(t) => { setPrincipal(t); setResult(null); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="10.000.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
@@ -140,7 +140,7 @@ export default function CompoundInterestScreen() {
               label="Aporte mensual"
               value={monthly}
               onChangeText={(t) => { setMonthly(t); setResult(null); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="500.000"
               hint="Puedes poner 0 si no harás aportes periódicos."
@@ -150,7 +150,7 @@ export default function CompoundInterestScreen() {
               label="Tasa anual esperada"
               value={rate}
               onChangeText={(t) => { setRate(t); setResult(null); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="%"
               placeholder="10"
               hint="Usa el promedio histórico del ETF o la tasa del CDT."
@@ -160,7 +160,7 @@ export default function CompoundInterestScreen() {
               label="Horizonte de tiempo"
               value={years}
               onChangeText={(t) => { setYears(t); setResult(null); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="años"
               placeholder="20"
               inputType="integer"

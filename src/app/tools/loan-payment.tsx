@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { ResultCard, type ResultRow } from '@/components/calculator/result-card'
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { type Currency, formatCurrency, parseFormattedInput, formatInput } from '@/utils/format';
+import { scrollToInputCenter } from '@/utils/scroll-to-input';
 
 interface LoanResult {
   monthlyPayment: number;
@@ -27,6 +28,8 @@ export default function LoanPaymentScreen() {
   const router = useRouter();
   const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
+  const rateFieldRef = useRef<View>(null);
+  const monthsFieldRef = useRef<View>(null);
   const [currency, setCurrency] = useState<Currency>('COP');
   const [amount, setAmount] = useState('');
   const [rate, setRate] = useState('');
@@ -140,13 +143,14 @@ export default function LoanPaymentScreen() {
               label="Monto del crédito"
               value={amount}
               onChangeText={(t) => { setAmount(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="50.000.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
             />
 
             {/* Tasa con info icon */}
+            <View ref={rateFieldRef}>
             <ThemedView style={styles.fieldContainer}>
               <ThemedView style={styles.labelRow}>
                 <ThemedText type="small" style={[styles.fieldLabel, { color: theme.text }]}>
@@ -183,7 +187,7 @@ export default function LoanPaymentScreen() {
                     setRate(formatted);
                     reset();
                   }}
-                  onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+                  onFocus={() => scrollToInputCenter(scrollRef, rateFieldRef)}
                   placeholder="ej: 18"
                   placeholderTextColor={theme.textPlaceholder}
                   keyboardType="decimal-pad"
@@ -192,8 +196,10 @@ export default function LoanPaymentScreen() {
                 <ThemedText type="small" themeColor="textSecondary" style={styles.inputSuffix}>%</ThemedText>
               </ThemedView>
             </ThemedView>
+            </View>
 
             {/* Plazo con info icon */}
+            <View ref={monthsFieldRef}>
             <ThemedView style={styles.fieldContainer}>
               <ThemedView style={styles.labelRow}>
                 <ThemedText type="small" style={[styles.fieldLabel, { color: theme.text }]}>
@@ -229,7 +235,7 @@ export default function LoanPaymentScreen() {
                     setMonths(formatted);
                     reset();
                   }}
-                  onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+                  onFocus={() => scrollToInputCenter(scrollRef, monthsFieldRef)}
                   placeholder="ej: 36"
                   placeholderTextColor={theme.textPlaceholder}
                   keyboardType="number-pad"
@@ -237,6 +243,7 @@ export default function LoanPaymentScreen() {
                 />
               </ThemedView>
             </ThemedView>
+            </View>
           </ThemedView>
 
           <TouchableOpacity

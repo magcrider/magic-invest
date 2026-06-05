@@ -247,7 +247,7 @@ export default function CdtVsEtfScreen() {
               label="Capital a invertir"
               value={capital}
               onChangeText={(t) => { setCapital(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix={currencyLabel}
               placeholder="10.000.000"
               inputType={currency === 'COP' ? 'currency-cop' : 'currency-usd'}
@@ -256,7 +256,7 @@ export default function CdtVsEtfScreen() {
               label="Horizonte de inversión"
               value={months}
               onChangeText={(t) => { setMonths(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="meses"
               placeholder="12"
               hint="Ej: 12 → 1 año, 36 → 3 años, 60 → 5 años."
@@ -266,7 +266,7 @@ export default function CdtVsEtfScreen() {
               label="Tasa del CDT (EA)"
               value={cdtRate}
               onChangeText={(t) => { setCdtRate(t); reset(); }}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
               suffix="%"
               placeholder="13.5"
               hint="Tasa efectiva anual que ofrece el banco. Los CDTs en Colombia suelen estar entre 10% y 16% EA."
@@ -280,7 +280,7 @@ export default function CdtVsEtfScreen() {
               placeholder="10"
               hint="Promedio histórico del índice. El S&P 500 ha rendido ~10% anual en USD a largo plazo."
               inputType="percent"
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
+              scrollRef={scrollRef}
             />
           </ThemedView>
 

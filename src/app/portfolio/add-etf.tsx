@@ -21,6 +21,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatInput, parseFormattedInput } from '@/utils/format';
+import { scrollToInputCenter } from '@/utils/scroll-to-input';
 import { createEtf, getMacroContext, getTrmOnDate } from '@/services/supabase-queries';
 
 const ETF_CATALOG: Record<string, string> = {
@@ -75,17 +76,7 @@ export default function AddEtfScreen() {
   const [trmLoading, setTrmLoading] = useState(false);
 
   function scrollToInput(inputRef: React.RefObject<View | null>) {
-    setTimeout(() => {
-      if (inputRef.current && scrollRef.current) {
-        inputRef.current.measureLayout(
-          scrollRef.current as any,
-          (x, y) => {
-            scrollRef.current?.scrollTo({ y: Math.max(0, y - 100), animated: true });
-          },
-          () => {}
-        );
-      }
-    }, 100);
+    scrollToInputCenter(scrollRef, inputRef);
   }
 
   // Cost of acquisition

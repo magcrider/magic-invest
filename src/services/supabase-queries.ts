@@ -382,35 +382,49 @@ export async function getMacroContext(): Promise<MacroContext> {
       8000
     );
 
-    // 3. Inflación COP (opcional)
-    const { data: inflationCOPData } = await withTimeout(
-      supabase
-        .from('macro_rates')
-        .select('value')
-        .eq('type', 'inflation_cop_annual')
-        .order('effective_date', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      8000
-    );
+    // Helper: lee el último valor de un type. Devuelve null en caso de timeout
+    //  o error de la query — la inflación es opcional, no debe tumbar la
+    //  función completa si falla. Loguea el motivo para no perder telemetría.
+    async function fetchLatestMacro(macroType: string): Promise<number | null> {
+      try {
+        const { data, error } = await withTimeout(
+          supabase
+            .from('macro_rates')
+            .select('value')
+            .eq('type', macroType)
+            .order('effective_date', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          8000
+        );
+        if (error) {
+          console.warn(`[getMacroContext] query ${macroType} returned error:`, error.message);
+          return null;
+        }
+        return data?.value ?? null;
+      } catch (err) {
+        console.warn(`[getMacroContext] query ${macroType} threw:`, (err as Error).message);
+        return null;
+      }
+    }
+
+    // 3. Inflación COP (opcional). Preferimos la variación 12m diaria de Banrep
+    //    SDMX vía UVR; si aún no hay dato, caemos a la serie legacy de World
+    //    Bank (promedio anual con lag — útil como respaldo histórico).
+    let inflationCOP = await fetchLatestMacro('inflation_cop_yoy_banrep');
+    if (inflationCOP === null) {
+      console.info('[getMacroContext] inflation_cop_yoy_banrep no disponible, usando legacy inflation_cop_annual');
+      inflationCOP = await fetchLatestMacro('inflation_cop_annual');
+    }
 
     // 4. Inflación USD (opcional)
-    const { data: inflationUSDData } = await withTimeout(
-      supabase
-        .from('macro_rates')
-        .select('value')
-        .eq('type', 'inflation_usd_annual')
-        .order('effective_date', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      8000
-    );
+    const inflationUSD = await fetchLatestMacro('inflation_usd_annual');
 
     return {
       trm: trmData.value,
       policyRate: policyData?.value ?? 11.25, // fallback a valor conocido
-      inflationCOP: inflationCOPData?.value ?? null,
-      inflationUSD: inflationUSDData?.value ?? null,
+      inflationCOP,
+      inflationUSD,
       date: trmData.effective_date,
     };
   });

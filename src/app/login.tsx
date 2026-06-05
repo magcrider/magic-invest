@@ -120,7 +120,10 @@ export default function LoginScreen() {
             {/* Selector de modo */}
             <ThemedView type="backgroundElement" style={styles.modeSelector}>
               <TouchableOpacity
-                style={[styles.modeButton, mode === 'signin' && { backgroundColor: theme.background }]}
+                style={[
+                  styles.modeButton,
+                  mode === 'signin' && { backgroundColor: theme.background, borderBottomColor: theme.positive, borderBottomWidth: 2 },
+                ]}
                 onPress={() => { setMode('signin'); setName(''); setError(null); setSuccessMsg(null); }}>
                 <ThemedText
                   type="small"
@@ -129,7 +132,10 @@ export default function LoginScreen() {
                 </ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modeButton, mode === 'signup' && { backgroundColor: theme.background }]}
+                style={[
+                  styles.modeButton,
+                  mode === 'signup' && { backgroundColor: theme.background, borderBottomColor: theme.positive, borderBottomWidth: 2 },
+                ]}
                 onPress={() => { setMode('signup'); setError(null); setSuccessMsg(null); }}>
 
                 <ThemedText
@@ -195,12 +201,12 @@ export default function LoginScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: theme.text }, loading && styles.buttonDisabled]}
+              style={[styles.button, { backgroundColor: theme.positive }, loading && styles.buttonDisabled]}
               onPress={handleSubmit}
               disabled={loading || !email.trim() || password.length < 6 || (mode === 'signup' && !name.trim())}>
               {loading
-                ? <ActivityIndicator color={theme.background} />
-                : <ThemedText type="smallBold" style={[styles.buttonText, { color: theme.background }]}>
+                ? <ActivityIndicator color="#FFFFFF" />
+                : <ThemedText type="smallBold" style={[styles.buttonText, { color: '#FFFFFF' }]}>
                     {mode === 'signin' ? 'Ingresar' : 'Crear cuenta'}
                   </ThemedText>
               }

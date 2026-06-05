@@ -26,7 +26,7 @@ export default function RebalancingScreen() {
   const theme = useTheme()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<ViewMode>('maintain')
+  const [viewMode, setViewMode] = useState<ViewMode>('rebalance')
 
   // Datos cargados
   const [bands, setBands] = useState<AllocationBands | null>(null)
@@ -141,21 +141,6 @@ export default function RebalancingScreen() {
           <TouchableOpacity
             style={[
               styles.tab,
-              viewMode === 'maintain' && { borderBottomColor: theme.positive, borderBottomWidth: 2 },
-            ]}
-            onPress={() => setViewMode('maintain')}
-          >
-            <ThemedText
-              type={viewMode === 'maintain' ? 'defaultBold' : 'default'}
-              style={{ color: viewMode === 'maintain' ? theme.text : theme.textSecondary }}
-            >
-              Mantener
-            </ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.tab,
               viewMode === 'rebalance' && { borderBottomColor: theme.positive, borderBottomWidth: 2 },
             ]}
             onPress={() => setViewMode('rebalance')}
@@ -165,6 +150,21 @@ export default function RebalancingScreen() {
               style={{ color: viewMode === 'rebalance' ? theme.text : theme.textSecondary }}
             >
               Rebalancear
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tab,
+              viewMode === 'maintain' && { borderBottomColor: theme.positive, borderBottomWidth: 2 },
+            ]}
+            onPress={() => setViewMode('maintain')}
+          >
+            <ThemedText
+              type={viewMode === 'maintain' ? 'defaultBold' : 'default'}
+              style={{ color: viewMode === 'maintain' ? theme.text : theme.textSecondary }}
+            >
+              Mantener
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -207,25 +207,7 @@ function MaintainView({
   const drawdownPercentage = (drawdownCOP / currentAllocation.totalValueCOP) * 100
 
   return (
-    <ThemedView>
-      <ThemedText type="subtitle" style={styles.sectionTitle}>
-        No realizar ninguna acción
-      </ThemedText>
-
-      <ThemedText type="default" style={styles.intro}>
-        Mantener tu asignación actual sin cambios.
-      </ThemedText>
-
-      {/* Costo Badge */}
-      <View style={[styles.costCard, { backgroundColor: theme.positiveSubtle, borderLeftColor: theme.positive }]}>
-        <ThemedText type="defaultBold" style={{ color: theme.positive }}>
-          Costo: $0
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Sin comisiones ni movimientos
-        </ThemedText>
-      </View>
-
+    <ThemedView style={styles.viewStack}>
       {/* Métricas */}
       <ThemedView style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
         <ThemedText type="defaultBold" style={styles.cardTitle}>
@@ -325,7 +307,7 @@ function RebalanceView({ scenario, trm }: { scenario: RebalancingScenario; trm: 
   const theme = useTheme()
 
   return (
-    <ThemedView>
+    <ThemedView style={styles.viewStack}>
       <ThemedText type="subtitle" style={styles.sectionTitle}>
         Rebalancear al centro
       </ThemedText>
@@ -562,28 +544,25 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: Spacing.four,
+    paddingTop: Spacing.two,
   },
   contentContainer: {
     paddingBottom: Spacing.four * 4,
   },
-  sectionTitle: {
-    marginBottom: Spacing.three,
+  viewStack: {
+    gap: Spacing.three,
   },
-  intro: {
-    marginBottom: Spacing.three,
-  },
+  sectionTitle: {},
+  intro: {},
   costCard: {
     padding: Spacing.three,
     borderRadius: Spacing.two,
     borderLeftWidth: 4,
-    marginBottom: Spacing.three,
     gap: Spacing.one,
   },
   card: {
     padding: Spacing.four,
     borderRadius: Spacing.two,
-    marginTop: Spacing.three,
     gap: Spacing.two,
   },
   bulletText: {

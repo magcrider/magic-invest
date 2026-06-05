@@ -6,9 +6,9 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 ## Estado General — Junio 4, 2026
 
-* **Fase:** 🟢 Fase 1 (MVP) — 97% completado
-* **Último cambio:** Junio 4, 2026 — UX mejorada: modales nativos reemplazados por design system
-* **Próxima sesión con Winston:** Auditoría Sistema Rebalanceo + UI
+* **Fase:** 🟢 Fase 1 (MVP) — 99% completado
+* **Último cambio:** Junio 4, 2026 — Sistema Rebalanceo 100% completo + UX watchlist mejorada
+* **Próximo:** Perfil de Usuario (último módulo MVP)
 
 ### ✅ Módulos Completados
 
@@ -28,12 +28,15 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 #### 3. Módulo Buzón (100%)
 - UI completa (lista + detalle con Markdown enriquecido)
-- Motor de eventos backend con **5 de 5 triggers:**
+- Motor de eventos backend con **8 de 8 triggers:**
   - ✅ CDT próximo a vencer (30/60/90 días)
   - ✅ Drawdown ETF (>25% desde pico)
   - ✅ Cambio tasa Banrep (≥50 bps)
   - ✅ Bandas de asignación fuera de rango
-  - ✅ **ETF cruza Hurdle Rate (watchlist implementada)**
+  - ✅ ETF cruza Hurdle Rate (watchlist)
+  - ✅ Trigger #6: Evaluación Trimestral de rebalanceo
+  - ✅ Trigger #7: Rebalanceo de Oportunidad (CDT venciendo)
+  - ✅ Trigger #8: Cambio Macro Significativo (HR >1.5%)
 - Swipe actions (eliminar / marcar no leído)
 - Navegación bidireccional con Portafolio
 - Badges dinámicos en tarjetas de activos
@@ -45,23 +48,27 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 - ContextStrip con datos macroeconómicos reales
 - Modales educativos (Hurdle Rate, perfil, proyección)
 - Badges dinámicos (eventos relacionados por activo)
-- ✅ **Watchlist ETFs funcional** (agregar/eliminar, precios, comparación vs HR)
+- Watchlist ETFs funcional (agregar/eliminar, precios, comparación vs HR)
+- **Sistema de Rebalanceo completo** (análisis, escenarios, gráfico bandas)
 
 #### 5. Backend Supabase (100%)
-- **7 Edge Functions operativas:**
-  - `fetch-banrep-data` — Cron diario (TRM + CDT rates)
+- **8 Edge Functions operativas:**
+  - `fetch-banrep-data` — Cron diario (TRM + CDT rates + tasa política)
   - `backfill-historical-data` — Histórico 10 años (TRM + CDT)
   - `fetch-inflation-data` — Cron mensual (COP + USD desde World Bank)
   - `backfill-inflation-historical` — Histórico 2014-2024
   - `fetch-etf-prices` — Cron diario (EOD desde EODHD)
   - `backfill-etf-historical` — Histórico ~1 año (VTI, VOO, QQQ)
-  - `generate-inbox-events` — Cron semanal (motor de eventos)
+  - `generate-inbox-events` — Cron semanal (triggers 1-5)
+  - `evaluate-rebalancing` — Cron semanal domingos (triggers 6-8)
 
 - **Datos actuales en BD:**
   - TRM: 2,468 registros (2016-2026)
   - CDT rates: 6,138 registros (2018-2026)
   - Inflación: 22 registros (COP + USD, 2014-2024)
   - EOD prices: 753 registros (3 ETFs × ~251 días)
+  - Bandas asignación: presets Conservador/Moderado/Agresivo
+  - Snapshots portafolio: histórico para triggers de rebalanceo
 
 - **Hurdle Rate 100% dinámico:**
   - Ecuación de Fisher completa
@@ -72,9 +79,25 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 ## 🎯 Tareas Pendientes Inmediatas
 
-### 1. Sistema de Rebalanceo
+### 1. Perfil de Usuario Completo
 
-**Estado:** Backend completo (Semana 1/3) — UI pendiente
+**Estado:** 30% — Solo nombre en signup
+
+**Faltante:**
+- [ ] Formulario post-signup con tipo doc, número, ciudad
+- [ ] Tabla `user_profiles` en BD (ya existe en schema)
+- [ ] Pantalla de edición en settings (desde drawer)
+- [ ] Validación de número de documento según tipo
+
+**Depende de:** Nada
+
+**Prioridad:** Media (no bloquea MVP, pero completa la experiencia)
+
+---
+
+### COMPLETADO: Sistema de Rebalanceo ✅
+
+**Estado:** 100% — Backend, UI y testing completados
 
 **✅ Implementado:**
 - ✅ Base de datos (3 tablas: bandas, snapshots, cache HR)
@@ -87,13 +110,19 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 - ✅ Control de duplicados (ventana 7 días)
 - ✅ Presets de bandas (Conservador, Moderado, Agresivo)
 - ✅ Estimación de costos (0.5% ETF, 0.3% spread FX)
+- ✅ UI completa: Pantalla `/portfolio/rebalancing` con 2 tabs (Mantener/Rebalancear)
+- ✅ Gráfico visual: `AllocationChart` con bandas CDT/ETF y colores semánticos
+- ✅ Integración: Botón "Analizar rebalanceo" en Portafolio
+- ✅ Testing y correcciones UI aprobadas por Harvey (5 iteraciones)
 
-**⏳ Pendiente (Semana 2-3):**
-- [ ] UI: Modal de análisis de rebalanceo (3 vistas)
-- [ ] UI: Gráfico de asignación con bandas visuales
-- [ ] Integración en pantalla Portafolio
-- [ ] Tests E2E con datos reales de Harvey
-- [ ] Documentación en `investment_thesis.md`
+**Decisiones implementadas:**
+- Bandas default: Moderado (CDT 50-70% / ETF 30-50%)
+- Triggers: Desviación >5% + cambio HR >1.5%
+- Escenarios: Mantener vs Rebalancear al centro
+- Cron: Domingos 8:00 AM (semanal)
+
+**Pendiente (no crítico):**
+- [ ] Documentación conceptual en `investment_thesis.md`
 
 **Decisiones aprobadas (Winston + Harvey):**
 - Bandas default: Moderado (CDT 50-70% / ETF 30-50%) ✅
@@ -101,20 +130,6 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 - Escenarios: Mantener vs Rebalancear al centro ✅
 - Cron: Domingos 8:00 AM (semanal) ✅
 
----
-
-### 3. Perfil de Usuario Completo
-
-**Estado:** Parcial (solo nombre en signup)
-
-**Faltante:**
-- Formulario post-signup con tipo doc, número, ciudad
-- Tabla `user_profiles` en BD
-- Pantalla de edición en settings (desde drawer)
-
-**Depende de:** Nada
-
-**Prioridad:** Media (no bloquea MVP)
 
 ---
 
@@ -185,10 +200,10 @@ Cuando haya usuarios externos:
 | Buzón | 100% | Ninguno |
 | Portafolio | 100% | Ninguno |
 | Backend | 100% | Ninguno |
-| Sistema Rebalanceo | 60% | UI (Semana 2-3) |
+| Sistema Rebalanceo | 100% | Ninguno |
 | Perfil Usuario | 30% | Ninguno |
 
-**Progreso Global Fase 1:** 97%
+**Progreso Global Fase 1:** 99%
 
 ---
 
@@ -206,8 +221,7 @@ Cuando haya usuarios externos:
 - ✅ Junio 4: Sticky headers (17 pantallas)
 - ✅ Junio 4: Corrección 4 bugs críticos (auditoría Winston)
 - ✅ Junio 4: Watchlist ETFs + Trigger #5 del Buzón
-- ✅ Junio 4: Sistema Rebalanceo (Backend — Triggers 6, 7, 8)
-- ⏳ Junio 5+: Sistema Rebalanceo (UI + Tests)
+- ✅ Junio 4: Sistema Rebalanceo completo (Backend + UI + Triggers 6, 7, 8)
 
 ---
 

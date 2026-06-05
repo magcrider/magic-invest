@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Text,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -20,7 +21,7 @@ import { OfflineScreen } from '@/components/offline-screen';
 import { Spacing, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { PROFILE_CONFIG, PROFILE_BANDS, type RiskProfile } from '@/constants/risk-profile';
-import { getRiskProfile, setRiskProfile, getAllCdts, getAllEtfs, getMacroContext, getCdtMarketRates, getLatestEodPrices, getTrmHistory, getInboxEvents, type MacroContext, type CdtMarketRate, type EodPrice } from '@/services/supabase-queries';
+import { getRiskProfile, setRiskProfile, resetRiskProfile, getAllCdts, getAllEtfs, getMacroContext, getCdtMarketRates, getLatestEodPrices, getTrmHistory, getInboxEvents, type MacroContext, type CdtMarketRate, type EodPrice } from '@/services/supabase-queries';
 import { calculateDevaluation, calculatePortfolioHurdleRate } from '@/lib/hurdle-rate';
 import { profileEvents } from '@/utils/profile-events';
 import { formatCurrency, abbreviateValue } from '@/utils/format';
@@ -315,7 +316,7 @@ export default function PortfolioScreen() {
     });
   }
 
-  const subtitle = displayName ? `Hola, ${displayName}` : 'Tus posiciones reales';
+  const greeting = displayName ? `Hola, ${displayName}` : 'Tus posiciones';
 
   // Si hay error de red sin datos, mostrar pantalla offline completa
   if (networkError && !profile) {
@@ -331,7 +332,7 @@ export default function PortfolioScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
-        <PageHeader title="Portafolio" subtitle={subtitle} />
+        <PageHeader title={greeting} compact />
 
         {state === 'loading' && (
           <View style={styles.centered}>
@@ -344,23 +345,34 @@ export default function PortfolioScreen() {
         )}
 
         {state === 'portfolio' && profile && (
-          <PortfolioContent
-            profile={profile}
-            cdts={cdts}
-            etfs={etfs}
-            macroContext={macroContext}
-            cdtRate360={cdtRate360}
-            eodPrices={eodPrices}
-            hurdleRate={hurdleRate}
-            networkError={networkError}
-            showProfileModal={showProfileModal}
-            setShowProfileModal={setShowProfileModal}
-            showProjectionModal={showProjectionModal}
-            setShowProjectionModal={setShowProjectionModal}
-            unreadCount={unreadCount}
-            cdtUnreadMap={cdtUnreadMap}
-            etfUnreadMap={etfUnreadMap}
-          />
+          <>
+            <PortfolioContent
+              profile={profile}
+              cdts={cdts}
+              etfs={etfs}
+              macroContext={macroContext}
+              cdtRate360={cdtRate360}
+              eodPrices={eodPrices}
+              hurdleRate={hurdleRate}
+              networkError={networkError}
+              showProfileModal={showProfileModal}
+              setShowProfileModal={setShowProfileModal}
+              showProjectionModal={showProjectionModal}
+              setShowProjectionModal={setShowProjectionModal}
+              unreadCount={unreadCount}
+              cdtUnreadMap={cdtUnreadMap}
+              etfUnreadMap={etfUnreadMap}
+            />
+
+            {/* FAB flotante */}
+            <TouchableOpacity
+              style={[styles.floatingActionButton, { backgroundColor: theme.positive }]}
+              onPress={() => router.push('/portfolio/add')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+          </>
         )}
       </SafeAreaView>
     </ThemedView>
@@ -429,6 +441,15 @@ function PortfolioContent({
   const cdtPct = portfolioTotal > 0 ? cdtTotal / portfolioTotal : 0;
   const etfPct = portfolioTotal > 0 ? etfTotalCurrentCOP / portfolioTotal : 0;
 
+  // Calcular estado de bandas
+  const cdtH = bandHealth(cdtPct, bands.cdt_min, bands.cdt_max);
+  const etfH = bandHealth(etfPct, bands.etf_min, bands.etf_max);
+  const overallH: BandHealth =
+    cdtH === 'fuera' || etfH === 'fuera' ? 'fuera' :
+    cdtH === 'cerca' || etfH === 'cerca' ? 'cerca' :
+    'dentro';
+  const needsRebalancing = overallH !== 'dentro';
+
   const avgCdtRateNet = cdtTotal > 0
     ? cdts.reduce((s, c) => s + c.rate * (1 - c.withholding_rate) * c.amount, 0) / cdtTotal
     : (CDT_MKT_RATE / 100) * 0.96;
@@ -456,33 +477,6 @@ function PortfolioContent({
 
   return (
     <View style={styles.contentRoot}>
-      {/* Fila superior: chip de perfil + botón Agregar */}
-      <View style={styles.profileRow}>
-        <TouchableOpacity
-          style={[styles.profileChip, {
-            borderColor: config.color + '60',
-            backgroundColor: theme.backgroundElement,
-          }]}
-          onPress={() => setShowProfileModal(true)}
-          activeOpacity={0.7}
-        >
-          <ThemedText style={styles.chipLine} numberOfLines={1}>
-            <ThemedText style={[styles.chipLabel, { color: config.color }]}>{config.title}</ThemedText>
-            <ThemedText style={[styles.chipBands, { color: theme.textSecondary }]}>
-              {`: CDT ${Math.round(bands.cdt_min * 100)}–${Math.round(bands.cdt_max * 100)}% / ETF ${Math.round(bands.etf_min * 100)}–${Math.round(bands.etf_max * 100)}%`}
-            </ThemedText>
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: theme.positive }]}
-          onPress={() => router.push('/portfolio/add')}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add-outline" size={15} color="#FFFFFF" />
-          <ThemedText style={styles.fabText}>Agregar</ThemedText>
-        </TouchableOpacity>
-      </View>
-
       {/* Tab bar */}
       <View style={[styles.tabBar, { backgroundColor: theme.backgroundElement }]}>
         <TouchableOpacity
@@ -548,6 +542,15 @@ function PortfolioContent({
             </View>
           ) : (
             <>
+              <DistributionSection
+                cdtPct={cdtPct}
+                etfPct={etfPct}
+                bands={bands}
+                profileLabel={config.title}
+                profileColor={config.color}
+                onOpenProfileModal={() => setShowProfileModal(true)}
+              />
+
               {unreadCount > 0 && (
                 <TouchableOpacity
                   style={[styles.inboxBanner, { backgroundColor: theme.attentionSubtle, borderColor: theme.attentionBorder }]}
@@ -628,20 +631,6 @@ function PortfolioContent({
                 </TouchableOpacity>
               </View>
 
-              {/* Botón Analizar Rebalanceo */}
-              <TouchableOpacity
-                style={[styles.rebalancingButton, { backgroundColor: theme.backgroundElement, borderColor: theme.divider }]}
-                onPress={() => router.push('/portfolio/rebalancing')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="analytics-outline" size={20} color={theme.positive} />
-                <ThemedText type="default" style={{ color: theme.positive }}>
-                  Analizar rebalanceo
-                </ThemedText>
-                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
-              </TouchableOpacity>
-
-              <DistributionSection cdtPct={cdtPct} etfPct={etfPct} bands={bands} />
               <ContextStrip macroContext={macroContext} cdtRate360={cdtRate360} hurdleRate={hurdleRate} networkError={networkError} onOpenModal={setContextModal} />
             </>
           )}
@@ -1130,13 +1119,23 @@ function AssetAccordion({ title, count, color, isExpanded, onToggle, children }:
 // ── Distribución vs bandas ────────────────────────────────────────────────
 
 function DistributionSection({
-  cdtPct, etfPct, bands,
+  cdtPct,
+  etfPct,
+  bands,
+  profileLabel,
+  profileColor,
+  onOpenProfileModal,
 }: {
   cdtPct: number;
   etfPct: number;
-  bands:  AllocationBands;
+  bands: AllocationBands;
+  profileLabel: string;
+  profileColor: string;
+  onOpenProfileModal: () => void;
 }) {
   const theme = useTheme();
+  const router = useRouter();
+  const [showStatusModal, setShowStatusModal] = useState(false);
   const cdtH = bandHealth(cdtPct, bands.cdt_min, bands.cdt_max);
   const etfH = bandHealth(etfPct, bands.etf_min, bands.etf_max);
   const overallH: BandHealth =
@@ -1156,41 +1155,149 @@ function DistributionSection({
 
   return (
     <View style={[styles.distributionSection, { backgroundColor: theme.backgroundElement }]}>
-      <View style={styles.distributionHeader}>
-        <ThemedText style={[styles.sectionHeader, { color: theme.textSecondary }]}>Distribución</ThemedText>
-        <View style={[styles.healthBadge, { backgroundColor: hc + '18', borderColor: hc + '50' }]}>
-          <ThemedText style={[styles.healthLabel, { color: hc }]}>{statusLabel}</ThemedText>
+      {/* Fila 1: Objetivo + Chip de perfil */}
+      <View style={styles.comparisonRow}>
+        <View style={styles.comparisonBlock}>
+          <ThemedText style={[styles.comparisonLabel, { color: theme.textSecondary }]}>
+            Objetivo:
+          </ThemedText>
+          <View style={[styles.stackedTrack, { backgroundColor: theme.divider }]}>
+            <View style={{ flex: Math.round((bands.cdt_min * 100 + bands.cdt_max * 100) / 2), backgroundColor: theme.assetCdt }} />
+            <View style={{ flex: Math.round((bands.etf_min * 100 + bands.etf_max * 100) / 2), backgroundColor: theme.assetEtf }} />
+          </View>
+          <ThemedText style={[styles.comparisonDetail, { color: theme.textSecondary }]}>
+            CDT ~{Math.round((bands.cdt_min * 100 + bands.cdt_max * 100) / 2)}% / ETF ~{Math.round((bands.etf_min * 100 + bands.etf_max * 100) / 2)}%
+          </ThemedText>
         </View>
+        <TouchableOpacity
+          style={[styles.profileChipInline, {
+            borderColor: profileColor + '60',
+            backgroundColor: theme.background,
+          }]}
+          onPress={onOpenProfileModal}
+          activeOpacity={0.7}
+        >
+          <ThemedText style={[styles.chipLabel, { color: profileColor }]} numberOfLines={1}>
+            {profileLabel}
+          </ThemedText>
+        </TouchableOpacity>
       </View>
 
-      <View style={[styles.stackedTrack, { backgroundColor: theme.divider }]}>
-        <View style={{ flex: cdtN, backgroundColor: theme.assetCdt }} />
-        <View style={{ flex: etfN, backgroundColor: theme.assetEtf }} />
+      {/* Fila 2: Actual + Badge de estado */}
+      <View style={styles.comparisonRow}>
+        <View style={styles.comparisonBlock}>
+          <ThemedText style={[styles.comparisonLabel, { color: theme.textSecondary }]}>
+            Actual:
+          </ThemedText>
+          <View style={[styles.stackedTrack, { backgroundColor: theme.divider }]}>
+            <View style={{ flex: cdtN, backgroundColor: theme.assetCdt }} />
+            <View style={{ flex: etfN, backgroundColor: theme.assetEtf }} />
+          </View>
+          <ThemedText style={[styles.comparisonDetail, { color: theme.textSecondary }]}>
+            CDT {cdtN}% / ETF {etfN}%
+          </ThemedText>
+        </View>
+        <TouchableOpacity
+          style={[styles.statusChip, {
+            borderColor: hc + '60',
+            backgroundColor: theme.background,
+          }]}
+          onPress={() => setShowStatusModal(true)}
+          activeOpacity={0.7}
+        >
+          <ThemedText style={[styles.chipLabel, { color: hc }]} numberOfLines={1}>
+            {statusLabel}
+          </ThemedText>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.distLegendRow}>
-        <View style={[styles.distDot, { backgroundColor: theme.assetCdt }]} />
-        <ThemedText style={[styles.distLabel, { color: theme.text }]}>CDT</ThemedText>
-        <ThemedText style={[styles.distPct, { color: theme.assetCdt }]}>{cdtN}%</ThemedText>
-        <ThemedText style={[styles.distBand, { color: theme.textSecondary }]}>
-          [{Math.round(bands.cdt_min * 100)}–{Math.round(bands.cdt_max * 100)}%]
+      {/* Modal explicativo de estado */}
+      <InfoModal
+        visible={showStatusModal}
+        onClose={() => setShowStatusModal(false)}
+        title={statusLabel}
+      >
+        <ThemedText style={styles.modalParagraph}>
+          {overallH === 'dentro' && (
+            <>La distribución actual entre CDT y ETF está alineada con las bandas objetivo de tu perfil {profileLabel}. Tu portafolio refleja correctamente tu tolerancia al riesgo.</>
+          )}
+          {overallH === 'cerca' && (
+            <>Tu distribución está cerca del límite de las bandas objetivo. Considera revisar el análisis de rebalanceo para ajustar hacia el centro de tu rango ideal.</>
+          )}
+          {overallH === 'fuera' && (
+            <>Tu distribución actual no está alineada con las bandas objetivo de tu perfil {profileLabel}. Revisa el análisis de rebalanceo para volver al rango recomendado.</>
+          )}
         </ThemedText>
-        {cdtH === 'dentro' && <Ionicons name="checkmark"            size={13} color={cdtHc} />}
-        {cdtH === 'cerca'  && <Ionicons name="alert-circle-outline" size={13} color={cdtHc} />}
-        {cdtH === 'fuera'  && <Ionicons name="close-circle-outline" size={13} color={cdtHc} />}
-      </View>
 
-      <View style={styles.distLegendRow}>
-        <View style={[styles.distDot, { backgroundColor: theme.assetEtf }]} />
-        <ThemedText style={[styles.distLabel, { color: theme.text }]}>ETF</ThemedText>
-        <ThemedText style={[styles.distPct, { color: theme.assetEtf }]}>{etfN}%</ThemedText>
-        <ThemedText style={[styles.distBand, { color: theme.textSecondary }]}>
-          [{Math.round(bands.etf_min * 100)}–{Math.round(bands.etf_max * 100)}%]
+        <ThemedText style={[styles.modalSubtitle, { color: theme.text }]}>
+          Bandas de tu perfil
         </ThemedText>
-        {etfH === 'dentro' && <Ionicons name="checkmark"            size={13} color={etfHc} />}
-        {etfH === 'cerca'  && <Ionicons name="alert-circle-outline" size={13} color={etfHc} />}
-        {etfH === 'fuera'  && <Ionicons name="close-circle-outline" size={13} color={etfHc} />}
-      </View>
+        <ThemedText style={styles.modalParagraph}>
+          • CDT: {Math.round(bands.cdt_min * 100)}–{Math.round(bands.cdt_max * 100)}%
+        </ThemedText>
+        <ThemedText style={styles.modalParagraph}>
+          • ETF: {Math.round(bands.etf_min * 100)}–{Math.round(bands.etf_max * 100)}%
+        </ThemedText>
+
+        <ThemedText style={[styles.modalSubtitle, { color: theme.text }]}>
+          Tu distribución actual
+        </ThemedText>
+        <ThemedText style={styles.modalParagraph}>
+          • CDT: {cdtN}%
+        </ThemedText>
+        <ThemedText style={styles.modalParagraph}>
+          • ETF: {etfN}%
+        </ThemedText>
+
+        {/* Acciones contextuales */}
+        <View style={styles.modalActions}>
+          {(overallH === 'fuera' || overallH === 'cerca') && (
+            <TouchableOpacity
+              style={[styles.modalActionButton, { backgroundColor: theme.positive }]}
+              onPress={() => {
+                setShowStatusModal(false);
+                router.push('/portfolio/rebalancing');
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="analytics-outline" size={18} color="#FFFFFF" />
+              <ThemedText style={styles.modalActionText}>Analizar rebalanceo</ThemedText>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.modalActionButton, {
+              backgroundColor: theme.background,
+              borderWidth: 1,
+              borderColor: theme.divider
+            }]}
+            onPress={() => {
+              setShowStatusModal(false);
+              Alert.alert(
+                'Reevaluar perfil de riesgo',
+                'Se borrarán tus respuestas actuales y volverás a ver el cuestionario la próxima vez que abras la sección Portafolio.',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  {
+                    text: 'Reevaluar',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await resetRiskProfile();
+                      profileEvents.emitReset();
+                    },
+                  },
+                ]
+              );
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="refresh-outline" size={18} color={theme.text} />
+            <ThemedText style={[styles.modalActionText, { color: theme.text }]}>
+              Reevaluar mi perfil
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </InfoModal>
     </View>
   );
 }
@@ -1455,22 +1562,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  fab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: 100,
-  },
-  fabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
   contentRoot: {
     flex: 1,
     gap: Spacing.two,
+  },
+  floatingActionButton: {
+    position: 'absolute',
+    right: Spacing.four,
+    bottom: Spacing.four, // Directamente desde el borde inferior del SafeAreaView
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   tabBar: {
     flexDirection: 'row',
@@ -1499,14 +1608,32 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: {
     gap: Spacing.one,
-    paddingBottom: BottomTabInset + Spacing.three,
+    paddingBottom: Spacing.three, // Espacio mínimo al final
   },
   profileChip: {
-    flex: 1,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: 100,
     borderWidth: 1,
+    marginBottom: Spacing.two,
+  },
+  profileChipInline: {
+    flex: 1,
+    height: 36,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Spacing.two + Spacing.half,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusChip: {
+    flex: 1,
+    height: 36,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Spacing.two + Spacing.half,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipLine:  { fontSize: 12, flexShrink: 1 },
   chipLabel: { fontSize: 12, fontWeight: '600' },
@@ -1604,10 +1731,23 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  distributionHeader: {
+  comparisonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.two,
+  },
+  comparisonBlock: {
+    width: '60%',
+    gap: Spacing.one,
+  },
+  comparisonLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  comparisonDetail: {
+    fontSize: 11,
   },
   healthBadge: {
     paddingHorizontal: Spacing.two,
@@ -1840,5 +1980,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontStyle: 'italic',
+  },
+  modalParagraph: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: Spacing.two,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: Spacing.two,
+    marginBottom: Spacing.one,
+  },
+  modalBold: {
+    fontWeight: '700',
+  },
+  modalActions: {
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+  },
+  modalActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    borderRadius: Spacing.two,
+  },
+  modalActionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

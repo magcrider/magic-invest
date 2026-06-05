@@ -4,14 +4,14 @@ Registro vivo del estado del proyecto. **Historial completo:** ver `todo_archive
 
 ---
 
-## 🎉 Estado General — Junio 4, 2026
+## 🎉 Estado General — Junio 5, 2026
 
 ### FASE 1 (MVP) — 100% COMPLETADO
 
 **Magic Invest está funcional y lista para uso en producción.**
 
-* **Última actualización:** Junio 4, 2026 (21:30)
-* **Último módulo completado:** Perfil de Usuario (opcional, no bloqueante)
+* **Última actualización:** Junio 5, 2026 (09:00)
+* **Última sesión:** Refinamiento UX Portafolio (saludo compacto, FAB, distribución visual objetivo vs actual)
 * **7 módulos core:** Todos al 100%
 * **8 Edge Functions:** Operativas con datos reales
 * **8 triggers automáticos:** Motor de eventos completo
@@ -287,24 +287,59 @@ Cuando haya usuarios externos:
   - `src/components/drawer-menu.tsx` — botón acceso
 - **Estado:** ✅ Funcional, testeado y aprobado por Harvey
 
+### 7. Refinamiento UX: Portafolio Resumen (Junio 5, 2026)
+- **Objetivo:** Mejorar jerarquía visual, minimalismo y flujo de acciones contextuales
+- **Cambios implementados:**
+  1. **Saludo compacto**: Título "Hola, Harvey" reducido 50% (48px → 24px) para nombres largos
+  2. **FAB (Floating Action Button)**: Botón "Agregar" convertido a FAB circular (+) en esquina inferior derecha
+  3. **Distribución visual mejorada**:
+     - Fusión de chip de perfil con sección de distribución
+     - Layout 2x2: barras (60% ancho) + chips clicables (40%)
+     - Estructura vertical por barra: Label → Barra → Detalle porcentajes
+     - "Objetivo" muestra centro de bandas (~73% CDT / ~28% ETF)
+     - "Actual" muestra distribución real (46% CDT / 54% ETF)
+     - Chips uniformes: mismo alto fijo (36px), sin word wrap, centrados
+  4. **Reordenamiento**: Distribución como primer elemento (antes de métricas)
+  5. **Modal "Estado de bandas"** con acciones contextuales:
+     - Título dinámico según estado (Dentro/Cerca/Fuera de bandas)
+     - Explicación sin redundancia
+     - Botones de acción:
+       - "Analizar rebalanceo" (solo si Cerca/Fuera)
+       - "Reevaluar mi perfil" (siempre, con Alert de confirmación)
+  6. **Eliminación**: Botón "Analizar rebalanceo" removido del resumen (ahora solo en modal contextual)
+- **Filosofía aplicada:**
+  - Solo mostrar acciones cuando son matemáticamente relevantes
+  - Contextualizar decisiones con información completa
+  - Minimalismo: reducir ruido, aumentar signal
+- **Archivos modificados:**
+  - `src/app/portfolio/index.tsx` — reestructura completa de DistributionSection
+  - `src/components/page-header.tsx` — prop `compact` para saludo
+- **Estado:** ✅ Implementado y testeado por Harvey
+
+---
+
+## 🐛 Bugs Conocidos
+
+### Bug: Activos desaparecen temporalmente al reevaluar perfil
+- **Descripción:** Al ejecutar reevaluación de perfil de riesgo, los CDTs y ETFs desaparecen de la UI temporalmente. Los datos persisten en BD y se recargan al cambiar de sección.
+- **Causa probable:** `profileEvents.emitReset()` dispara listener que limpia estado de `cdts`/`etfs` antes de recargar
+- **Impacto:** Medio (confunde al usuario pero no pierde datos)
+- **Estado:** Pendiente de investigación
+
 ---
 
 ## 🔄 Última Actualización
 
-**Fecha:** Junio 4, 2026 (21:30)  
+**Fecha:** Junio 5, 2026 (09:00)  
 **Autor:** Claude Code  
 **Estado:** 🎉 FASE 1 (MVP) COMPLETADA AL 100%
 
-**Commits de hoy:**
-- `35c59a5` — Parsing robusto + consistencia símbolos + docs optimizados
-- `f6b9682` — Mejorar proyección + modals educativos en Portafolio
-- `01c2c6c` — Auto-retry transparente JWT (PGRST303)
-- `273f1f2` — Validación estricta + scroll automático + tipografía robusta
-- `0d1e9c2` — Actualizar contextos + regla no-commits-sin-aprobación
-- `f58aa45` — UX mejorada watchlist (modales design system)
-- ⏳ **Próximo commit:** feat: Perfil de Usuario completo + actualización contextos (FASE 1 100%)
+**Commits recientes:**
+- `d33af72` — Perfil de Usuario + UX watchlist + rebase limpio
+- ⏳ **Próximo commit:** UX refinada Portafolio: saludo compacto, FAB, distribución objetivo vs actual con acciones contextuales
 
 **Próximos pasos:**
-- Uso real de la app por Harvey
-- Identificar ajustes basados en experiencia práctica
-- Planear Fase 2 según prioridades reales
+- Continuar revisión de UX con Harvey
+- Identificar ajustes basados en uso real
+- Investigar bug de desaparición temporal de activos
+- Planear Fase 2 según prioridades identificadas

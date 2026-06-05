@@ -12,9 +12,10 @@ interface Props {
   title: string;
   subtitle?: string;
   rightAction?: React.ReactNode;
+  compact?: boolean;  // Para saludos largos en Portafolio
 }
 
-export function PageHeader({ title, subtitle, rightAction }: Props) {
+export function PageHeader({ title, subtitle, rightAction, compact = false }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const theme = useTheme();
 
@@ -22,7 +23,9 @@ export function PageHeader({ title, subtitle, rightAction }: Props) {
     <>
       <ThemedView style={styles.header}>
         <ThemedView style={styles.text}>
-          <ThemedText type="title">{title}</ThemedText>
+          <ThemedText type="title" style={compact ? styles.compactTitle : undefined}>
+            {title}
+          </ThemedText>
           {subtitle ? (
             <ThemedText type="default" themeColor="textSecondary">{subtitle}</ThemedText>
           ) : null}
@@ -51,5 +54,9 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'flex-end',
     gap: Spacing.one,
+  },
+  compactTitle: {
+    fontSize: 24,
+    lineHeight: 32,
   },
 });
